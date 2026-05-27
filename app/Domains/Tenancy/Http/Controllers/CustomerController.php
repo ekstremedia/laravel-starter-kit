@@ -12,6 +12,7 @@ use App\Domains\Users\Models\User;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -151,6 +152,13 @@ class CustomerController extends Controller
             ],
             'global_files_feature_enabled' => (bool) $appSettings->files_feature_enabled,
             'global_default_personal_storage_bytes' => $appSettings->default_personal_storage_bytes,
+            // Roles the member-add panel can assign. Defaults to the app's
+            // configured default role so the quick add-by-email assigns a
+            // sensible role without forcing a choice.
+            'assignableRoles' => CustomerMembership::assignableRoles(),
+            'defaultRole' => in_array($appSettings->default_role, CustomerMembership::assignableRoles(), true)
+                ? $appSettings->default_role
+                : 'User',
         ]);
     }
 
@@ -208,6 +216,14 @@ class CustomerController extends Controller
     public function destroy(Tenant $customer): RedirectResponse
     {
         $name = $customer->name;
+
+        // Customer (team) scoped role/permission assignments live in the
+        // central model_has_* tables keyed by team_id. Dropping the tenant
+        // schema doesn't touch them, so clean them up here to avoid orphaned
+        // rows that would otherwise leak onto a future customer reusing the id.
+        $teamKey = config('permission.column_names.team_foreign_key', 'team_id');
+        DB::table(config('permission.table_names.model_has_roles'))->where($teamKey, $customer->id)->delete();
+        DB::table(config('permission.table_names.model_has_permissions'))->where($teamKey, $customer->id)->delete();
 
         // Triggers the TenantDeleted job pipeline → drops the tenant<id> schema.
         $customer->delete();

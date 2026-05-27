@@ -847,6 +847,7 @@ export default {
             app_settings_link: 'App Settings',
             member_count: 'Members ({count})',
             add_member_placeholder: "existing-user{'@'}example.com",
+            member_role: 'Role',
             no_members: 'No members yet. Add an existing user by email above.',
             no_role: 'No role',
             confirm_delete: 'Delete {name}? This will drop the tenant schema and all its data.',

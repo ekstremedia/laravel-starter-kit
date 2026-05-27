@@ -847,6 +847,7 @@ export default {
             app_settings_link: 'Appinnstillinger',
             member_count: 'Medlemmer ({count})',
             add_member_placeholder: "eksisterende-bruker{'@'}eksempel.no",
+            member_role: 'Rolle',
             no_members: 'Ingen medlemmer ennå. Legg til en eksisterende bruker med e-post ovenfor.',
             no_role: 'Ingen rolle',
             confirm_delete: 'Slette {name}? Dette vil slette tenant-skjemaet og alle dets data.',
