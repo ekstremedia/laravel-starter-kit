@@ -67,6 +67,32 @@ export default {
             settings_hint: 'Globale brytere og retningslinjer',
         },
     },
+    legal: {
+        last_updated: 'Sist oppdatert: bytt ut med din dato',
+        back_home: 'Tilbake til forsiden',
+        placeholder_note:
+            'Dette er plassholdertekst som følger med startpakken. Rediger resources/js/Pages/Legal.vue (og disse i18n-strengene) for å legge inn dine egne vilkår før produksjon.',
+        privacy: {
+            title: 'Personvernerklæring',
+            intro: 'Denne personvernerklæringen beskriver hvordan personopplysningene dine samles inn, brukes og deles når du bruker denne applikasjonen.',
+            sections: [
+                { heading: 'Opplysninger vi samler inn', body: 'Beskriv hvilke personopplysninger applikasjonen din samler inn — for eksempel kontodetaljer, bruksdata og informasjon brukere oppgir.' },
+                { heading: 'Hvordan vi bruker opplysninger', body: 'Forklar formålene du behandler personopplysninger for, som å levere tjenesten, kommunisere med brukere og oppfylle juridiske forpliktelser.' },
+                { heading: 'Lagringstid', body: 'Angi hvor lenge du oppbevarer personopplysninger og kriteriene som brukes for å fastsette dette.' },
+                { heading: 'Dine rettigheter', body: 'Beskriv rettighetene brukere har over dataene sine og hvordan de kan utøve dem, inkludert hvordan de kontakter deg.' },
+            ],
+        },
+        terms: {
+            title: 'Vilkår for bruk',
+            intro: 'Disse vilkårene for bruk regulerer tilgangen til og bruken av denne applikasjonen. Ved å bruke tjenesten godtar du disse vilkårene.',
+            sections: [
+                { heading: 'Bruk av tjenesten', body: 'Beskriv akseptabel bruk, kontoansvar og eventuelle begrensninger som gjelder for brukere av tjenesten.' },
+                { heading: 'Kontoer', body: 'Forklar kravene for å opprette og vedlikeholde en konto, og brukerens ansvar for å holde påloggingsinformasjon sikker.' },
+                { heading: 'Ansvarsbegrensning', body: 'Angi begrensningene i ditt ansvar og eventuelle garantifraskrivelser, slik det passer for din jurisdiksjon.' },
+                { heading: 'Endringer i vilkårene', body: 'Angi at du kan oppdatere disse vilkårene og hvordan brukere varsles om vesentlige endringer.' },
+            ],
+        },
+    },
     auth: {
         login_title: 'Velkommen tilbake',
         login_subtitle: 'Logg inn på kontoen din',
@@ -355,6 +381,7 @@ export default {
     },
     customer_switcher: {
         pick: 'Velg kunde',
+        customers: 'Kunder',
     },
     tweaks: {
         title: 'Tweaks',

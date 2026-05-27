@@ -33,6 +33,11 @@ Route::get('/', function () {
     return Inertia::render('Welcome');
 })->name('home');
 
+// Public legal pages — shipped as styled placeholders the marketing footer
+// links resolve to out of the box. Replace the copy in resources/js/Pages/Legal.vue.
+Route::get('/privacy', fn () => Inertia::render('Legal', ['kind' => 'privacy']))->name('legal.privacy');
+Route::get('/terms', fn () => Inertia::render('Legal', ['kind' => 'terms']))->name('legal.terms');
+
 // Public, unauthenticated share links. Full shares carry optional password
 // gating; signed links are Laravel-signed URLs with no DB row.
 Route::get('/share/{token}', [PublicShareController::class, 'view'])->name('public.share.view');

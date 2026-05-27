@@ -14,7 +14,8 @@ const { t } = useI18n();
 const page = usePage<PageProps>();
 
 const form = useForm({});
-const sent = computed(() => page.props.flash?.success);
+// Fortify's resend sets the session `status` key to 'verification-link-sent'.
+const sent = computed(() => page.props.flash?.status === 'verification-link-sent');
 
 function resend() {
     form.post('/email/verification-notification');

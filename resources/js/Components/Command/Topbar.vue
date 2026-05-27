@@ -99,22 +99,27 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
             zIndex: 20,
         }"
     >
-        <div :style="{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }">
+        <div
+            :style="{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap', flexShrink: 1 }"
+        >
             <template v-for="(b, i) in breadcrumbs" :key="i">
-                <Icon v-if="i > 0" name="chevR" :size="10" :style="{ color: 'var(--fg-mute)' }" />
+                <Icon v-if="i > 0" name="chevR" :size="10" :style="{ color: 'var(--fg-mute)', flexShrink: 0 }" />
                 <span
                     :style="{
                         color: i === breadcrumbs.length - 1 ? 'var(--fg)' : 'var(--fg-dim)',
                         fontWeight: i === breadcrumbs.length - 1 ? 500 : 400,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
                     }"
                 >{{ b }}</span>
             </template>
         </div>
 
-        <div :style="{ display: 'flex', alignItems: 'center', gap: '6px' }">
+        <div :style="{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }">
             <button
                 type="button"
                 @click="onOpenPalette"
+                :aria-label="t('topbar.search_prompt')"
                 :style="{
                     background: 'var(--panel2)',
                     border: '1px solid var(--border)',
@@ -127,12 +132,13 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                     alignItems: 'center',
                     gap: '8px',
                     fontFamily: 'inherit',
+                    flexShrink: 0,
                 }"
             >
                 <Icon name="search" :size="12" />
-                <span>{{ t('topbar.search_prompt') }}</span>
+                <span class="cmd-topbar-hide-sm">{{ t('topbar.search_prompt') }}</span>
                 <kbd
-                    class="cmd-mono"
+                    class="cmd-mono cmd-topbar-hide-sm"
                     :style="{
                         fontSize: '9.5px',
                         padding: '1px 5px',
@@ -178,7 +184,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                             fontFamily: 'var(--font-mono)',
                         }"
                     >{{ initials }}</span>
-                    <span :style="{ fontSize: '11.5px', color: 'var(--fg)' }">{{ user?.full_name ?? '' }}</span>
+                    <span class="cmd-topbar-hide-sm" :style="{ fontSize: '11.5px', color: 'var(--fg)' }">{{ user?.full_name ?? '' }}</span>
                     <Icon name="chevD" :size="10" :style="{ color: 'var(--fg-mute)' }" />
                 </button>
 
@@ -272,6 +278,14 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
 </template>
 
 <style scoped>
+/* Collapse non-essential topbar labels on narrow screens so the bar never
+ * overflows: the search button becomes icon-only and the user pill shows just
+ * the avatar + chevron. Breadcrumbs truncate via ellipsis (inline styles). */
+@media (max-width: 640px) {
+    .cmd-topbar-hide-sm {
+        display: none;
+    }
+}
 .cmd-menu-item {
     display: flex;
     align-items: center;

@@ -67,6 +67,32 @@ export default {
             settings_hint: 'Global toggles and policies',
         },
     },
+    legal: {
+        last_updated: 'Last updated: replace with your date',
+        back_home: 'Back to home',
+        placeholder_note:
+            'This is placeholder text shipped with the starter kit. Edit resources/js/Pages/Legal.vue (and these i18n strings) to add your real policy before going to production.',
+        privacy: {
+            title: 'Privacy Policy',
+            intro: 'This Privacy Policy describes how your personal information is collected, used, and shared when you use this application.',
+            sections: [
+                { heading: 'Information we collect', body: 'Describe the personal data your application collects — for example account details, usage data, and any information users provide.' },
+                { heading: 'How we use information', body: 'Explain the purposes for which you process personal data, such as providing the service, communicating with users, and meeting legal obligations.' },
+                { heading: 'Data retention', body: 'State how long you keep personal data and the criteria used to determine that period.' },
+                { heading: 'Your rights', body: 'Outline the rights users have over their data and how they can exercise them, including how to contact you.' },
+            ],
+        },
+        terms: {
+            title: 'Terms of Service',
+            intro: 'These Terms of Service govern your access to and use of this application. By using the service you agree to these terms.',
+            sections: [
+                { heading: 'Use of the service', body: 'Describe acceptable use, account responsibilities, and any restrictions that apply to users of the service.' },
+                { heading: 'Accounts', body: 'Explain the requirements for creating and maintaining an account, and the user’s responsibility for keeping credentials secure.' },
+                { heading: 'Limitation of liability', body: 'Set out the limitations of your liability and any disclaimers of warranties, as appropriate for your jurisdiction.' },
+                { heading: 'Changes to these terms', body: 'State that you may update these terms and how users will be notified of material changes.' },
+            ],
+        },
+    },
     auth: {
         login_title: 'Welcome back',
         login_subtitle: 'Sign in to your account',
@@ -355,6 +381,7 @@ export default {
     },
     customer_switcher: {
         pick: 'Select customer',
+        customers: 'Customers',
     },
     tweaks: {
         title: 'Tweaks',
