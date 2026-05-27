@@ -731,6 +731,7 @@ export default {
             send_test: 'Send test notification',
             impersonate: 'Impersonate',
             confirm_delete: 'Permanently delete {name}?',
+            confirm_ban: 'Ban {name}? They will be signed out and blocked from logging in.',
             confirm_remove_member: 'Remove {email} from this customer?',
             toast_deleted: 'Deleted {name}',
             toast_role_updated: 'Role updated for {name}',

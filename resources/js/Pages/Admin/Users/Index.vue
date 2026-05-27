@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useConfirm } from 'primevue/useconfirm';
@@ -190,6 +190,29 @@ function unban(u: UserRow) {
     if (!u.banned_at) { push(t('admin.users.toast_not_banned'), 'info'); return; }
     // Server flashes flash.users.unbanned.
     router.post(`/admin/users/${u.id}/unban`, {}, { preserveScroll: true });
+}
+
+// Current user id — used to hide the ban action on your own row (the server
+// also blocks self-ban and banning another super admin).
+const currentUserId = computed(() => (usePage().props as { auth?: { user?: { id?: number } } }).auth?.user?.id ?? null);
+function canBan(u: UserRow): boolean {
+    return !u.is_super_admin && u.id !== currentUserId.value;
+}
+
+function ban(u: UserRow) {
+    confirmer.require({
+        group: 'command',
+        message: t('admin.users.confirm_ban', { name: `${u.first_name} ${u.last_name}` }),
+        header: t('admin.users.ban'),
+        icon: 'pi pi-exclamation-triangle',
+        acceptClass: 'p-button-danger',
+        acceptLabel: t('admin.users.ban'),
+        rejectLabel: t('common.cancel'),
+        accept: () => {
+            // Reason is optional from the list; the detail page offers a reason field.
+            router.post(`/admin/users/${u.id}/ban`, {}, { preserveScroll: true });
+        },
+    });
 }
 
 function pageStart(): number {
@@ -599,12 +622,22 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
                         <Icon name="mail" :size="12" />
                     </button>
                     <button
+                        v-if="u.banned_at"
                         type="button"
                         :title="t('admin.users.unban')"
                         @click="unban(u)"
-                        :style="{ background: 'transparent', border: 'none', color: 'var(--fg-dim)', cursor: 'pointer', padding: '4px', borderRadius: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }"
+                        :style="{ background: 'transparent', border: 'none', color: 'var(--accent)', cursor: 'pointer', padding: '4px', borderRadius: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }"
                     >
                         <Icon name="restore" :size="12" />
+                    </button>
+                    <button
+                        v-else-if="canBan(u)"
+                        type="button"
+                        :title="t('admin.users.ban')"
+                        @click="ban(u)"
+                        :style="{ background: 'transparent', border: 'none', color: 'var(--fg-dim)', cursor: 'pointer', padding: '4px', borderRadius: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }"
+                    >
+                        <Icon name="shield" :size="12" />
                     </button>
                     <button
                         type="button"

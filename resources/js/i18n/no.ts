@@ -731,6 +731,7 @@ export default {
             send_test: 'Send testvarsel',
             impersonate: 'Etterlign',
             confirm_delete: 'Slett {name} permanent?',
+            confirm_ban: 'Utesteng {name}? De blir logget ut og hindret i å logge inn.',
             confirm_remove_member: 'Fjerne {email} fra denne kunden?',
             toast_deleted: 'Slettet {name}',
             toast_role_updated: 'Rolle oppdatert for {name}',
