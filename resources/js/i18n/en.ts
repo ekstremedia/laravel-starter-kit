@@ -946,6 +946,8 @@ export default {
             default_personal_storage: 'Default personal storage (bytes)',
             storage_placeholder: 'empty = unlimited, -1 = unlimited, 0 = blocked',
             default_personal_storage_desc: 'Default byte limit for all users\' personal files. Can be overridden per customer and per user.',
+            default_entity_storage: 'Default entity storage (bytes)',
+            default_entity_storage_desc: 'Default byte limit for file-owning entities (Assets, …). Each entity can override its own cap.',
         },
         backups: {
             title: 'Backups',

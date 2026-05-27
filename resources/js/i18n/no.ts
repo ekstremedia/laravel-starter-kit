@@ -944,6 +944,8 @@ export default {
             default_personal_storage: 'Standard personlig lagring (bytes)',
             storage_placeholder: 'tom = ubegrenset, -1 = ubegrenset, 0 = blokkert',
             default_personal_storage_desc: 'Standard byte-grense for alle brukeres personlige filer. Kan overstyres per kunde og per bruker.',
+            default_entity_storage: 'Standard enhetslagring (bytes)',
+            default_entity_storage_desc: 'Standard byte-grense for filhaldande enheter (Ressurser, …). Kvar enhet kan overstyre si eiga grense.',
         },
         backups: {
             title: 'Sikkerhetskopier',

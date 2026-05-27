@@ -30,6 +30,7 @@ interface Settings {
     max_share_days: number;
     // null/null = unlimited, -1 = explicit unlimited, 0 = blocked, N>0 = cap.
     default_personal_storage_bytes: number | null;
+    default_entity_storage_bytes: number | null;
 }
 
 interface Props {
@@ -54,6 +55,7 @@ const form = useForm({
     files_feature_enabled: props.settings.files_feature_enabled,
     max_share_days: props.settings.max_share_days,
     default_personal_storage_bytes: props.settings.default_personal_storage_bytes,
+    default_entity_storage_bytes: props.settings.default_entity_storage_bytes,
 });
 
 // `v-model.number` gives us '' when the user clears the field, but the
@@ -66,18 +68,29 @@ const defaultPersonalStorageBytes = computed<number | null>({
     },
 });
 
+const defaultEntityStorageBytes = computed<number | null>({
+    get: () => form.default_entity_storage_bytes,
+    set: (v) => {
+        form.default_entity_storage_bytes = v === null || Number.isNaN(v as unknown as number) || (v as unknown as string) === '' ? null : Number(v);
+    },
+});
+
 const dirty = computed(() => form.isDirty);
 const loading = ref(true);
 setTimeout(() => { loading.value = false; }, 700);
 
-type SectionId = 'access' | 'policy' | 'banner' | 'fs';
-const active = ref<SectionId>('access');
+// Section registry — the single place to add a settings section. Add an id +
+// label here and a matching <template v-if="active === 'id'"> block below;
+// the sidebar, routing and active-state all derive from this list. Order
+// matters: the file system leads since it's the most-used feature.
+type SectionId = 'fs' | 'access' | 'policy' | 'banner';
 const sections = computed<{ id: SectionId; label: string }[]>(() => [
+    { id: 'fs', label: t('admin.app_settings.filesystem') },
     { id: 'access', label: t('admin.app_settings.access') },
     { id: 'policy', label: t('admin.app_settings.policy') },
     { id: 'banner', label: t('admin.app_settings.announcement') },
-    { id: 'fs', label: t('admin.app_settings.filesystem') },
 ]);
+const active = ref<SectionId>('fs');
 
 const severityOptions = computed<{ id: Severity; label: string }[]>(() => [
     { id: 'info', label: t('admin.app_settings.severity_info') },
@@ -477,6 +490,34 @@ const roleOpen = ref(false);
                                 />
                                 <p :style="{ fontSize: '11px', color: 'var(--fg-mute)', marginTop: '4px' }">
                                     {{ t('admin.app_settings.default_personal_storage_desc') }}
+                                </p>
+                            </div>
+
+                            <div>
+                                <div
+                                    class="cmd-mono cmd-uc"
+                                    :style="{ fontSize: '10px', color: 'var(--fg-mute)', marginBottom: '6px', letterSpacing: '0.06em' }"
+                                >{{ t('admin.app_settings.default_entity_storage') }}</div>
+                                <input
+                                    v-model.number="defaultEntityStorageBytes"
+                                    type="number"
+                                    min="-1"
+                                    class="cmd-mono"
+                                    :placeholder="t('admin.app_settings.storage_placeholder')"
+                                    :style="{
+                                        width: '100%',
+                                        maxWidth: '360px',
+                                        background: 'var(--panel2)',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '5px',
+                                        padding: '7px 10px',
+                                        color: 'var(--fg)',
+                                        fontSize: '12px',
+                                        outline: 'none',
+                                    }"
+                                />
+                                <p :style="{ fontSize: '11px', color: 'var(--fg-mute)', marginTop: '4px' }">
+                                    {{ t('admin.app_settings.default_entity_storage_desc') }}
                                 </p>
                             </div>
                         </div>
