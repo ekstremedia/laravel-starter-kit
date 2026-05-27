@@ -56,13 +56,34 @@ docker compose exec app php artisan test --compact
 
 Inertia SPA: Laravel handles routing/auth/controllers, Vue renders UI from `resources/js/Pages`.
 
+### Domain modules (`app/Domains/*`)
+
+Backend code is organised into domain modules, not flat `app/Http`, `app/Models`, etc. Each domain owns its own `Models/`, `Http/Controllers/`, `Http/Middleware/`, `Http/Requests/`, `Http/Resources/`, `Policies/`, `Events/`, `Jobs/`, `Services/`, `Console/`, `Providers/` as needed:
+
+- **Auth** — Fortify actions, login/register responses, Socialite, dev-login, `FortifyServiceProvider`
+- **Users** — `User`, `UserSetting`, `PersonalAccessToken`, profile/avatar/token controllers, user commands
+- **Access** — `Role`, `Permission`, role/permission admin, super-admin & customer-admin middleware
+- **Files** — `FileItem`/`FileShare`/`CompanyFileLink`, `FileOwner` contract, `HasFiles` concern, policies, controllers, resources, jobs, events, `StorageUsageService`
+- **Chat** · **Tenancy** · **Notifications** · **Settings** · **Operations** (admin dashboards, `Activity`, Horizon provider)
+
+Genuinely global infra stays at the `App\` root: the base `App\Http\Controllers\Controller`, global middleware (`HandleInertiaRequests`, `SecurityHeaders`, `RequestId`, `SetLocaleFromUser`, `EnsureUserIsNotBanned`), and `AppServiceProvider`.
+
+**Conventions when adding/moving code:**
+- Namespace mirrors the path: `App\Domains\Files\Services\StorageUsageService`.
+- **Polymorphic morph map** (`AppServiceProvider::boot`): `*_type` columns store stable aliases keyed by the original `App\Models\*` strings, so models can move without a data backfill. Compare morph types with `$model->getMorphClass()`, never `Model::class`.
+- **Factories stay flat** in `database/factories` (`Database\Factories\<Name>Factory`); `Factory::guessFactoryNamesUsing` + a `protected $model` on each factory wires them to domain models.
+- **Domain commands** auto-register via `->withCommands([app/Domains])` in `bootstrap/app.php`.
+- A controller moved out of `App\Http\Controllers` must add `use App\Http\Controllers\Controller;` explicitly.
+- A model referencing a sibling in another domain needs an explicit `use` (same-namespace short names break across domains).
+- `config/*` (auth, permission, tenancy, activitylog, log-viewer), `phpstan.neon`, and `bootstrap/*` reference domain FQCNs — update them when moving a model.
+
 ### Admin Section (`/admin/*`, gated by `role:Admin`)
 
 `/admin` overview, `/admin/users` CRUD, `/admin/roles`, `/admin/permissions`, `/admin/activity`, `/admin/mail` (SMTP + MJML template editor), `/admin/settings`, `/admin/backups`, `/admin/system`, `/horizon`, `/pulse`, `/log-viewer`
 
 ### Authentication (Fortify + Sanctum)
 
-Views rendered as Inertia pages via `FortifyServiceProvider`. Custom behavior in `app/Actions/Fortify/`, `app/Http/Responses/Login|RegisterResponse.php`.
+Views rendered as Inertia pages via `App\Domains\Auth\Providers\FortifyServiceProvider`. Custom behavior in `app/Domains/Auth/Actions/`, `app/Domains/Auth/Http/Responses/Login|RegisterResponse.php`.
 
 `config('fortify.home')` is `/app` (the post-login landing). Flows: login, registration, email verification, password reset, 2FA (TOTP + recovery codes), password confirmation.
 
@@ -74,7 +95,7 @@ Seeded: `Admin` (all), `Editor` (dashboard, resources, settings, profile), `User
 
 ### Chat (optional, off by default)
 
-Real-time 1:1 + group messaging at `/chat`, gated by `CHAT_ENABLED` env + `chat.enabled` middleware. Routes in `routes/web.php` under the chat group; controller in `App\Http\Controllers\ChatController`. Models: `Conversation`, `Message` (body optionally encrypted at rest when `CHAT_ENCRYPTION_ENABLED=true`), pivot `conversation_user` with `last_read_at`. Messages broadcast to `private:chat.conversation.{id}` via the `MessageSent` event; `NewChatMessageNotification` fans out to each other participant on the user private channel so navbar badges update live. Attachments are stored via `spatie/laravel-medialibrary` on the `attachments` collection (whitelisted mime types) with an image `thumb` conversion.
+Real-time 1:1 + group messaging at `/chat`, gated by `CHAT_ENABLED` env + `chat.enabled` middleware. Routes in `routes/web.php` under the chat group; controller in `App\Domains\Chat\Http\Controllers\ChatController`. Models: `Conversation`, `Message` (body optionally encrypted at rest when `CHAT_ENCRYPTION_ENABLED=true`), pivot `conversation_user` with `last_read_at`. Messages broadcast to `private:chat.conversation.{id}` via the `MessageSent` event; `NewChatMessageNotification` fans out to each other participant on the user private channel so navbar badges update live. Attachments are stored via `spatie/laravel-medialibrary` on the `attachments` collection (whitelisted mime types) with an image `thumb` conversion.
 
 Frontend: `resources/js/Pages/Chat.vue`, dropdown in `Components/Chat/ChatDropdown.vue`, thread in `Components/Chat/MessageThread.vue`. Shared state composables: `useUnreadCounts` (global singleton with a detached `effectScope` watcher) and `useUserChannel` (Echo subscription to `App.Models.User.{id}`). See "Exception: chat messages" under Notifications for why chat doesn't persist to the notification inbox.
 
@@ -126,7 +147,7 @@ All notifications use the `UsesEmailTemplate` trait which resolves the user's lo
 
 | Customer-facing | Tenant-facing |
 |----------------|---------------|
-| `/c/{customer}/...` URLs | `App\Models\Tenant`, `tenants` table |
+| `/c/{customer}/...` URLs | `App\Domains\Tenancy\Models\Tenant`, `tenants` table |
 | `/admin/customers` | `config/tenancy.php` |
 | `CustomerController`, `useCustomer()` | `InitializeTenancyByPath` |
 

@@ -13,6 +13,10 @@ Everything you usually bolt on to a fresh Laravel app is already wired up: auth 
 - **Spatie** Medialibrary · Activitylog · Backup · Laravel Pulse · Horizon · Sentry · opcodesio log-viewer · lab404 impersonate
 - **Pest 4** backend tests · **Vitest 4** frontend tests · Pint · Larastan · Husky pre-commit · GitHub Actions CI
 
+## Project layout
+
+Backend code is organised into **domain modules** under `app/Domains/*` (Auth, Users, Access, Files, Chat, Tenancy, Notifications, Settings, Operations) — each with its own models, controllers, policies, services, etc. Global infra (base `Controller`, shared middleware, `AppServiceProvider`) stays at the `App\` root. See the "Domain modules" section in `AGENTS.md` for conventions.
+
 ## Quick start
 
 You need **Docker** (Desktop on macOS/Windows, Engine on Linux). Nothing else — no PHP, Node, Postgres, or `/etc/hosts` edits.
@@ -73,7 +77,7 @@ Impersonation shows an amber banner while active; click **Stop impersonating** t
 
 `stancl/tenancy` v3 is pre-wired but off by default — ship single-tenant out of the box. Flip `TENANCY_ENABLED=true` and `php artisan migrate:fresh --seed`, and you get `/c/{slug}/*` URLs, a `default` customer, `/admin/customers` CRUD, and a dedicated Postgres schema per customer.
 
-The user-visible name is **Customer**. Under the hood the package model stays `App\Models\Tenant` — the boundary is intentional. Full notes in `AGENTS.md`.
+The user-visible name is **Customer**. Under the hood the package model is `App\Domains\Tenancy\Models\Tenant` — the boundary is intentional. Full notes in `AGENTS.md`.
 
 ## Table prefix (optional)
 
@@ -81,7 +85,7 @@ Set `DB_TABLE_PREFIX=acme_`, run `migrate:fresh`, and every core table is namesp
 
 ## Auth & 2FA
 
-Login, register, email verify, forgot password, TOTP 2FA, recovery codes. All backed by Fortify actions in `app/Actions/Fortify/` and custom response classes in `app/Http/Responses/`. Views are Inertia pages registered by `FortifyServiceProvider`. When a 2FA user logs in they're redirected to `/two-factor-challenge`.
+Login, register, email verify, forgot password, TOTP 2FA, recovery codes. All backed by Fortify actions in `app/Domains/Auth/Actions/` and custom response classes in `app/Domains/Auth/Http/Responses/`. Views are Inertia pages registered by `App\Domains\Auth\Providers\FortifyServiceProvider`. When a 2FA user logs in they're redirected to `/two-factor-challenge`.
 
 Users self-manage profile, password, and 2FA at `/profile`.
 
