@@ -59,6 +59,18 @@ class Asset extends Model implements FileOwner
         'storage_used_bytes' => 'integer',
     ];
 
+    protected static function booted(): void
+    {
+        // The delete dialog promises "this also removes its documents", so
+        // cascade the owned file tree when an asset is deleted — otherwise the
+        // FileItems orphan (still counting against storage, pointing at a gone
+        // asset). Iterate so each FileItem's own delete hooks run; files use
+        // soft deletes, so this trashes them rather than dropping rows.
+        static::deleting(function (Asset $asset): void {
+            $asset->files()->get()->each->delete();
+        });
+    }
+
     /**
      * Pinned to the central connection — assets live alongside users/tenants
      * in the central schema, not inside per-tenant schemas.
