@@ -1,7 +1,7 @@
 <script lang="ts">
 export type IconName =
     | 'home' | 'users' | 'user' | 'customer' | 'role' | 'key' | 'cog'
-    | 'mail' | 'disk' | 'shield' | 'server' | 'log' | 'bell' | 'search'
+    | 'mail' | 'disk' | 'shield' | 'server' | 'log' | 'bell' | 'search' | 'box'
     | 'chevR' | 'chevD' | 'plus' | 'edit' | 'trash' | 'restore' | 'arrow'
     | 'check' | 'x' | 'alert' | 'link';
 </script>
@@ -68,6 +68,11 @@ const side = computed(() => props.size);
             <rect x="2" y="9" width="12" height="4" rx="1" />
             <circle cx="4.5" cy="5" r="0.5" fill="currentColor" />
             <circle cx="4.5" cy="11" r="0.5" fill="currentColor" />
+        </template>
+        <template v-else-if="name === 'box'">
+            <path d="M8 1.5 14 5v6L8 14.5 2 11V5l6-3.5z" />
+            <path d="M2 5l6 3.5L14 5" />
+            <path d="M8 8.5V14.5" />
         </template>
         <template v-else-if="name === 'log'">
             <path d="M3 2h7l3 3v9H3V2z" />

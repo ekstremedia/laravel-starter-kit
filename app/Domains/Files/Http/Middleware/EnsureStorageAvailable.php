@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Files\Http\Middleware;
 
 use App\Domains\Files\Services\StorageUsageService;
+use App\Domains\Files\Support\OwnerResolver;
 use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
 use Closure;
@@ -41,7 +42,11 @@ class EnsureStorageAvailable
             return $next($request);
         }
 
-        $quota = $this->usage->effectivePersonalQuota($user, $tenant);
+        // Quota applies to whichever owner the upload targets: the user for
+        // personal files, or an entity (Asset, …) for entity files. Falls
+        // back to the user when no owner_type/owner_id is on the request.
+        $owner = OwnerResolver::fromRequest($request, $user);
+        $quota = $this->usage->effectiveQuota($owner, $tenant);
 
         // 0 = hard disabled.
         if ($quota === 0) {
@@ -54,7 +59,7 @@ class EnsureStorageAvailable
         }
 
         $incoming = $this->incomingUploadBytes($request);
-        $remaining = $this->usage->remainingBytesInTenant($user, $tenant) ?? PHP_INT_MAX;
+        $remaining = $this->usage->remainingBytesForOwner($owner, $tenant) ?? PHP_INT_MAX;
 
         if ($incoming > $remaining) {
             $this->fail($request, 'files.quota_exceeded');

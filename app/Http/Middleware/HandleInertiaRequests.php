@@ -99,6 +99,10 @@ class HandleInertiaRequests extends Middleware
             'chat' => [
                 'enabled' => (bool) config('chat.enabled'),
             ],
+            // Named `assetsEnabled` (not `assets`) to avoid colliding with the
+            // Assets/Index page's own `assets` paginator prop, which would
+            // otherwise shadow this shared flag on that page.
+            'assetsEnabled' => (bool) config('assets.enabled'),
             // Which OAuth providers to render "Sign in with …" buttons for.
             // Empty array when the whole feature is gated off, so the Vue
             // template's v-if collapses cleanly.

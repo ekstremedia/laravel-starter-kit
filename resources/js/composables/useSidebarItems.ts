@@ -21,6 +21,7 @@ export function useSidebarItems() {
     const tenancyEnabled = computed(() => page.props.tenancy?.enabled ?? false);
     const chatEnabled = computed(() => page.props.chat?.enabled ?? false);
     const globalFilesEnabled = computed(() => page.props.app_settings?.files_feature_enabled ?? false);
+    const assetsEnabled = computed(() => page.props.assetsEnabled ?? false);
     const userPermissions = computed<string[]>(() => (user.value as { permissions?: string[] } | undefined)?.permissions ?? []);
     const canViewCompanyFiles = computed(() => isSuperAdmin.value || userPermissions.value.includes('view company files'));
 
@@ -52,6 +53,10 @@ export function useSidebarItems() {
                 { id: 'about', href: `/c/${slug}/about`, label: t('rail.about'), icon: 'customer', match: (p) => p.startsWith(`/c/${slug}/about`) },
                 { id: 'files', href: `/c/${slug}/files`, label: t('rail.files'), icon: 'disk', match: filesActive, hideWhen: () => !globalFilesEnabled.value || !customer.value?.files_feature_enabled },
                 { id: 'company-files', href: `/c/${slug}/files/company`, label: t('rail.company_files'), icon: 'customer', match: companyFilesActive, hideWhen: () => !globalFilesEnabled.value || !customer.value?.company_files_enabled || !canViewCompanyFiles.value },
+                // Demo entity documents. Remove this entry (and the Assets
+                // module) to drop the demo — it's the template for real
+                // file-owning entities (Vehicle, Medicine, …).
+                { id: 'assets', href: `/c/${slug}/assets`, label: t('rail.assets'), icon: 'box', match: (p) => p.startsWith(`/c/${slug}/assets`), hideWhen: () => !assetsEnabled.value || !canViewCompanyFiles.value },
             );
 
             if (isCustomerAdmin.value) {

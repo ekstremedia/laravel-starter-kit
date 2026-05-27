@@ -14,12 +14,12 @@ use App\Domains\Files\Models\CompanyFileLink;
 use App\Domains\Files\Models\FileItem;
 use App\Domains\Files\Services\StorageUsageService;
 use App\Domains\Files\Support\CompanyFilesCache;
+use App\Domains\Files\Support\OwnerResolver;
 use App\Domains\Settings\Models\AppSetting;
 use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
 use App\Http\Controllers\Controller;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -418,29 +418,7 @@ class FileItemController extends Controller
      */
     private function resolveOwner(Request $request, User $user): Model
     {
-        $type = $request->input('owner_type');
-        $id = $request->input('owner_id');
-
-        if (! is_string($type) || ! is_numeric($id)) {
-            return $user;
-        }
-
-        // The client sends the polymorphic morph alias (e.g. the value stored
-        // in owner_type), not a raw class path. Resolve it through the morph
-        // map and only allow classes the app has registered as owners — this
-        // refuses crafted owner_type payloads probing arbitrary classes.
-        $class = Relation::getMorphedModel($type);
-        $allowed = config('files.allowed_owner_types', [User::class, Tenant::class]);
-        if ($class === null || ! in_array($class, $allowed, true) || ! class_exists($class)) {
-            abort(422, 'Unknown owner type.');
-        }
-
-        $resolved = $class::query()->find((int) $id);
-        if ($resolved === null) {
-            abort(404);
-        }
-
-        return $resolved;
+        return OwnerResolver::fromRequest($request, $user);
     }
 
     private function scopeFor(Model $owner): string

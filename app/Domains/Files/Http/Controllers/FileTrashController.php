@@ -8,12 +8,12 @@ use App\Domains\Files\Contracts\FileOwner;
 use App\Domains\Files\Http\Resources\FileItemResource;
 use App\Domains\Files\Models\FileItem;
 use App\Domains\Files\Services\StorageUsageService;
+use App\Domains\Files\Support\OwnerResolver;
 use App\Domains\Settings\Models\AppSetting;
 use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
 use App\Http\Controllers\Controller;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -242,26 +242,6 @@ class FileTrashController extends Controller
      */
     private function resolveOwner(Request $request, User $user): Model
     {
-        $type = $request->input('owner_type');
-        $id = $request->input('owner_id');
-
-        if (! is_string($type) || ! is_numeric($id)) {
-            return $user;
-        }
-
-        // Resolve the polymorphic morph alias through the morph map and only
-        // allow registered owner classes — see FileItemController::resolveOwner.
-        $class = Relation::getMorphedModel($type);
-        $allowed = config('files.allowed_owner_types', [User::class, Tenant::class]);
-        if ($class === null || ! in_array($class, $allowed, true) || ! class_exists($class)) {
-            abort(422, 'Unknown owner type.');
-        }
-
-        $resolved = $class::query()->find((int) $id);
-        if ($resolved === null) {
-            abort(404);
-        }
-
-        return $resolved;
+        return OwnerResolver::fromRequest($request, $user);
     }
 }
