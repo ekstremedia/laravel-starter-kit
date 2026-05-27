@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Domains\Access\Models\Permission;
 use App\Domains\Access\Models\Role;
+use App\Domains\Assets\Models\Asset;
 use App\Domains\Chat\Models\Conversation;
 use App\Domains\Chat\Models\Message;
 use App\Domains\Files\Models\CompanyFileLink;
@@ -70,6 +71,9 @@ class AppServiceProvider extends ServiceProvider
             'App\\Models\\Message' => Message::class,
             'App\\Models\\Role' => Role::class,
             'App\\Models\\Permission' => Permission::class,
+            // New domain entities use a clean alias from day one (no legacy
+            // FQCN to preserve). New file-owning entities add a line here.
+            'asset' => Asset::class,
         ]);
 
         // Generate absolute URLs from APP_URL rather than the request Host

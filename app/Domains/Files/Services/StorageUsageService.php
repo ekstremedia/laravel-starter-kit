@@ -83,6 +83,24 @@ class StorageUsageService
             return (int) $quota < 0 ? null : (int) $quota;
         }
 
+        // Generic file-owning entities (Asset, future Vehicle/Building…) that
+        // carry a per-row override via the HasFileQuota concern. Chain:
+        //   entity override → app default_entity_storage_bytes → unlimited
+        // Convention: null = inherit, -1 = explicit unlimited, N>=0 = byte cap.
+        if (method_exists($owner, 'fileQuotaBytes')) {
+            $override = $owner->fileQuotaBytes();
+            if ($override !== null) {
+                return $override < 0 ? null : $override;
+            }
+
+            $appDefault = AppSetting::current()->default_entity_storage_bytes;
+            if ($appDefault === null) {
+                return null;
+            }
+
+            return (int) $appDefault < 0 ? null : (int) $appDefault;
+        }
+
         return null;
     }
 
@@ -118,9 +136,15 @@ class StorageUsageService
             return $this->recomputeForTenant($owner);
         }
 
-        // Custom owners can wire their own denormalization in their model;
-        // we just compute the live total without persisting.
-        return $this->usedBytesForOwner($owner);
+        $used = $this->usedBytesForOwner($owner);
+
+        // Entities using HasFileQuota carry a denormalized storage_used_bytes
+        // column (see the assets migration) — keep it in sync.
+        if (method_exists($owner, 'fileQuotaBytes')) {
+            $owner->forceFill(['storage_used_bytes' => $used])->saveQuietly();
+        }
+
+        return $used;
     }
 
     // -----------------------------------------------------------------------

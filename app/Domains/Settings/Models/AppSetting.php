@@ -23,6 +23,7 @@ class AppSetting extends Model
         'files_feature_enabled' => 'boolean',
         'max_share_days' => 'integer',
         'default_personal_storage_bytes' => 'integer',
+        'default_entity_storage_bytes' => 'integer',
     ];
 
     public static function current(): self
