@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-use App\Http\Controllers\AvatarController;
-use App\Http\Controllers\CompanyFileController;
-use App\Http\Controllers\CompanyFileTrashController;
-use App\Http\Controllers\Customer\CustomerProfileController;
-use App\Http\Controllers\CustomerMembersController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\FileItemController;
-use App\Http\Controllers\FileShareController;
-use App\Http\Controllers\FileTrashController;
-use App\Http\Controllers\NotificationController;
+use App\Domains\Files\Http\Controllers\CompanyFileController;
+use App\Domains\Files\Http\Controllers\CompanyFileTrashController;
+use App\Domains\Files\Http\Controllers\FileItemController;
+use App\Domains\Files\Http\Controllers\FileShareController;
+use App\Domains\Files\Http\Controllers\FileTrashController;
+use App\Domains\Notifications\Http\Controllers\NotificationController;
+use App\Domains\Tenancy\Http\Controllers\CustomerMembersController;
+use App\Domains\Tenancy\Http\Controllers\CustomerProfileController;
+use App\Domains\Tenancy\Http\Controllers\DashboardController;
+use App\Domains\Users\Http\Controllers\AvatarController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 

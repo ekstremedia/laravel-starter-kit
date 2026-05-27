@@ -6,13 +6,13 @@ import { resolve } from 'path';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd(), '');
-    let devServerHost = env.VITE_DEV_SERVER_HOST || 'starter-kit.test';
+    let devServerHost = env.VITE_DEV_SERVER_HOST || 'localhost';
 
     if (! env.VITE_DEV_SERVER_HOST && env.APP_URL) {
         try {
             devServerHost = new URL(env.APP_URL).hostname;
         } catch {
-            devServerHost = 'starter-kit.test';
+            devServerHost = 'localhost';
         }
     }
 
@@ -40,6 +40,10 @@ export default defineConfig(({ mode }) => {
         server: {
             host: '0.0.0.0',
             port: 5173,
+            // Fail loudly if 5173 is taken instead of silently drifting to
+            // 5174 — the published Docker host port is fixed at 5173, so a
+            // drifted port would serve assets the browser can't reach.
+            strictPort: true,
             hmr: {
                 host: devServerHost,
             },

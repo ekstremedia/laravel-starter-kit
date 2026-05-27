@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\User;
-use App\Notifications\ResetPasswordNotification as ResetPassword;
+use App\Domains\Notifications\Notifications\ResetPasswordNotification as ResetPassword;
+use App\Domains\Users\Models\User;
 use Illuminate\Support\Facades\Notification;
 
 it('shows the forgot password page', function () {

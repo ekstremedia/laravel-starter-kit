@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Models\FileItem;
-use App\Models\Tenant;
-use App\Models\User;
+use App\Domains\Files\Models\FileItem;
+use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Users\Models\User;
 
 it('creates a file item scoped to a tenant and user', function () {
     $tenant = Tenant::factory()->create();

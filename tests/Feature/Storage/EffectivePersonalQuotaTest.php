@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Models\AppSetting;
-use App\Models\Tenant;
-use App\Models\User;
-use App\Services\StorageUsageService;
+use App\Domains\Files\Services\StorageUsageService;
+use App\Domains\Settings\Models\AppSetting;
+use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Users\Models\User;
 
 beforeEach(function () {
     $this->service = app(StorageUsageService::class);

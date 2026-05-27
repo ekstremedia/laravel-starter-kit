@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Models\AppSetting;
-use App\Models\FileItem;
-use App\Models\Tenant;
-use App\Models\User;
+use App\Domains\Files\Models\FileItem;
+use App\Domains\Settings\Models\AppSetting;
+use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Users\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;

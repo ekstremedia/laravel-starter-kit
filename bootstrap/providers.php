@@ -1,10 +1,10 @@
 <?php
 
+use App\Domains\Auth\Providers\FortifyServiceProvider;
+use App\Domains\Notifications\Providers\MailSettingsServiceProvider;
+use App\Domains\Operations\Providers\HorizonServiceProvider;
+use App\Domains\Tenancy\Providers\TenancyServiceProvider;
 use App\Providers\AppServiceProvider;
-use App\Providers\FortifyServiceProvider;
-use App\Providers\HorizonServiceProvider;
-use App\Providers\MailSettingsServiceProvider;
-use App\Providers\TenancyServiceProvider;
 
 return [
     AppServiceProvider::class,

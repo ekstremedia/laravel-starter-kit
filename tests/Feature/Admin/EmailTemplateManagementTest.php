@@ -1,8 +1,8 @@
 <?php
 
-use App\Mail\TemplateMail;
-use App\Models\EmailTemplate;
-use App\Models\User;
+use App\Domains\Notifications\Mail\TemplateMail;
+use App\Domains\Notifications\Models\EmailTemplate;
+use App\Domains\Users\Models\User;
 use Database\Seeders\EmailTemplateSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Support\Facades\Mail;

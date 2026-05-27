@@ -1,8 +1,8 @@
 <?php
 
-use App\Models\User;
-use App\Notifications\NotificationDigestNotification;
-use App\Notifications\WelcomeNotification;
+use App\Domains\Notifications\Notifications\NotificationDigestNotification;
+use App\Domains\Notifications\Notifications\WelcomeNotification;
+use App\Domains\Users\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Notification;

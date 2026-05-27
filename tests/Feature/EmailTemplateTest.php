@@ -1,11 +1,11 @@
 <?php
 
-use App\Models\EmailTemplate;
-use App\Models\User;
-use App\Notifications\AccountBannedNotification;
-use App\Notifications\AdminTestNotification;
-use App\Notifications\WelcomeNotification;
-use App\Services\MjmlCompiler;
+use App\Domains\Notifications\Models\EmailTemplate;
+use App\Domains\Notifications\Notifications\AccountBannedNotification;
+use App\Domains\Notifications\Notifications\AdminTestNotification;
+use App\Domains\Notifications\Notifications\WelcomeNotification;
+use App\Domains\Notifications\Services\MjmlCompiler;
+use App\Domains\Users\Models\User;
 use Database\Seeders\EmailTemplateSeeder;
 use Illuminate\Support\Facades\Notification;
 

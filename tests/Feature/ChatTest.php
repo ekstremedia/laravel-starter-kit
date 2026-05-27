@@ -1,10 +1,10 @@
 <?php
 
-use App\Events\MessageSent;
-use App\Models\Conversation;
-use App\Models\Message;
-use App\Models\User;
-use App\Notifications\NewChatMessageNotification;
+use App\Domains\Chat\Events\MessageSent;
+use App\Domains\Chat\Models\Conversation;
+use App\Domains\Chat\Models\Message;
+use App\Domains\Notifications\Notifications\NewChatMessageNotification;
+use App\Domains\Users\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;

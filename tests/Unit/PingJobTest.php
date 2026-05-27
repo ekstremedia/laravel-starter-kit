@@ -1,6 +1,6 @@
 <?php
 
-use App\Jobs\PingJob;
+use App\Domains\Operations\Jobs\PingJob;
 use Illuminate\Support\Facades\Cache;
 
 it('writes the nonce + timestamp to cache on handle', function () {

@@ -1,9 +1,9 @@
 <?php
 
-use App\Models\Tenant;
-use App\Models\User;
-use App\Services\MjmlCompiler;
-use App\Support\CustomerMembership;
+use App\Domains\Notifications\Services\MjmlCompiler;
+use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Tenancy\Support\CustomerMembership;
+use App\Domains\Users\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Spatie\Permission\PermissionRegistrar;
@@ -43,7 +43,7 @@ pest()->extend(TestCase::class)
     ->in('Unit');
 
 /**
- * Create a customer (`App\Models\Tenant` under the hood) for use in a test.
+ * Create a customer (`App\Domains\Tenancy\Models\Tenant` under the hood) for use in a test.
  * In multi-tenant integration tests against real Postgres the creation event
  * pipeline provisions the per-customer schema; in the Feature suite above we
  * strip those listeners so this just writes a `tenants` row.

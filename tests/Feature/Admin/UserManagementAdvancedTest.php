@@ -1,9 +1,9 @@
 <?php
 
-use App\Models\User;
-use App\Notifications\AccountBannedNotification;
-use App\Notifications\AdminTestNotification;
-use App\Notifications\VerifyEmailNotification as VerifyEmail;
+use App\Domains\Notifications\Notifications\AccountBannedNotification;
+use App\Domains\Notifications\Notifications\AdminTestNotification;
+use App\Domains\Notifications\Notifications\VerifyEmailNotification as VerifyEmail;
+use App\Domains\Users\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;

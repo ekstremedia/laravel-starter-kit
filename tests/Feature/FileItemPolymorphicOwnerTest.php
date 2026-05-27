@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Events\FileItemUpdated;
-use App\Models\FileItem;
-use App\Models\Tenant;
-use App\Models\User;
+use App\Domains\Files\Events\FileItemUpdated;
+use App\Domains\Files\Models\FileItem;
+use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Users\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Support\Facades\Gate;
 use Spatie\Permission\PermissionRegistrar;
@@ -28,7 +28,7 @@ it('defaults a factory-created file to user ownership', function () {
         'user_id' => $this->user->id,
     ]);
 
-    expect($item->owner_type)->toBe(User::class)
+    expect($item->owner_type)->toBe((new User)->getMorphClass())
         ->and($item->owner_id)->toBe($this->user->id)
         ->and($item->owner)->toBeInstanceOf(User::class)
         ->and($item->owner->is($this->user))->toBeTrue();
@@ -42,7 +42,7 @@ it('makes a tenant the owner via ->ownedBy()', function () {
             'user_id' => $this->user->id,
         ]);
 
-    expect($item->owner_type)->toBe(Tenant::class)
+    expect($item->owner_type)->toBe((new Tenant)->getMorphClass())
         ->and($item->owner_id)->toBe($this->customer->id)
         ->and($item->scope)->toBe(FileItem::SCOPE_COMPANY)
         ->and($item->owner->is($this->customer))->toBeTrue();

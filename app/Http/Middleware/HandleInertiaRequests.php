@@ -2,9 +2,9 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\AppSetting;
-use App\Models\Tenant;
-use App\Models\UserSetting;
+use App\Domains\Settings\Models\AppSetting;
+use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Users\Models\UserSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Middleware;

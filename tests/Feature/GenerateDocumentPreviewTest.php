@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Jobs\GenerateDocumentPreview;
-use App\Models\AppSetting;
-use App\Models\User;
+use App\Domains\Files\Jobs\GenerateDocumentPreview;
+use App\Domains\Settings\Models\AppSetting;
+use App\Domains\Users\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Http\UploadedFile;

@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\MailSetting;
+use App\Domains\Notifications\Models\MailSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);

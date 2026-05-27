@@ -351,7 +351,7 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
                 @keydown.enter.prevent="sortBy('first_name')"
                 @keydown.space.prevent="sortBy('first_name')"
             >
-                <span>Navn</span>
+                <span>{{ t('common.name') }}</span>
                 <Icon
                     v-if="sortKey === 'first_name'"
                     name="chevD"
@@ -368,7 +368,7 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
                 @keydown.enter.prevent="sortBy('email')"
                 @keydown.space.prevent="sortBy('email')"
             >
-                <span>E-post</span>
+                <span>{{ t('admin.users.email') }}</span>
                 <Icon
                     v-if="sortKey === 'email'"
                     name="chevD"
@@ -386,7 +386,7 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
                 @keydown.enter.prevent="sortBy('storage_used_bytes')"
                 @keydown.space.prevent="sortBy('storage_used_bytes')"
             >
-                <span>Lagring</span>
+                <span>{{ t('common.storage') }}</span>
                 <Icon
                     v-if="sortKey === 'storage_used_bytes'"
                     name="chevD"
@@ -394,8 +394,8 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
                     :style="{ color: 'var(--accent)', transform: sortDir === 'asc' ? 'rotate(180deg)' : 'rotate(0deg)' }"
                 />
             </div>
-            <div>Sist sett</div>
-            <div :style="{ textAlign: 'right' }">Handlinger</div>
+            <div>{{ t('admin.users.last_seen_col') }}</div>
+            <div :style="{ textAlign: 'right' }">{{ t('admin.users.actions') }}</div>
         </div>
 
         <div
@@ -409,7 +409,7 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
             <div
                 v-if="rows.length === 0"
                 :style="{ padding: '28px 16px', textAlign: 'center', color: 'var(--fg-mute)', fontSize: '12px' }"
-            >Ingen brukere funnet.</div>
+            >{{ t('admin.users.no_users_found') }}</div>
 
             <div
                 v-for="u in rows"
@@ -585,14 +585,14 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
                 >
                     <Link
                         :href="`/admin/users/${u.id}/edit`"
-                        :title="'Rediger'"
+                        :title="t('common.edit')"
                         :style="{ background: 'transparent', border: 'none', color: 'var(--fg-dim)', cursor: 'pointer', padding: '4px', borderRadius: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }"
                     >
                         <Icon name="edit" :size="12" />
                     </Link>
                     <button
                         type="button"
-                        :title="'Send testnotifikasjon'"
+                        :title="t('admin.users.send_test')"
                         @click="sendTest(u)"
                         :style="{ background: 'transparent', border: 'none', color: 'var(--fg-dim)', cursor: 'pointer', padding: '4px', borderRadius: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }"
                     >
@@ -600,7 +600,7 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
                     </button>
                     <button
                         type="button"
-                        :title="'Gjenopprett utestengt bruker'"
+                        :title="t('admin.users.unban')"
                         @click="unban(u)"
                         :style="{ background: 'transparent', border: 'none', color: 'var(--fg-dim)', cursor: 'pointer', padding: '4px', borderRadius: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }"
                     >
@@ -608,7 +608,7 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
                     </button>
                     <button
                         type="button"
-                        :title="'Slett'"
+                        :title="t('common.delete')"
                         @click="deleteOne(u)"
                         :style="{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px', borderRadius: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }"
                     >

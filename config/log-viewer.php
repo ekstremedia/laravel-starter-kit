@@ -6,6 +6,17 @@ use Opcodes\LogViewer\Enums\Theme;
 use Opcodes\LogViewer\Http\Middleware\AuthorizeLogViewer;
 use Opcodes\LogViewer\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
+// Derive the Sanctum "stateful" domain (host + port) from APP_URL so the
+// log-viewer API authorizes the in-app embed regardless of which host port
+// the app runs on. The port matters: a frontend on localhost:8120 is NOT
+// considered the same origin as a bare `localhost` stateful domain. Only used
+// when LOG_VIEWER_API_STATEFUL_DOMAINS is left unset.
+$logViewerAppHost = parse_url((string) env('APP_URL'), PHP_URL_HOST);
+$logViewerAppPort = parse_url((string) env('APP_URL'), PHP_URL_PORT);
+$logViewerStatefulDomain = $logViewerAppHost
+    ? $logViewerAppHost.($logViewerAppPort ? ':'.$logViewerAppPort : '')
+    : null;
+
 return [
 
     /*
@@ -121,7 +132,9 @@ return [
         AuthorizeLogViewer::class,
     ],
 
-    'api_stateful_domains' => env('LOG_VIEWER_API_STATEFUL_DOMAINS') ? explode(',', env('LOG_VIEWER_API_STATEFUL_DOMAINS')) : null,
+    'api_stateful_domains' => env('LOG_VIEWER_API_STATEFUL_DOMAINS')
+        ? explode(',', (string) env('LOG_VIEWER_API_STATEFUL_DOMAINS'))
+        : ($logViewerStatefulDomain ? [$logViewerStatefulDomain] : null),
 
     /*
     |--------------------------------------------------------------------------

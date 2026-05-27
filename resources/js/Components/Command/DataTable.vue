@@ -30,8 +30,11 @@ export interface Column<T = any> {
  */
 import { computed, ref, useSlots, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
+import { useI18n } from 'vue-i18n';
 import Icon from './Icon.vue';
 import Skeleton from './Skeleton.vue';
+
+const { t } = useI18n();
 
 type SortDir = 'asc' | 'desc';
 
@@ -65,7 +68,6 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
     search: '',
-    searchPlaceholder: 'Søk…',
     searchable: true,
     sortKey: '',
     sortDir: 'desc',
@@ -75,10 +77,14 @@ const props = withDefaults(defineProps<Props>(), {
     selectable: false,
     selected: () => new Set(),
     actionColumnWidth: '120px',
-    emptyText: 'Ingen treff.',
     rowLink: () => null,
     searchKeys: () => [],
 });
+
+// Localized fallbacks: callers can still pass explicit strings, but the
+// defaults follow the active locale instead of being hardcoded.
+const resolvedSearchPlaceholder = computed(() => props.searchPlaceholder ?? `${t('common.search')}…`);
+const resolvedEmptyText = computed(() => props.emptyText ?? t('common.no_results'));
 
 const emit = defineEmits<{
     'update:search': [value: string];
@@ -227,7 +233,7 @@ function colAlign(col: Column<Row>) {
                 />
                 <input
                     v-model="localSearch"
-                    :placeholder="searchPlaceholder"
+                    :placeholder="resolvedSearchPlaceholder"
                     :style="{
                         background: 'var(--panel2)',
                         border: '1px solid var(--border)',
@@ -303,7 +309,7 @@ function colAlign(col: Column<Row>) {
                     </span>
                 </div>
                 <div v-if="hasSlot('actions')" :style="{ textAlign: 'right' }">
-                    <slot name="actions-header">Handlinger</slot>
+                    <slot name="actions-header">{{ t('common.actions') }}</slot>
                 </div>
             </div>
 
@@ -319,7 +325,7 @@ function colAlign(col: Column<Row>) {
                 <div
                     v-if="displayRows.length === 0"
                     :style="{ padding: '28px 16px', textAlign: 'center', color: 'var(--fg-mute)', fontSize: '12px' }"
-                >{{ emptyText }}</div>
+                >{{ resolvedEmptyText }}</div>
 
                 <!-- Rows -->
                 <div

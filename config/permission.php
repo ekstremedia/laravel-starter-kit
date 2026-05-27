@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\Permission;
-use App\Models\Role;
+use App\Domains\Access\Models\Permission;
+use App\Domains\Access\Models\Role;
 use Spatie\Permission\DefaultTeamResolver;
 
 return [
@@ -9,7 +9,7 @@ return [
     'models' => [
 
         /*
-         * Custom App\Models\Permission / App\Models\Role subclasses pin the
+         * Custom App\Domains\Access\Models\Permission / App\Domains\Access\Models\Role subclasses pin the
          * models to the central DB connection — spatie's permission tables
          * live in the central schema, but stancl/tenancy swaps the default
          * connection to the tenant mid-request.

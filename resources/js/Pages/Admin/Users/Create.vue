@@ -7,9 +7,6 @@ import Icon from '@/Components/Command/Icon.vue';
 
 defineOptions({ layout: CommandLayout });
 
-interface Props { roles: { id: number; name: string }[] }
-defineProps<Props>();
-
 const { t } = useI18n();
 
 const form = useForm({
@@ -18,14 +15,7 @@ const form = useForm({
     email: '',
     password: '',
     password_confirmation: '',
-    roles: [] as string[],
 });
-
-function toggleRole(name: string) {
-    const i = form.roles.indexOf(name);
-    if (i >= 0) form.roles.splice(i, 1);
-    else form.roles.push(name);
-}
 
 function submit() {
     form.post('/admin/users');
@@ -92,30 +82,9 @@ function submit() {
             />
         </div>
 
-        <div>
-            <div
-                class="cmd-mono cmd-uc"
-                :style="{ fontSize: '10px', color: 'var(--fg-mute)', marginBottom: '6px', fontWeight: 500, letterSpacing: '0.06em' }"
-            >{{ t('admin.users.roles') }}</div>
-            <div :style="{ display: 'flex', flexWrap: 'wrap', gap: '6px' }">
-                <button
-                    v-for="r in roles"
-                    :key="r.id"
-                    type="button"
-                    @click="toggleRole(r.name)"
-                    :style="{
-                        padding: '5px 11px',
-                        fontSize: '11.5px',
-                        borderRadius: '5px',
-                        cursor: 'pointer',
-                        fontFamily: 'inherit',
-                        background: form.roles.includes(r.name) ? 'var(--accent-soft)' : 'transparent',
-                        border: `1px solid ${form.roles.includes(r.name) ? 'var(--accent-border)' : 'var(--border)'}`,
-                        color: form.roles.includes(r.name) ? 'var(--fg)' : 'var(--fg-dim)',
-                    }"
-                >{{ r.name }}</button>
-            </div>
-        </div>
+        <div
+            :style="{ fontSize: '11.5px', color: 'var(--fg-dim)', lineHeight: 1.5, padding: '10px 12px', borderRadius: '6px', background: 'var(--accent-soft)', border: '1px solid var(--accent-border)' }"
+        >{{ t('admin.users.roles_are_customer_scoped') }}</div>
 
         <div :style="{ display: 'flex', gap: '6px', paddingTop: '4px' }">
             <button

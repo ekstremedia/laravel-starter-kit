@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Tenant;
-use App\Models\User;
+use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Users\Models\User;
 use Faker\Factory as Faker;
 use Faker\Generator;
 use Illuminate\Database\Seeder;

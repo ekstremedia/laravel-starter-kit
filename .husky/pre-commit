@@ -1,1 +1,11 @@
+# Pint / PHPStan / typecheck run inside the app container (see lint-staged in
+# package.json). If the stack isn't running, skip the checks with a warning
+# instead of blocking the commit. `docker compose exec` is exactly what
+# lint-staged needs, so we probe it directly.
+if ! docker compose exec -T app true 2>/dev/null; then
+  echo "⚠  app container not reachable — skipping Pint/PHPStan/typecheck pre-commit checks."
+  echo "   Start the stack with 'make up' to run them on commit."
+  exit 0
+fi
+
 npx lint-staged

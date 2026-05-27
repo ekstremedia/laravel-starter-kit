@@ -15,7 +15,7 @@ arch('admin form requests extend FormRequest')
 arch('models live under App\Models')
     ->expect('App\Models')
     ->toExtend('Illuminate\Database\Eloquent\Model')
-    ->ignoring('App\Models\User')
+    ->ignoring('App\Domains\Users\Models\User')
     ->ignoring('App\Models\Concerns');
 
 arch('jobs implement ShouldQueue')

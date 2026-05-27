@@ -1,8 +1,8 @@
 <?php
 
-use App\Mail\TestMail;
-use App\Models\MailSetting;
-use App\Models\User;
+use App\Domains\Notifications\Mail\TestMail;
+use App\Domains\Notifications\Models\MailSetting;
+use App\Domains\Users\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Support\Facades\Mail;
 

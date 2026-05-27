@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-use App\Events\CompanyFilesChanged;
-use App\Jobs\ShareFolderToCompany;
-use App\Models\AppSetting;
-use App\Models\CompanyFileLink;
-use App\Models\FileItem;
-use App\Models\FileShare;
-use App\Models\Tenant;
-use App\Models\User;
-use App\Notifications\CompanyFileDeletedByAdminNotification;
-use App\Notifications\CompanyFileUnlinkedByAdminNotification;
-use App\Services\StorageUsageService;
+use App\Domains\Files\Events\CompanyFilesChanged;
+use App\Domains\Files\Jobs\ShareFolderToCompany;
+use App\Domains\Files\Models\CompanyFileLink;
+use App\Domains\Files\Models\FileItem;
+use App\Domains\Files\Models\FileShare;
+use App\Domains\Files\Services\StorageUsageService;
+use App\Domains\Notifications\Notifications\CompanyFileDeletedByAdminNotification;
+use App\Domains\Notifications\Notifications\CompanyFileUnlinkedByAdminNotification;
+use App\Domains\Settings\Models\AppSetting;
+use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Users\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Bus;
@@ -59,7 +59,7 @@ beforeEach(function () {
 function seedMedia(FileItem $item, int $size = 1_000, string $collection = 'file'): void
 {
     DB::table('media')->insert([
-        'model_type' => FileItem::class,
+        'model_type' => (new FileItem)->getMorphClass(),
         'model_id' => $item->id,
         'uuid' => (string) Str::uuid(),
         'collection_name' => $collection,

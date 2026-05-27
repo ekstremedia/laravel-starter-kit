@@ -15,14 +15,20 @@ Everything you usually bolt on to a fresh Laravel app is already wired up: auth 
 
 ## Quick start
 
+You need **Docker** (Desktop on macOS/Windows, Engine on Linux). Nothing else — no PHP, Node, Postgres, or `/etc/hosts` edits.
+
 ```bash
-make init     # creates .env, prompts for app name, URL, DB creds, seeded admin
-make build    # builds and starts the Docker stack
+make build    # creates .env, builds the image, starts the stack, migrates + seeds
 ```
 
-Point your hostname at the container in `/etc/hosts`, then open `APP_URL`. Mailpit is at `http://localhost:${MAILPIT_HOST_PORT:-8126}`.
+Then open **http://localhost:8120**. That's it. (`make build` copies `.env.example` to `.env` automatically; the container generates `APP_KEY`, runs migrations, and seeds on first boot.)
 
-Log in with the admin you seeded, or flip on `DEV_EASY_LOGIN_ENABLED=true` and click the local-only shortcut button on `/login`.
+- App: http://localhost:8120
+- Mailpit (captured email): http://localhost:8126
+
+Log in with the seeded admin — `admin@example.test` / `password` — or flip on `DEV_EASY_LOGIN_ENABLED=true` and click the local-only shortcut button on `/login`.
+
+Want a custom hostname or a different port? See [Advanced setup](#advanced-setup).
 
 `make help` lists every Make target. The ones you'll actually use:
 
@@ -35,6 +41,15 @@ make logs            # tail app logs
 ```
 
 Destructive targets (`destroy`, `fresh`, `rebuild`) refuse to run unless `APP_ENV=local`.
+
+## Advanced setup
+
+The defaults in `.env.example` are tuned for a zero-config localhost run. Override them in your `.env` when you need to:
+
+- **Different port** — set `APP_HOST_PORT` (and the matching port in `APP_URL`), then `make build`. The container always serves on `80` internally; only the published host port changes.
+- **Custom hostname** (e.g. `starter-kit.test`) — set `APP_URL`, `VITE_DEV_SERVER_HOST`, and `VITE_REVERB_HOST` to the hostname, add it to your `/etc/hosts` (`127.0.0.1 starter-kit.test`), then `make build`.
+- **Guided setup** — `make init` interactively prompts for app name, URL, DB creds, and the seeded admin, writing them into `.env`. Optional; `make build` works without it.
+- **Reverb websockets** — the browser connects to `VITE_REVERB_HOST:VITE_REVERB_PORT`, which must point at the **published** host port (`REVERB_HOST_PORT`), not the container-internal `REVERB_PORT`.
 
 ## Admin
 
