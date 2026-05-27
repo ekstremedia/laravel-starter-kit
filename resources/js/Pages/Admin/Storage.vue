@@ -10,6 +10,7 @@ defineOptions({ layout: CommandLayout });
 
 interface TopUser { user_id: number; name: string; email: string; bytes: number }
 interface CustomerUsage { tenant_id: number; name: string; slug: string; bytes: number; file_count: number }
+interface EntityTypeUsage { type: string; key: string; label: string; file_count: number; bytes: number }
 interface GrowthPoint { date: string; bytes: number }
 
 interface PageData {
@@ -23,6 +24,7 @@ interface PageData {
     };
     by_type: Record<string, number>;
     by_collection: Record<string, number>;
+    by_entity_type: EntityTypeUsage[];
     by_customer: CustomerUsage[];
     top_users: TopUser[];
     growth: GrowthPoint[];
@@ -31,6 +33,13 @@ interface PageData {
 
 const props = defineProps<PageData>();
 const { t } = useI18n();
+
+// Localize the well-known owner types; custom entities (Asset, …) fall back
+// to the server-provided class-basename label.
+const entityLabel = (row: EntityTypeUsage): string =>
+    row.key === 'personal' ? t('admin.storage.entity_personal')
+    : row.key === 'company' ? t('admin.storage.entity_company')
+    : row.label;
 const { state: tweaks } = useTweaks();
 
 const ACCENT_HEX: Record<string, string> = { cobalt: '#4c6fff', emerald: '#10b981', amber: '#f59e0b', violet: '#8b5cf6' };
@@ -226,6 +235,33 @@ const inputStyle = {
                 :series="topChartSeries"
             />
             <p v-else :style="{ padding: '32px 0', textAlign: 'center', fontSize: '12px', color: 'var(--fg-mute)' }">
+                {{ t('admin.storage.no_data') }}
+            </p>
+        </section>
+
+        <section class="cmd-card" :style="{ padding: '16px', gridColumn: 'span 2' }">
+            <div :style="{ fontSize: '13px', fontWeight: 600, color: 'var(--fg)', marginBottom: '12px' }">
+                {{ t('admin.storage.by_entity_type') }}
+            </div>
+            <div v-if="props.by_entity_type.length" :style="{ overflowX: 'auto' }">
+                <table :style="{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }">
+                    <thead>
+                        <tr class="cmd-mono cmd-uc" :style="{ fontSize: '10px', color: 'var(--fg-mute)', fontWeight: 500, borderBottom: '1px solid var(--border)' }">
+                            <th :style="{ padding: '8px 10px', textAlign: 'left' }">{{ t('admin.storage.entity_type') }}</th>
+                            <th :style="{ padding: '8px 10px', textAlign: 'right' }">{{ t('admin.storage.file_count') }}</th>
+                            <th :style="{ padding: '8px 10px', textAlign: 'right' }">{{ t('admin.storage.bytes') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="row in props.by_entity_type" :key="row.type" :style="{ borderBottom: '1px solid var(--border)' }">
+                            <td :style="{ padding: '8px 10px', color: 'var(--fg)' }">{{ entityLabel(row) }}</td>
+                            <td class="cmd-mono" :style="{ padding: '8px 10px', textAlign: 'right', color: 'var(--fg-dim)', fontSize: '11px' }">{{ row.file_count.toLocaleString() }}</td>
+                            <td class="cmd-mono" :style="{ padding: '8px 10px', textAlign: 'right', color: 'var(--fg)', fontSize: '11px', fontWeight: 500 }">{{ formatBytes(row.bytes) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p v-else :style="{ padding: '24px 0', textAlign: 'center', fontSize: '12px', color: 'var(--fg-mute)' }">
                 {{ t('admin.storage.no_data') }}
             </p>
         </section>

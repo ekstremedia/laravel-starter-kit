@@ -316,6 +316,33 @@ class StorageUsageService
         return $out;
     }
 
+    /**
+     * Billable file storage grouped by the polymorphic owner entity type
+     * (personal User files, company Tenant files, Asset documents, …). Powers
+     * the "storage by entity type" panel on the admin dashboard.
+     *
+     * @return array<int, array{type: string, file_count: int, bytes: int}>
+     */
+    public function systemBreakdownByOwnerType(): array
+    {
+        $rows = DB::connection($this->central())
+            ->table('media')
+            ->join('file_items', function ($join): void {
+                $join->on('file_items.id', '=', 'media.model_id')
+                    ->where('media.model_type', (new FileItem)->getMorphClass());
+            })
+            ->where('media.collection_name', self::BILLABLE_COLLECTION)
+            ->selectRaw('file_items.owner_type as type, COUNT(*) as file_count, SUM(media.size) as bytes')
+            ->groupBy('file_items.owner_type')
+            ->get();
+
+        return $rows->map(fn ($row) => [
+            'type' => (string) $row->type,
+            'file_count' => (int) $row->file_count,
+            'bytes' => (int) $row->bytes,
+        ])->sortByDesc('bytes')->values()->all();
+    }
+
     public function recomputeForUser(User $user): int
     {
         $bytes = $this->usedBytesForOwner($user);

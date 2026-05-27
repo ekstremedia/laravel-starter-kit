@@ -8,6 +8,7 @@ use App\Domains\Files\Services\StorageUsageService;
 use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
 use App\Http\Controllers\Controller;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -32,6 +33,22 @@ class StorageDashboardController extends Controller
         $topUsers = $this->usage->topUsers(20, $userSearch ?: null);
         $byCustomer = $this->usage->usageByTenant($customerSearch ?: null, 50);
 
+        // Billable storage grouped by the polymorphic owner entity type. We
+        // emit a stable `key` (personal/company/other) the Vue localizes, plus
+        // a `label` fallback (the entity class basename) for custom owners.
+        $personalType = (new User)->getMorphClass();
+        $companyType = (new Tenant)->getMorphClass();
+        $byEntityType = array_map(function (array $row) use ($personalType, $companyType): array {
+            $row['key'] = match ($row['type']) {
+                $personalType => 'personal',
+                $companyType => 'company',
+                default => 'other',
+            };
+            $row['label'] = class_basename(Relation::getMorphedModel($row['type']) ?? $row['type']);
+
+            return $row;
+        }, $this->usage->systemBreakdownByOwnerType());
+
         $diskTotal = (int) @disk_total_space(storage_path());
         $diskFree = (int) @disk_free_space(storage_path());
 
@@ -47,6 +64,7 @@ class StorageDashboardController extends Controller
             ],
             'by_type' => $byType,
             'by_collection' => $byCollection,
+            'by_entity_type' => $byEntityType,
             'by_customer' => $byCustomer,
             'top_users' => $topUsers,
             'growth' => $this->growth(),
