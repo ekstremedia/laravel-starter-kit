@@ -342,6 +342,9 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
 
     <!-- Table -->
     <div class="cmd-card">
+      <!-- Scroll horizontally on narrow screens so the columns stay readable. -->
+      <div :style="{ overflowX: 'auto' }">
+       <div :style="{ minWidth: '760px' }">
         <div
             class="cmd-mono cmd-uc"
             :style="{
@@ -650,6 +653,8 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
                 </div>
             </div>
         </template>
+       </div>
+      </div>
 
         <!-- Footer / pagination -->
         <div

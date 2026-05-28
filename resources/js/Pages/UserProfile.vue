@@ -141,7 +141,7 @@ const websiteHostname = computed(() => {
             </div>
 
             <!-- Sidebar-style facts: website + shared customers -->
-            <div :style="{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '14px' }">
+            <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }">
                 <div v-if="websiteHref" class="cmd-card" :style="{ padding: '16px' }">
                     <h2 :style="{ margin: '0 0 8px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600, color: 'var(--fg-mute)' }">{{ t('user_profile.website') }}</h2>
                     <a

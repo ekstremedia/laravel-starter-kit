@@ -265,7 +265,7 @@ function chipStyle(tone: Tone) {
             </div>
         </div>
 
-        <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '16px' }">
+        <div class="cmd-stack-sm" :style="{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '16px' }">
             <!-- Actions -->
             <section class="cmd-card" :style="{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '6px' }">
                 <h2 :style="{ margin: '0 0 8px', fontSize: '13px', fontWeight: 600, color: 'var(--fg)' }">

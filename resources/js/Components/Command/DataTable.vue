@@ -173,6 +173,19 @@ const gridTemplate = computed(() => {
     return parts.join(' ');
 });
 
+// Floor width so columns never crush together on narrow screens — the table
+// scrolls horizontally inside its card instead. Fixed-px columns count as-is;
+// flexible (1fr) columns get a readable ~130px minimum.
+const tableMinWidth = computed(() => {
+    let px = props.selectable ? 32 : 0;
+    props.columns.forEach((c) => {
+        const w = c.width && c.width.endsWith('px') ? parseInt(c.width, 10) : NaN;
+        px += Number.isNaN(w) ? 130 : w;
+    });
+    if (hasSlot('actions')) px += parseInt(props.actionColumnWidth, 10) || 120;
+    return `${Math.max(px, 480)}px`;
+});
+
 const hoverId = ref<number | string | null>(null);
 
 // Selection helpers
@@ -250,6 +263,10 @@ function colAlign(col: Column<Row>) {
         </div>
 
         <div class="cmd-card">
+          <!-- Horizontal scroll on narrow screens so columns keep readable
+               widths instead of crushing together. Footer stays outside. -->
+          <div :style="{ overflowX: 'auto' }">
+           <div :style="{ minWidth: tableMinWidth }">
             <!-- Header row -->
             <div
                 class="cmd-mono cmd-uc"
@@ -385,6 +402,8 @@ function colAlign(col: Column<Row>) {
                     </div>
                 </div>
             </template>
+           </div>
+          </div>
 
             <!-- Footer -->
             <div

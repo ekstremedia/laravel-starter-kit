@@ -323,7 +323,7 @@ const slugChipStyle = {
                 class="cmd-card"
                 :style="{ maxWidth: '860px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }"
             >
-                <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '16px', alignItems: 'end' }">
+                <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', alignItems: 'end' }">
                     <Field v-model="smtpForm.mailer" :label="t('admin.mail.mailer')" />
                     <div :style="{ display: 'flex', alignItems: 'center', gap: '10px', paddingBottom: '8px' }">
                         <Toggle v-model="smtpForm.enabled" :label="t('admin.mail.enabled')" />
@@ -331,12 +331,12 @@ const slugChipStyle = {
                     </div>
                 </div>
 
-                <div :style="{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }">
+                <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }">
                     <Field v-model="smtpForm.host" :label="t('admin.mail.host')" />
                     <Field v-model="portModel" type="number" :label="t('admin.mail.port')" numeric />
                 </div>
 
-                <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '16px' }">
+                <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px' }">
                     <CmdSelect
                         v-model="encryptionModel"
                         :label="t('admin.mail.encryption')"
@@ -356,7 +356,7 @@ const slugChipStyle = {
                     </div>
                 </div>
 
-                <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '16px' }">
+                <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }">
                     <Field v-model="smtpForm.from_address" :label="t('admin.mail.from_address')" />
                     <Field v-model="smtpForm.from_name" :label="t('admin.mail.from_name')" />
                 </div>
@@ -449,7 +449,7 @@ const slugChipStyle = {
                         <label :style="fieldLabel" class="cmd-mono cmd-uc">{{ t('admin.mail.body') }}</label>
                         <textarea v-model="templateForm.body" :style="textareaStyle" rows="8"></textarea>
                     </div>
-                    <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' }">
+                    <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }">
                         <Field
                             v-model="templateForm.action_text"
                             :label="t('admin.mail.button_text')"

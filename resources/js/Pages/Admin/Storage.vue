@@ -163,7 +163,7 @@ const inputStyle = {
     <div
         :style="{
             display: 'grid',
-            gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
             gap: '1px',
             background: 'var(--border)',
             border: '1px solid var(--border)',
@@ -196,7 +196,7 @@ const inputStyle = {
     </div>
 
     <!-- Charts grid -->
-    <div :style="{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }">
+    <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }">
         <section class="cmd-card" :style="{ padding: '16px' }">
             <div :style="{ fontSize: '13px', fontWeight: 600, color: 'var(--fg)', marginBottom: '10px' }">
                 {{ t('admin.storage.by_type') }}

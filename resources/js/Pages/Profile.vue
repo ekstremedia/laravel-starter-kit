@@ -369,7 +369,7 @@ function getToken(): string {
                     <h2 :style="{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--fg)' }">{{ t('profile.info_title') }}</h2>
                     <p :style="{ fontSize: '11px', color: 'var(--fg-mute)', margin: '3px 0 0' }">{{ t('profile.info_desc') }}</p>
                 </div>
-                <div :style="{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }">
+                <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }">
                     <Field
                         v-model="profileForm.first_name"
                         :label="t('auth.first_name')"
@@ -439,7 +439,7 @@ function getToken(): string {
                     <div v-if="profileForm.errors.bio" :style="{ color: 'var(--danger)', fontSize: '11px', marginTop: '3px' }">{{ profileForm.errors.bio }}</div>
                 </div>
 
-                <div :style="{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }">
+                <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }">
                     <Field
                         v-model="profileForm.location"
                         :label="t('profile.location_label')"
@@ -615,7 +615,7 @@ function getToken(): string {
                         </div>
                         <div
                             class="cmd-mono"
-                            :style="{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '6px', padding: '12px', borderRadius: '5px', background: 'var(--panel2)', border: '1px solid var(--border)', fontSize: '11.5px', color: 'var(--fg)' }"
+                            :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '6px', padding: '12px', borderRadius: '5px', background: 'var(--panel2)', border: '1px solid var(--border)', fontSize: '11.5px', color: 'var(--fg)' }"
                         >
                             <span v-for="code in recoveryCodes" :key="code">{{ code }}</span>
                         </div>

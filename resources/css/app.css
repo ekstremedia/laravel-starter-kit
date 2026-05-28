@@ -183,3 +183,16 @@
 .p-dialog-mask {
     backdrop-filter: blur(2px);
 }
+
+/* Responsive grid helper for the token-driven (inline-style) layouts: keep the
+ * desktop column template inline, and add `cmd-stack-sm` to collapse to a
+ * single column on phones — also neutralising any `grid-column: span N` on the
+ * direct children so spanned cards don't overflow. */
+@media (max-width: 720px) {
+    .cmd-stack-sm {
+        grid-template-columns: 1fr !important;
+    }
+    .cmd-stack-sm > * {
+        grid-column: auto !important;
+    }
+}

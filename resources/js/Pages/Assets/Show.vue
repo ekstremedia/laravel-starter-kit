@@ -173,7 +173,7 @@ function confirmDelete() {
                     required
                     autofocus
                 />
-                <div :style="{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }">
+                <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }">
                     <Field
                         v-model="form.category"
                         :label="t('assets.category')"

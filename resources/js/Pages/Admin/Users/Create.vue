@@ -44,7 +44,7 @@ function submit() {
         class="cmd-card"
         :style="{ maxWidth: '680px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }"
     >
-        <div :style="{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }">
+        <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }">
             <Field
                 v-model="form.first_name"
                 :label="t('admin.users.first_name')"
@@ -66,7 +66,7 @@ function submit() {
             :error="form.errors.email"
             autocomplete="email"
         />
-        <div :style="{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }">
+        <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }">
             <Field
                 v-model="form.password"
                 type="password"

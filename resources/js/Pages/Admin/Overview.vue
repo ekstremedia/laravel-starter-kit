@@ -267,7 +267,7 @@ function handleRefresh() {
     <div
         :style="{
             display: 'grid',
-            gridTemplateColumns: 'repeat(6, minmax(0, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
             gap: '1px',
             background: 'var(--border)',
             border: '1px solid var(--border)',
@@ -311,7 +311,7 @@ function handleRefresh() {
     </div>
 
     <!-- Charts row -->
-    <div :style="{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }">
+    <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginBottom: '16px' }">
         <div class="cmd-card" :style="{ padding: '16px' }">
             <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }">
                 <div>
@@ -370,7 +370,7 @@ function handleRefresh() {
     </div>
 
     <!-- Log + status row -->
-    <div :style="{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '16px' }">
+    <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }">
         <div class="cmd-card">
             <div
                 :style="{

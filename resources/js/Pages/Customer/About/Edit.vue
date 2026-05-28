@@ -100,7 +100,7 @@ function save() {
                     <div v-if="form.errors.about" :style="{ color: 'var(--danger)', fontSize: '11px', marginTop: '3px' }">{{ form.errors.about }}</div>
                 </div>
 
-                <div :style="{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }">
+                <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }">
                     <Field
                         v-model="form.location"
                         :label="t('customer.about.location_label')"
