@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y \
     imagemagick \
     ffmpeg \
     poppler-utils \
+    libimage-exiftool-perl \
     zip \
     unzip \
     ca-certificates \
