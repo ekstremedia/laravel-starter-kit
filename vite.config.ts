@@ -16,6 +16,12 @@ export default defineConfig(({ mode }) => {
         }
     }
 
+    // Vite listens on this port inside the container AND it's the port the
+    // browser loads assets/HMR from, so docker-compose publishes it 1:1
+    // (VITE_HOST_PORT:VITE_HOST_PORT). Keep them equal — running a second stack
+    // just needs a different VITE_HOST_PORT in that project's .env.
+    const vitePort = Number(env.VITE_HOST_PORT) || 5173;
+
     return {
         plugins: [
             laravel({
@@ -39,13 +45,14 @@ export default defineConfig(({ mode }) => {
         },
         server: {
             host: '0.0.0.0',
-            port: 5173,
-            // Fail loudly if 5173 is taken instead of silently drifting to
-            // 5174 — the published Docker host port is fixed at 5173, so a
+            port: vitePort,
+            // Fail loudly if the port is taken instead of silently drifting to
+            // the next one — the published Docker host port is mapped 1:1, so a
             // drifted port would serve assets the browser can't reach.
             strictPort: true,
             hmr: {
                 host: devServerHost,
+                clientPort: vitePort,
             },
             watch: {
                 ignored: ['**/storage/framework/views/**'],

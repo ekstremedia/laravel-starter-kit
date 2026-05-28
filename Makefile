@@ -38,7 +38,7 @@ build: ## Build and start all containers (creates .env if missing)
 	@echo ""
 	@echo "  App:     $(DISPLAY_URL)"
 	@echo "  Mailpit: http://localhost:$(MAILPIT_HOST_PORT)"
-	@echo "  Reverb:  ws://$(VITE_REVERB_HOST):$(REVERB_PORT)"
+	@echo "  Reverb:  ws://$(VITE_REVERB_HOST):$(REVERB_HOST_PORT)"
 	@echo ""
 
 up: ## Start all containers (creates .env if missing)
@@ -47,7 +47,7 @@ up: ## Start all containers (creates .env if missing)
 	@echo ""
 	@echo "  App:     $(DISPLAY_URL)"
 	@echo "  Mailpit: http://localhost:$(MAILPIT_HOST_PORT)"
-	@echo "  Reverb:  ws://$(VITE_REVERB_HOST):$(REVERB_PORT)"
+	@echo "  Reverb:  ws://$(VITE_REVERB_HOST):$(REVERB_HOST_PORT)"
 	@echo ""
 
 down: ## Stop all containers

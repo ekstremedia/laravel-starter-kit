@@ -6,7 +6,9 @@ services:
     restart: unless-stopped
     ports:
       - "${APP_HOST_PORT:-80}:80"
-      - "${VITE_HOST_PORT:-5173}:5173"
+      # Vite is published 1:1 — the browser loads assets/HMR from this exact
+      # port, so the container must also listen on it (see vite.config.ts).
+      - "${VITE_HOST_PORT:-5173}:${VITE_HOST_PORT:-5173}"
       - "${REVERB_HOST_PORT:-8080}:8080"
     volumes:
       # Full project bind-mount for live code editing.
