@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Domains\Files\Http\Controllers;
 
 use App\Domains\Files\Events\FileItemUpdated;
+use App\Domains\Files\Jobs\ExtractFileMetadata;
 use App\Domains\Files\Jobs\GenerateDocumentPreview;
+use App\Domains\Files\Jobs\GenerateImagePreview;
 use App\Domains\Files\Jobs\GenerateVideoPreview;
 use App\Domains\Files\Models\FileItem;
 use App\Domains\Files\Services\StorageUsageService;
 use App\Domains\Files\Support\OwnerResolver;
+use App\Domains\Files\Support\UploadLimits;
 use App\Domains\Settings\Models\AppSetting;
 use App\Domains\Tenancy\Models\Tenant;
 use App\Http\Controllers\Controller;
@@ -75,7 +78,7 @@ class EntityFileController extends Controller
 
         $request->validate([
             'files' => 'required|array|min:1',
-            'files.*' => 'file|max:'.config('files.max_upload_kilobytes', 51200),
+            'files.*' => 'file|max:'.UploadLimits::maxUploadKilobytes(),
             'parent_id' => ['nullable', 'integer', $this->existsRule($tenant, $owner)],
         ]);
 
@@ -83,8 +86,10 @@ class EntityFileController extends Controller
         $created = 0;
         $previewTargets = [];
         $videoTargets = [];
+        $imageTargets = [];
+        $allTargets = [];
 
-        DB::connection((string) config('tenancy.database.central_connection'))->transaction(function () use ($request, $tenant, $owner, $parentId, &$created, &$previewTargets, &$videoTargets): void {
+        DB::connection((string) config('tenancy.database.central_connection'))->transaction(function () use ($request, $tenant, $owner, $parentId, &$created, &$previewTargets, &$videoTargets, &$imageTargets, &$allTargets): void {
             foreach ($request->file('files', []) as $file) {
                 $size = $file->getSize();
                 $item = FileItem::create([
@@ -102,12 +107,17 @@ class EntityFileController extends Controller
 
                 $item->addMedia($file)->toMediaCollection('file');
                 $created++;
+                $allTargets[] = $item->id;
 
-                if (in_array((string) $item->mime_type, config('files.preview_mime_types', []), true)) {
+                if (! $item->isTextPreviewable()
+                    && in_array((string) $item->mime_type, config('files.preview_mime_types', []), true)) {
                     $previewTargets[] = $item->id;
                 }
                 if ($item->isVideo()) {
                     $videoTargets[] = $item->id;
+                }
+                if ($item->needsImagePreview()) {
+                    $imageTargets[] = $item->id;
                 }
             }
         });
@@ -118,7 +128,13 @@ class EntityFileController extends Controller
         foreach ($videoTargets as $id) {
             GenerateVideoPreview::dispatch($id);
         }
-        foreach (array_unique(array_merge($previewTargets, $videoTargets)) as $id) {
+        foreach ($imageTargets as $id) {
+            GenerateImagePreview::dispatch($id);
+        }
+        foreach ($allTargets as $id) {
+            ExtractFileMetadata::dispatch($id);
+        }
+        foreach (array_unique(array_merge($previewTargets, $videoTargets, $imageTargets)) as $id) {
             if ($fresh = FileItem::with('media')->find($id)) {
                 event(new FileItemUpdated($fresh));
             }

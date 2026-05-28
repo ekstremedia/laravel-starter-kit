@@ -19,8 +19,12 @@ import Icon from '@/Components/Command/Icon.vue';
 import UploadDialog from '@/Components/Files/UploadDialog.vue';
 import FilesUsageBar from '@/Components/Files/FilesUsageBar.vue';
 import ItemActionsMenu from '@/Components/Files/ItemActionsMenu.vue';
+import ImageLightbox from '@/Components/Files/ImageLightbox.vue';
+import FileDetailsDialog from '@/Components/Files/FileDetailsDialog.vue';
+import TextPreviewDialog from '@/Components/Files/TextPreviewDialog.vue';
 import { humanBytes as formatBytes } from '@/utils/bytes';
 import { useCustomer } from '@/composables/useCustomer';
+import { useFileMedia } from '@/composables/useFileMedia';
 
 export interface FileRow {
     id: number;
@@ -31,9 +35,20 @@ export interface FileRow {
     size: number;
     parent_id: number | null;
     is_image: boolean;
+    is_video?: boolean;
+    is_audio?: boolean;
+    is_text?: boolean;
+    is_markdown?: boolean;
+    video_ready?: boolean;
+    video_processing?: boolean;
+    preview_processing?: boolean;
+    has_doc_preview?: boolean;
     thumbnail_url: string | null;
     preview_url: string | null;
     original_url: string | null;
+    video_web_url?: string | null;
+    video_poster_url?: string | null;
+    available_sizes?: Record<string, { url: string; width: number; height: number }> | null;
     created_at: string | null;
     updated_at: string | null;
     can_manage?: boolean;
@@ -100,13 +115,29 @@ function iconFor(item: FileRow): string {
     return 'pi-file';
 }
 
+// Same unified preview behaviour as the personal Files browser, via the
+// shared composable — images/video/audio open the lightbox, text/markdown
+// preview inline, details show EXIF + map. Download URLs target the generic
+// entity-file endpoint.
+const {
+    lightboxIndex,
+    detailsItem,
+    textItem,
+    lightboxItems,
+    openFile,
+    openDetails,
+    openDetailsById,
+    openInNewTab,
+    copyLink,
+} = useFileMedia<FileRow>({
+    items,
+    downloadUrl: (i) => customerUrl(`/entity-files/${i.id}/download`),
+    onFolder: (i) => router.visit(props.folderUrl(i.id)),
+});
+
 function openItem(item: FileRow) {
     if (renamingId.value !== null) return;
-    if (item.type === 'folder') {
-        router.visit(props.folderUrl(item.id));
-        return;
-    }
-    window.location.href = customerUrl(`/entity-files/${item.id}/download`);
+    openFile(item);
 }
 
 function navigate(folderId: number | null) {
@@ -265,6 +296,22 @@ function confirmDelete(item: FileRow) {
                         loading="lazy"
                     />
                     <i v-else :class="`pi ${iconFor(item)}`" :style="{ fontSize: '40px', color: 'var(--fg-mute)' }" />
+
+                    <!-- Play overlay for ready videos -->
+                    <div
+                        v-if="item.is_video && item.video_ready"
+                        :style="{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }"
+                    >
+                        <div :style="{ borderRadius: '9999px', background: 'rgba(0,0,0,0.55)', color: '#fff', padding: '10px', boxShadow: '0 4px 14px rgba(0,0,0,0.35)' }"><i class="pi pi-play" /></div>
+                    </div>
+                    <!-- Processing spinner (video transcode / RAW-TIFF preview) -->
+                    <div
+                        v-else-if="(item.is_video && item.video_processing) || item.preview_processing"
+                        :style="{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', background: 'rgba(10,12,18,0.6)', color: '#fff', fontSize: '11px', pointerEvents: 'none' }"
+                    >
+                        <i class="pi pi-spin pi-spinner" :style="{ fontSize: '20px' }" />
+                        <span>{{ item.is_video ? t('files.video_processing') : t('files.preview_processing') }}</span>
+                    </div>
                 </div>
                 <div :style="{ padding: '7px 10px 9px' }">
                     <input
@@ -298,6 +345,9 @@ function confirmDelete(item: FileRow) {
                         @open="openItem(item)"
                         @rename="startRename(item)"
                         @delete="confirmDelete(item)"
+                        @details="openDetails(item)"
+                        @copyLink="copyLink(item)"
+                        @openNewTab="openInNewTab(item)"
                     />
                 </div>
             </div>
@@ -362,6 +412,9 @@ function confirmDelete(item: FileRow) {
                                 @open="openItem(item)"
                                 @rename="startRename(item)"
                                 @delete="confirmDelete(item)"
+                                @details="openDetails(item)"
+                                @copyLink="copyLink(item)"
+                                @openNewTab="openInNewTab(item)"
                             />
                         </td>
                     </tr>
@@ -402,6 +455,29 @@ function confirmDelete(item: FileRow) {
                 </CmdButton>
             </template>
         </CommandDialog>
+
+        <!-- Unified media lightbox + detail/text previews (shared components). -->
+        <ImageLightbox v-if="lightboxItems.length" v-model="lightboxIndex" :items="lightboxItems">
+            <template #header-actions="{ item }">
+                <button
+                    type="button"
+                    :aria-label="t('files.details.title')"
+                    :title="t('files.details.title')"
+                    class="rounded-lg bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+                    @click.stop="openDetailsById(item.id)"
+                >
+                    <i class="pi pi-info-circle" :style="{ fontSize: '18px' }" />
+                </button>
+            </template>
+        </ImageLightbox>
+
+        <FileDetailsDialog :item="detailsItem" @close="detailsItem = null" />
+
+        <TextPreviewDialog
+            :item="textItem"
+            :download-url="textItem ? customerUrl(`/entity-files/${textItem.id}/download`) : undefined"
+            @close="textItem = null"
+        />
     </div>
 </template>
 

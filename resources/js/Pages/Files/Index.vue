@@ -21,7 +21,7 @@ import CmdSelect from '@/Components/Command/Select.vue';
 import CmdButton from '@/Components/Command/Button.vue';
 import { useToast } from 'primevue/usetoast';
 import { useCustomer } from '@/composables/useCustomer';
-import type { LightboxItem } from '@/types/lightbox';
+import { useFileMedia } from '@/composables/useFileMedia';
 import type { PageProps } from '@/types';
 
 defineOptions({ layout: CommandLayout });
@@ -84,10 +84,9 @@ const uploadOpen = ref(false);
 const uploadDialogRef = ref<InstanceType<typeof UploadDialog> | null>(null);
 const externalDragOver = ref(false);
 let externalDragCounter = 0;
-const lightboxIndex = ref<number | null>(null);
+// Doc-preview modal is personal-Files-specific; the lightbox/details/text
+// state comes from the shared useFileMedia composable (see below).
 const docPreviewItem = ref<FileItem | null>(null);
-const detailsItem = ref<FileItem | null>(null);
-const textItem = ref<FileItem | null>(null);
 const searchQuery = ref(props.search ?? '');
 const renamingId = ref<number | null>(null);
 const renameValue = ref('');
@@ -344,49 +343,6 @@ function submitMove() {
     );
 }
 
-function openDetails(item: FileItem) {
-    if (item.type !== 'file') return;
-    detailsItem.value = item;
-}
-
-// Used from the lightbox header-actions slot, which only carries the id.
-function openDetailsById(id: string | number) {
-    const found = mergedItems.value.find((i) => i.id === Number(id));
-    if (found) detailsItem.value = found;
-}
-
-function openInNewTab(item: FileItem) {
-    if (item.type !== 'file') return;
-    // Images/PDF previews are viewable inline; everything else downloads.
-    const url = item.is_image && item.original_url ? item.original_url : customerUrl(`/files/${item.id}/download`);
-    window.open(url, '_blank', 'noopener');
-}
-
-async function copyLink(item: FileItem) {
-    if (item.type !== 'file') return;
-    try {
-        const res = await fetch(customerUrl(`/files/${item.id}/shares/signed`), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-XSRF-TOKEN': decodeURIComponent((document.cookie.match(/XSRF-TOKEN=([^;]+)/) ?? [])[1] ?? ''),
-            },
-            credentials: 'same-origin',
-            body: JSON.stringify({ hours: 24 }),
-        });
-        if (!res.ok) {
-            shareErrorToast();
-            return;
-        }
-        const data = await res.json();
-        await navigator.clipboard?.writeText(data.url).catch(() => undefined);
-        toast.add({ severity: 'success', summary: t('files.copy_link'), detail: t('files.link_copied'), life: 3000 });
-    } catch {
-        shareErrorToast();
-    }
-}
-
 const currentFolderId = computed(() => props.current_folder?.id ?? null);
 
 const perms = computed<string[]>(() => (page.props.auth?.user?.permissions ?? []) as string[]);
@@ -401,96 +357,32 @@ const canShare = computed(() => hasPerm('share files'));
 
 const mergedItems = computed(() => (props.items?.data ?? []).map((i) => ({ ...i, ...(liveItems[i.id] ?? {}) })));
 
-// Everything that opens in the unified lightbox: images, ready videos, audio.
-// A video that's still transcoding is excluded (it has nothing to play yet);
-// openItem() shows the processing nudge instead.
-function isLightboxMedia(i: FileItem): boolean {
-    if (i.type !== 'file') return false;
-    if (i.is_image) return true;
-    if (i.is_video) return !!(i.video_ready && i.video_web_url);
-    if (i.is_audio) return true;
-    return false;
-}
-const mediaItems = computed(() => mergedItems.value.filter(isLightboxMedia));
-
-const lightboxItems = computed<LightboxItem[]>(() =>
-    mediaItems.value.map((i) => {
-        const downloadUrl = customerUrl(`/files/${i.id}/download`);
-        if (i.is_video) {
-            return {
-                id: i.id,
-                kind: 'video' as const,
-                src: i.video_poster_url ?? i.thumbnail_url ?? '',
-                videoSrc: i.video_web_url ?? undefined,
-                poster: i.video_poster_url ?? i.thumbnail_url ?? undefined,
-                alt: i.name,
-                canZoom: false,
-                downloadUrl,
-                mime: i.mime_type ?? undefined,
-            };
-        }
-        if (i.is_audio) {
-            return {
-                id: i.id,
-                kind: 'audio' as const,
-                src: i.thumbnail_url ?? '',
-                audioSrc: i.original_url ?? undefined,
-                poster: i.thumbnail_url ?? undefined,
-                alt: i.name,
-                canZoom: false,
-                downloadUrl,
-                mime: i.mime_type ?? undefined,
-            };
-        }
-        return {
-            id: i.id,
-            kind: 'image' as const,
-            src: i.preview_url ?? i.original_url ?? '',
-            zoomSrc: i.available_sizes?.large?.url ?? i.available_sizes?.xlarge?.url ?? i.preview_url ?? undefined,
-            // For RAW the "original" is the undisplayable camera file, so zoom
-            // tops out at the largest generated size instead.
-            originalSrc: i.is_image && i.mime_type?.startsWith('image/') ? (i.original_url ?? undefined) : undefined,
-            alt: i.name,
-            canZoom: true,
-            downloadUrl,
-            mime: i.mime_type ?? undefined,
-        };
-    }),
-);
+// Shared file open/preview behaviour (lightbox, details, text) — the same
+// composable powers the entity-file browser on Asset pages.
+const {
+    lightboxIndex,
+    detailsItem,
+    textItem,
+    lightboxItems,
+    openFile,
+    openDetails,
+    openDetailsById,
+    openInNewTab,
+    copyLink,
+} = useFileMedia<FileItem>({
+    items: mergedItems,
+    downloadUrl: (i) => customerUrl(`/files/${i.id}/download`),
+    onFolder: (i) => router.visit(customerUrl(`/files/${i.id}`)),
+    // Personal Files renders documents in its own modal.
+    onDocPreview: (i) => {
+        docPreviewItem.value = i;
+        return true;
+    },
+});
 
 function openItem(item: FileItem) {
     if (renamingId.value !== null) return;
-    if (item.type === 'folder') {
-        router.visit(customerUrl(`/files/${item.id}`));
-        return;
-    }
-    if (isLightboxMedia(item)) {
-        const idx = mediaItems.value.findIndex((i) => i.id === item.id);
-        if (idx >= 0) lightboxIndex.value = idx;
-        return;
-    }
-    if (item.is_video && item.video_processing) {
-        // Soft nudge — processing spinner already tells the story.
-        return;
-    }
-    // Documents with a rendered preview open a modal instead of downloading.
-    // The modal has a Download button for users who want the original.
-    if (item.has_doc_preview) {
-        docPreviewItem.value = item;
-        return;
-    }
-    // Text / code / markdown render inline.
-    if (item.is_text) {
-        textItem.value = item;
-        return;
-    }
-    // Still rendering a preview? Wait for the broadcast to flip
-    // has_doc_preview; meanwhile don't start a download — the user expected
-    // to see a preview.
-    if (item.preview_processing) {
-        return;
-    }
-    window.location.href = customerUrl(`/files/${item.id}/download`);
+    openFile(item);
 }
 
 function confirmDelete(item: FileItem) {
