@@ -222,6 +222,53 @@ class UserController extends Controller
         return back()->with('success', __('flash.users.role_updated', ['role' => $data['role']]));
     }
 
+    /**
+     * Grant or revoke a grantable platform-level capability for a user.
+     *
+     * Platform capabilities live in the users.platform_permissions JSON column
+     * rather than as Spatie permissions: the package's team schema forces
+     * model_has_permissions.team_id non-null, so a global (team-less) grant
+     * isn't representable. SuperAdmins bypass these via Gate::before, so this
+     * endpoint only matters for delegating to non-super-admins. Super-admin
+     * gated at the route layer.
+     */
+    public function setPlatformPermission(Request $request, User $user): RedirectResponse
+    {
+        $data = $request->validate([
+            // Allowlist — extend as new platform capabilities are introduced.
+            'capability' => ['required', 'string', 'in:manage_email_templates'],
+            'enabled' => ['required', 'boolean'],
+        ]);
+
+        $capability = $data['capability'];
+
+        // Drop the capability first, then re-add when enabling — keeps the
+        // array deduplicated regardless of prior state.
+        $current = array_values(array_filter(
+            $user->platform_permissions ?? [],
+            fn (string $c) => $c !== $capability
+        ));
+        if ($data['enabled']) {
+            $current[] = $capability;
+        }
+
+        $user->forceFill(['platform_permissions' => $current === [] ? null : $current])->save();
+
+        User::bumpUsersListVersion();
+
+        activity('user')
+            ->performedOn($user)
+            ->withProperties([
+                'capability' => $capability,
+                'enabled' => $data['enabled'],
+                'target_user_id' => $user->id,
+            ])
+            ->event('platform_permission_changed')
+            ->log('User platform permission changed');
+
+        return back()->with('success', __('flash.users.platform_permission_updated'));
+    }
+
     public function setQuota(Request $request, User $user): RedirectResponse
     {
         // `storage_quota_override`:
@@ -369,6 +416,7 @@ class UserController extends Controller
                 'created_at' => $user->created_at->toIso8601String(),
                 'two_factor_enabled' => $user->two_factor_confirmed_at !== null,
                 'is_super_admin' => $user->isSuperAdmin(),
+                'platform_permissions' => $user->platform_permissions ?? [],
                 'avatar_url' => $user->avatarUrl('avatar'),
                 'avatar_thumb_url' => $user->avatarUrl('thumb'),
                 'unread_notifications_count' => $user->unreadNotifications()->count(),

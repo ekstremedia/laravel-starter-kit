@@ -9,6 +9,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\View;
 
+/**
+ * @property array<int, string>|null $variables
+ */
 class EmailTemplate extends Model
 {
     protected $fillable = [

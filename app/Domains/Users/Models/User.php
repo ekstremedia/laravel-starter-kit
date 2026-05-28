@@ -45,6 +45,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string|null $bio
  * @property string|null $location
  * @property string|null $website
+ * @property array<int, string>|null $platform_permissions
  */
 // `is_super_admin` is intentionally *not* fillable — it must only be set via
 // explicit `forceFill(['is_super_admin' => ...])` or the dedicated setRole
@@ -388,6 +389,18 @@ class User extends Authenticatable implements FileOwner, HasLocalePreference, Ha
             'password' => 'hashed',
             'storage_used_bytes' => 'integer',
             'is_super_admin' => 'boolean',
+            'platform_permissions' => 'array',
         ];
+    }
+
+    /**
+     * Grantable platform-level capability (e.g. "manage_email_templates") —
+     * not super-admin, not customer-scoped. Stored on the user row because
+     * Spatie's team schema can't represent a team-less assignment. This is the
+     * *explicit* grant only; SuperAdmins bypass abilities via Gate::before.
+     */
+    public function hasPlatformPermission(string $capability): bool
+    {
+        return in_array($capability, $this->platform_permissions ?? [], true);
     }
 }

@@ -4,6 +4,7 @@ namespace App\Domains\Notifications\Http\Controllers;
 
 use App\Domains\Notifications\Mail\TestMail;
 use App\Domains\Notifications\Models\EmailTemplate;
+use App\Domains\Notifications\Models\MailLayout;
 use App\Domains\Notifications\Models\MailSetting;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
@@ -16,9 +17,9 @@ use Throwable;
 
 class MailSettingsController extends Controller
 {
-    public function show(): Response
+    public function show(Request $request): Response
     {
-        $settings = MailSetting::current();
+        $isSuperAdmin = (bool) $request->user()?->isSuperAdmin();
 
         $templates = EmailTemplate::query()
             ->orderBy('slug')
@@ -41,18 +42,32 @@ class MailSettingsController extends Controller
                 ])->values()->all(),
             ])->values()->all();
 
+        // SMTP transport + the global layout/branding are super-admin only —
+        // never leak them to delegated "manage email templates" users.
+        $settings = null;
+        $layout = null;
+
+        if ($isSuperAdmin) {
+            $s = MailSetting::current();
+            $settings = [
+                'mailer' => $s->mailer,
+                'host' => $s->host,
+                'port' => $s->port,
+                'encryption' => $s->encryption,
+                'username' => $s->username,
+                'has_password' => ! empty($s->password),
+                'from_address' => $s->from_address,
+                'from_name' => $s->from_name,
+                'enabled' => $s->enabled,
+            ];
+
+            $l = MailLayout::current();
+            $layout = $l->only($l->getFillable());
+        }
+
         return Inertia::render('Admin/Mail', [
-            'settings' => [
-                'mailer' => $settings->mailer,
-                'host' => $settings->host,
-                'port' => $settings->port,
-                'encryption' => $settings->encryption,
-                'username' => $settings->username,
-                'has_password' => ! empty($settings->password),
-                'from_address' => $settings->from_address,
-                'from_name' => $settings->from_name,
-                'enabled' => $settings->enabled,
-            ],
+            'settings' => $settings,
+            'layout' => $layout,
             'templates' => $templates,
         ]);
     }

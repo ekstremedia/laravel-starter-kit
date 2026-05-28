@@ -136,6 +136,13 @@ class AppServiceProvider extends ServiceProvider
             return $user !== null && $user->isSuperAdmin();
         });
 
+        // Grantable platform capability: edit transactional email content (all
+        // locales) from the dashboard. Backed by a column, not Spatie (see
+        // User::hasPlatformPermission). SuperAdmins pass via Gate::before below.
+        Gate::define('manage email templates', function ($user = null) {
+            return $user !== null && $user->hasPlatformPermission('manage_email_templates');
+        });
+
         // SuperAdmin bypass: `Gate::before` runs before every ability check
         // (Spatie permission gates included), so a SuperAdmin clears customer-
         // scoped `can('upload files')` / `can('manage customer users')` checks

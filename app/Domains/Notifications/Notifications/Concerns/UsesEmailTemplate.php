@@ -6,6 +6,7 @@ namespace App\Domains\Notifications\Notifications\Concerns;
 
 use App\Domains\Notifications\Models\EmailTemplate;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Support\Facades\Log;
 
 trait UsesEmailTemplate
 {
@@ -17,6 +18,13 @@ trait UsesEmailTemplate
      */
     protected function renderTemplate(string $slug, object $notifiable, array $extraData = []): MailMessage
     {
+        // Dev safety: a template sent here should be declared in the registry
+        // (config/mail-templates.php) so it shows up in the dashboard editor
+        // and gets synced. Warn loudly in non-production if it's missing.
+        if (! app()->isProduction() && ! array_key_exists($slug, config('mail-templates', []))) {
+            Log::warning("Email template '{$slug}' is not registered in config/mail-templates.php — it won't appear in the dashboard editor. Add it there and run `php artisan mail:sync-templates`.");
+        }
+
         $locale = 'en';
 
         if (method_exists($notifiable, 'settings')) {

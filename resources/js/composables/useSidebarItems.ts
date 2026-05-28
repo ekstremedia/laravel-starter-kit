@@ -24,6 +24,7 @@ export function useSidebarItems() {
     const assetsEnabled = computed(() => page.props.assetsEnabled ?? false);
     const userPermissions = computed<string[]>(() => (user.value as { permissions?: string[] } | undefined)?.permissions ?? []);
     const canViewCompanyFiles = computed(() => isSuperAdmin.value || userPermissions.value.includes('view company files'));
+    const canManageEmailTemplates = computed(() => page.props.auth?.can?.manage_email_templates === true);
 
     const customer = computed(() => page.props.customer);
     const customerSlug = computed(() => customer.value?.slug ?? null);
@@ -82,6 +83,13 @@ export function useSidebarItems() {
                 { id: 'server', href: '/admin/system', label: t('rail.server'), icon: 'server', match: (p) => p.startsWith('/admin/system') || p.startsWith('/admin/health') },
                 { separator: true, key: 's3' },
                 { id: 'logs', href: '/admin/monitoring', label: t('rail.logs'), icon: 'log', match: (p) => p.startsWith('/admin/monitoring') || p.startsWith('/admin/activity') },
+            );
+        } else if (canManageEmailTemplates.value) {
+            // Delegated email editors aren't super admins, so they don't get
+            // the admin section — surface a single entry to the mail page.
+            entries.push(
+                { separator: true, key: 'mail-sep' },
+                { id: 'mail', href: '/admin/mail', label: t('rail.mail'), icon: 'mail', match: (p) => p.startsWith('/admin/mail') },
             );
         }
 

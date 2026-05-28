@@ -74,6 +74,11 @@ class HandleInertiaRequests extends Middleware
                         : 0,
                     'is_impersonating' => session()->has('impersonated_by'),
                 ] : null,
+                // Grantable platform capabilities, surfaced for nav/tab gating.
+                // SuperAdmins resolve true via Gate::before.
+                'can' => fn () => [
+                    'manage_email_templates' => $request->user()?->can('manage email templates') ?? false,
+                ],
             ],
             'locale' => app()->getLocale(),
             'debug' => [

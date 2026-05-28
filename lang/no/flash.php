@@ -45,6 +45,10 @@ return [
         'test_sent' => 'Test-e-post sendt til :email.',
     ],
 
+    'email_layout' => [
+        'saved' => 'E-postoppsettet er lagret. Malene kompileres på nytt.',
+    ],
+
     'health' => [
         'queue_ping' => 'Ping-jobb lagt i kø (nonce: :nonce).',
         'broadcast_ping' => 'Broadcast-ping sendt (nonce: :nonce).',
@@ -91,5 +95,6 @@ return [
         'customer_detached' => 'Fjernet :email fra :name.',
         'customer_role_updated' => 'Satte :email som :role på :name.',
         'not_member' => ':email er ikke medlem av :name.',
+        'platform_permission_updated' => 'Plattformtilgang oppdatert.',
     ],
 ];

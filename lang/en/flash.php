@@ -45,6 +45,10 @@ return [
         'test_sent' => 'Test email sent to :email.',
     ],
 
+    'email_layout' => [
+        'saved' => 'Email layout saved. Templates are being recompiled.',
+    ],
+
     'health' => [
         'queue_ping' => 'Queued ping job (nonce: :nonce).',
         'broadcast_ping' => 'Broadcast ping event (nonce: :nonce).',
@@ -91,5 +95,6 @@ return [
         'customer_detached' => 'Removed :email from :name.',
         'customer_role_updated' => 'Set :email as :role on :name.',
         'not_member' => ':email is not a member of :name.',
+        'platform_permission_updated' => 'Platform access updated.',
     ],
 ];

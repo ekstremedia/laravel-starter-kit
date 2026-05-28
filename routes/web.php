@@ -7,6 +7,7 @@ use App\Domains\Auth\Http\Controllers\SocialiteController;
 use App\Domains\Chat\Http\Controllers\ChatController;
 use App\Domains\Files\Http\Controllers\PublicShareController;
 use App\Domains\Notifications\Http\Controllers\EmailTemplateController;
+use App\Domains\Notifications\Http\Controllers\MailLayoutController;
 use App\Domains\Notifications\Http\Controllers\MailSettingsController;
 use App\Domains\Notifications\Http\Controllers\NotificationController;
 use App\Domains\Notifications\Http\Controllers\NotificationPreferenceController;
@@ -146,6 +147,7 @@ Route::middleware(['auth', 'verified', 'super.admin'])
         Route::post('users/{user}/notify-test', [UserController::class, 'notifyTest'])->name('users.notifyTest');
         Route::patch('users/{user}/quota', [UserController::class, 'setQuota'])->name('users.setQuota');
         Route::patch('users/{user}/role', [UserController::class, 'setRole'])->name('users.setRole');
+        Route::patch('users/{user}/platform-permission', [UserController::class, 'setPlatformPermission'])->name('users.platformPermission');
 
         Route::resource('roles', RoleController::class)->except(['show']);
 
@@ -160,13 +162,13 @@ Route::middleware(['auth', 'verified', 'super.admin'])
         Route::post('health/broadcast', [HealthController::class, 'broadcastPing'])->name('health.broadcast');
         Route::get('health/queue-last', [HealthController::class, 'queueLast'])->name('health.queue.last');
 
-        Route::patch('mail/templates/{template}', [EmailTemplateController::class, 'update'])->name('mail.templates.update');
-        Route::post('mail/templates/{template}/preview', [EmailTemplateController::class, 'preview'])->name('mail.templates.preview');
-        Route::post('mail/templates/{template}/test', [EmailTemplateController::class, 'testSend'])->name('mail.templates.test');
-
-        Route::get('mail', [MailSettingsController::class, 'show'])->name('mail.show');
+        // SMTP transport + the global email layout (branding) are super-admin
+        // only. The per-email content editor (GET mail page + template routes)
+        // lives in a separate, delegatable group below.
         Route::patch('mail', [MailSettingsController::class, 'update'])->name('mail.update');
         Route::post('mail/test', [MailSettingsController::class, 'test'])->name('mail.test');
+        Route::patch('mail/layout', [MailLayoutController::class, 'update'])->name('mail.layout.update');
+        Route::post('mail/layout/preview', [MailLayoutController::class, 'preview'])->name('mail.layout.preview');
 
         Route::get('system', [SystemInfoController::class, 'show'])->name('system.show');
         Route::get('health', fn () => redirect()->route('admin.system.show'))->name('health.show');
@@ -192,6 +194,19 @@ Route::middleware(['auth', 'verified', 'super.admin'])
         Route::delete('users/{user}/customers/{customer}', [UserController::class, 'detachCustomer'])->name('users.customers.detach');
 
         Route::post('users/{user}/impersonate', [ImpersonateController::class, 'take'])->name('users.impersonate');
+    });
+
+// Email content editor — delegatable beyond super-admins via the
+// `manage email templates` capability (super-admins pass through Gate::before).
+// The page + template routes live here; SMTP + layout stay super-admin-only above.
+Route::middleware(['auth', 'verified', 'can:manage email templates'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('mail', [MailSettingsController::class, 'show'])->name('mail.show');
+        Route::patch('mail/templates/{template}', [EmailTemplateController::class, 'update'])->name('mail.templates.update');
+        Route::post('mail/templates/{template}/preview', [EmailTemplateController::class, 'preview'])->name('mail.templates.preview');
+        Route::post('mail/templates/{template}/test', [EmailTemplateController::class, 'testSend'])->name('mail.templates.test');
     });
 
 // Impersonation — leave action must be available from within the impersonated session
