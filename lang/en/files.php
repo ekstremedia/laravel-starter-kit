@@ -18,6 +18,8 @@ return [
     'upload_success' => ':count file(s) uploaded.',
     'updated' => 'Updated.',
     'deleted' => 'Deleted.',
+    'bulk_deleted' => ':count item(s) deleted.',
+    'bulk_moved' => ':count item(s) moved.',
     'new_folder' => 'New folder',
     'upload' => 'Upload',
     'search_placeholder' => 'Search files…',

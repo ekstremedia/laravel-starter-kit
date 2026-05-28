@@ -7,19 +7,24 @@ namespace App\Domains\Files\Http\Controllers;
 use App\Domains\Files\Contracts\FileOwner;
 use App\Domains\Files\Events\FileItemUpdated;
 use App\Domains\Files\Http\Resources\FileItemResource;
+use App\Domains\Files\Jobs\ExtractFileMetadata;
 use App\Domains\Files\Jobs\GenerateDocumentPreview;
+use App\Domains\Files\Jobs\GenerateImagePreview;
 use App\Domains\Files\Jobs\GenerateVideoPreview;
 use App\Domains\Files\Jobs\ShareFolderToCompany;
 use App\Domains\Files\Models\CompanyFileLink;
 use App\Domains\Files\Models\FileItem;
+use App\Domains\Files\Services\FileMetadataExtractor;
 use App\Domains\Files\Services\StorageUsageService;
 use App\Domains\Files\Support\CompanyFilesCache;
 use App\Domains\Files\Support\OwnerResolver;
+use App\Domains\Files\Support\UploadLimits;
 use App\Domains\Settings\Models\AppSetting;
 use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
 use App\Http\Controllers\Controller;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -87,6 +92,7 @@ class FileItemController extends Controller
             ],
             'trashed_count' => $trashedCount,
             'search' => $search ?: null,
+            'max_upload_bytes' => UploadLimits::maxUploadBytes(),
         ]);
     }
 
@@ -137,7 +143,7 @@ class FileItemController extends Controller
 
         $request->validate([
             'files' => 'required|array|min:1',
-            'files.*' => 'file|max:'.config('files.max_upload_kilobytes', 51200),
+            'files.*' => 'file|max:'.UploadLimits::maxUploadKilobytes(),
             'parent_id' => ['nullable', 'integer', $this->existsFileItemRule()],
         ]);
 
@@ -153,7 +159,9 @@ class FileItemController extends Controller
         $created = 0;
         $previewTargets = [];
         $videoTargets = [];
-        DB::connection((string) config('tenancy.database.central_connection'))->transaction(function () use ($request, $tenant, $user, $owner, $parentId, &$created, &$previewTargets, &$videoTargets): void {
+        $imageTargets = [];
+        $allTargets = [];
+        DB::connection((string) config('tenancy.database.central_connection'))->transaction(function () use ($request, $tenant, $user, $owner, $parentId, &$created, &$previewTargets, &$videoTargets, &$imageTargets, &$allTargets): void {
             foreach ($request->file('files', []) as $file) {
                 $name = $this->uniqueName($tenant->id, $owner, $parentId, $file->getClientOriginalName());
                 $size = $file->getSize();
@@ -172,12 +180,17 @@ class FileItemController extends Controller
 
                 $item->addMedia($file)->toMediaCollection('file');
                 $created++;
+                $allTargets[] = $item->id;
 
-                if (in_array((string) $item->mime_type, config('files.preview_mime_types', []), true)) {
+                if (! $item->isTextPreviewable()
+                    && in_array((string) $item->mime_type, config('files.preview_mime_types', []), true)) {
                     $previewTargets[] = $item->id;
                 }
                 if ($item->isVideo()) {
                     $videoTargets[] = $item->id;
+                }
+                if ($item->needsImagePreview()) {
+                    $imageTargets[] = $item->id;
                 }
             }
         });
@@ -188,7 +201,16 @@ class FileItemController extends Controller
         foreach ($videoTargets as $id) {
             GenerateVideoPreview::dispatch($id);
         }
-        foreach (array_unique(array_merge($previewTargets, $videoTargets)) as $id) {
+        foreach ($imageTargets as $id) {
+            GenerateImagePreview::dispatch($id);
+        }
+        // Metadata for everything else (plain images, audio, text) — the
+        // preview-bearing types above get their own jobs but still want EXIF,
+        // so extract uniformly for all uploads.
+        foreach ($allTargets as $id) {
+            ExtractFileMetadata::dispatch($id);
+        }
+        foreach (array_unique(array_merge($previewTargets, $videoTargets, $imageTargets)) as $id) {
             $fresh = FileItem::with('media')->find($id);
             if ($fresh) {
                 event(new FileItemUpdated($fresh));
@@ -390,6 +412,265 @@ class FileItemController extends Controller
         }
 
         return response()->download($path, $filename);
+    }
+
+    /**
+     * Return normalized file metadata (EXIF/GPS/dimensions/codec…) for the
+     * Details panel. Legacy files uploaded before metadata extraction get it
+     * lazily on first open and the result is persisted.
+     */
+    public function details(Request $request, FileItem $file, FileMetadataExtractor $extractor): JsonResponse
+    {
+        $tenant = $this->currentTenant($request);
+        $user = $request->user();
+        $this->assertFeatureAvailable($request, $tenant);
+        Gate::forUser($user)->authorize('view', [$file, $tenant]);
+
+        if ($file->isFolder()) {
+            abort(404);
+        }
+
+        $metadata = $file->metadata;
+        if ($metadata === null) {
+            $media = $file->getFirstMedia('file');
+            if ($media && is_file($media->getPath())) {
+                $metadata = $extractor->extract($media->getPath());
+                if ($metadata !== []) {
+                    $file->update(['metadata' => $metadata]);
+                }
+            }
+        }
+
+        return response()->json([
+            'id' => $file->id,
+            'name' => $file->name,
+            'mime_type' => $file->mime_type,
+            'size' => (int) $file->size,
+            'created_at' => $file->created_at->toIso8601String(),
+            'updated_at' => $file->updated_at->toIso8601String(),
+            'metadata' => $metadata ?: null,
+        ]);
+    }
+
+    /**
+     * Stream the first N KB of a text/code/markdown file for inline preview.
+     * Always served as application/json with the content forced to a string —
+     * never echoed with the file's own mime, so a .html/.svg upload can't
+     * execute in the viewer.
+     */
+    public function text(Request $request, FileItem $file): JsonResponse
+    {
+        $tenant = $this->currentTenant($request);
+        $user = $request->user();
+        $this->assertFeatureAvailable($request, $tenant);
+        Gate::forUser($user)->authorize('view', [$file, $tenant]);
+
+        if ($file->isFolder() || ! $file->isTextPreviewable()) {
+            abort(404);
+        }
+
+        $media = $file->getFirstMedia('file');
+        if (! $media || ! is_file($media->getPath())) {
+            abort(404);
+        }
+
+        $max = (int) config('files.text_preview_max_bytes', 256 * 1024);
+        $raw = (string) file_get_contents($media->getPath(), false, null, 0, $max + 1);
+        $truncated = strlen($raw) > $max;
+        if ($truncated) {
+            $raw = substr($raw, 0, $max);
+        }
+
+        // Coerce to valid UTF-8 so json_encode never fails on a binary-ish file.
+        $content = mb_convert_encoding($raw, 'UTF-8', 'UTF-8');
+
+        return response()->json([
+            'content' => $content,
+            'truncated' => $truncated,
+            'is_markdown' => $file->isMarkdown(),
+            'language' => $file->extension(),
+        ]);
+    }
+
+    /**
+     * Flat list of every folder the current owner has, for building a move
+     * destination picker. Returns id/name/parent_id; the client indents.
+     */
+    public function folders(Request $request): JsonResponse
+    {
+        $tenant = $this->currentTenant($request);
+        $user = $request->user();
+        $this->assertFeatureAvailable($request, $tenant);
+
+        $owner = $this->resolveOwner($request, $user);
+        $this->authorizeOwnerAccess($user, $owner, $tenant, view: true);
+
+        $folders = FileItem::query()
+            ->where('tenant_id', $tenant->id)
+            ->forOwner($owner)
+            ->where('type', FileItem::TYPE_FOLDER)
+            ->orderBy('name')
+            ->get(['id', 'name', 'parent_id']);
+
+        return response()->json(['folders' => $folders]);
+    }
+
+    /**
+     * Soft-delete several items at once. Each is authorized individually so a
+     * single unauthorized id aborts the batch rather than silently skipping.
+     */
+    public function bulkDelete(Request $request): RedirectResponse
+    {
+        $tenant = $this->currentTenant($request);
+        $user = $request->user();
+        $this->assertFeatureAvailable($request, $tenant);
+
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer'],
+        ]);
+
+        $items = FileItem::query()->with('owner')->whereIn('id', $data['ids'])->get();
+        foreach ($items as $item) {
+            Gate::forUser($user)->authorize('delete', [$item, $tenant]);
+        }
+        $owner = $user;
+        foreach ($items as $item) {
+            $owner = $item->owner ?? $user;
+            $item->delete();
+        }
+
+        $this->usage->recomputeForOwner($owner);
+
+        return back()->with('success', __('files.bulk_deleted', ['count' => $items->count()]));
+    }
+
+    /**
+     * Move several items into a destination folder (or root when null).
+     */
+    public function bulkMove(Request $request): RedirectResponse
+    {
+        $tenant = $this->currentTenant($request);
+        $user = $request->user();
+        $this->assertFeatureAvailable($request, $tenant);
+
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer'],
+            'parent_id' => ['nullable', 'integer', $this->existsFileItemRule()],
+        ]);
+
+        $destId = $data['parent_id'] ?? null;
+        if ($destId !== null) {
+            $dest = FileItem::findOrFail($destId);
+            Gate::forUser($user)->authorize('update', [$dest, $tenant]);
+            if (! $dest->isFolder()) {
+                abort(422, __('files.invalid_company_folder'));
+            }
+        }
+
+        $items = FileItem::query()->with('owner')->whereIn('id', $data['ids'])->get();
+        foreach ($items as $item) {
+            Gate::forUser($user)->authorize('update', [$item, $tenant]);
+        }
+
+        DB::connection((string) config('tenancy.database.central_connection'))->transaction(function () use ($items, $destId, $tenant): void {
+            foreach ($items as $item) {
+                if ((int) $item->id === (int) $destId) {
+                    continue; // can't move into itself
+                }
+                if ($item->isFolder() && $destId !== null) {
+                    $dest = FileItem::find($destId);
+                    if ($dest && $this->isDescendantOf($dest, $item)) {
+                        abort(422, __('files.invalid_company_folder'));
+                    }
+                }
+                $item->parent_id = $destId;
+                $item->name = $this->uniqueNameForItem($tenant->id, $item, $item->name);
+                $item->save();
+            }
+        });
+
+        return back()->with('success', __('files.bulk_moved', ['count' => $items->count()]));
+    }
+
+    /**
+     * Stream a ZIP of the selected items (folders recurse into subdirectories).
+     * `ids` is a comma-separated query param so the browser can fetch it with a
+     * plain navigation.
+     */
+    public function bulkZip(Request $request): BinaryFileResponse
+    {
+        $tenant = $this->currentTenant($request);
+        $user = $request->user();
+        $this->assertFeatureAvailable($request, $tenant);
+
+        $ids = collect(explode(',', $request->string('ids')->toString()))
+            ->map(fn ($v) => (int) trim($v))
+            ->filter()
+            ->unique()
+            ->values();
+        abort_if($ids->isEmpty(), 404);
+
+        $items = FileItem::query()->with(['owner', 'media'])->whereIn('id', $ids)->get();
+        foreach ($items as $item) {
+            Gate::forUser($user)->authorize('download', [$item, $tenant]);
+        }
+
+        $zipPath = sys_get_temp_dir().'/files-'.uniqid('', true).'.zip';
+        $zip = new \ZipArchive;
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            abort(500, 'Could not create archive.');
+        }
+
+        $usedNames = [];
+        foreach ($items as $item) {
+            $this->addItemToZip($zip, $item, '', $usedNames);
+        }
+        $zip->close();
+
+        return response()->download($zipPath, 'files.zip')->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Recursively add a FileItem to the open zip. Files contribute their
+     * original media; folders create a directory and recurse their children.
+     *
+     * @param  array<string, bool>  $usedNames  guards against name collisions at a level
+     */
+    private function addItemToZip(\ZipArchive $zip, FileItem $item, string $prefix, array &$usedNames): void
+    {
+        $name = $this->uniqueZipEntry($prefix.$item->name, $usedNames);
+
+        if ($item->isFolder()) {
+            $zip->addEmptyDir($name);
+            foreach ($item->children()->with('media')->get() as $child) {
+                $childUsed = [];
+                $this->addItemToZip($zip, $child, $name.'/', $childUsed);
+            }
+
+            return;
+        }
+
+        $media = $item->getFirstMedia('file');
+        if ($media && is_file($media->getPath())) {
+            $zip->addFile($media->getPath(), $name);
+        }
+    }
+
+    /**
+     * @param  array<string, bool>  $usedNames
+     */
+    private function uniqueZipEntry(string $name, array &$usedNames): string
+    {
+        $candidate = $name;
+        $i = 1;
+        while (isset($usedNames[$candidate])) {
+            $candidate = $this->appendSuffix($name, ++$i);
+        }
+        $usedNames[$candidate] = true;
+
+        return $candidate;
     }
 
     /**

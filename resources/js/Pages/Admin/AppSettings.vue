@@ -31,11 +31,14 @@ interface Settings {
     // null/null = unlimited, -1 = explicit unlimited, 0 = blocked, N>0 = cap.
     default_personal_storage_bytes: number | null;
     default_entity_storage_bytes: number | null;
+    max_upload_bytes: number;
 }
 
 interface Props {
     settings: Settings;
     roles: string[];
+    // Hard ceiling from the running PHP process (upload_max_filesize/post_max_size).
+    php_upload_ceiling_bytes: number;
 }
 
 const props = defineProps<Props>();
@@ -56,6 +59,7 @@ const form = useForm({
     max_share_days: props.settings.max_share_days,
     default_personal_storage_bytes: props.settings.default_personal_storage_bytes,
     default_entity_storage_bytes: props.settings.default_entity_storage_bytes,
+    max_upload_bytes: props.settings.max_upload_bytes,
 });
 
 // `v-model.number` gives us '' when the user clears the field, but the
@@ -74,6 +78,18 @@ const defaultEntityStorageBytes = computed<number | null>({
         form.default_entity_storage_bytes = v === null || Number.isNaN(v as unknown as number) || (v as unknown as string) === '' ? null : Number(v);
     },
 });
+
+// The setting is stored in bytes but edited in whole MB — round-trip through
+// a computed. Clamp to the PHP ceiling so the field can't offer more than the
+// server accepts (the backend rejects it anyway, but this keeps the UI honest).
+const maxUploadMb = computed<number>({
+    get: () => Math.round(form.max_upload_bytes / (1024 * 1024)),
+    set: (v) => {
+        const mb = Number.isNaN(v as unknown as number) || (v as unknown as string) === '' ? 1 : Math.max(1, Number(v));
+        form.max_upload_bytes = Math.min(mb * 1024 * 1024, props.php_upload_ceiling_bytes);
+    },
+});
+const phpCeilingMb = computed(() => Math.floor(props.php_upload_ceiling_bytes / (1024 * 1024)));
 
 const dirty = computed(() => form.isDirty);
 const loading = ref(true);
@@ -439,6 +455,39 @@ const roleOpen = ref(false);
                                     </div>
                                 </div>
                                 <Toggle v-model="form.files_feature_enabled" :label="t('admin.app_settings.files_feature_enabled')" />
+                            </div>
+
+                            <div>
+                                <div
+                                    class="cmd-mono cmd-uc"
+                                    :style="{ fontSize: '10px', color: 'var(--fg-mute)', marginBottom: '6px', letterSpacing: '0.06em' }"
+                                >{{ t('admin.app_settings.max_upload') }}</div>
+                                <div :style="{ display: 'flex', alignItems: 'center', gap: '8px' }">
+                                    <input
+                                        v-model.number="maxUploadMb"
+                                        type="number"
+                                        min="1"
+                                        :max="phpCeilingMb"
+                                        class="cmd-mono"
+                                        :style="{
+                                            width: '110px',
+                                            background: 'var(--panel2)',
+                                            border: '1px solid var(--border)',
+                                            borderRadius: '5px',
+                                            padding: '7px 10px',
+                                            color: 'var(--fg)',
+                                            fontSize: '12px',
+                                            outline: 'none',
+                                        }"
+                                    />
+                                    <span :style="{ fontSize: '12px', color: 'var(--fg-dim)' }">MB</span>
+                                </div>
+                                <p :style="{ fontSize: '11px', color: 'var(--fg-mute)', marginTop: '4px' }">
+                                    {{ t('admin.app_settings.max_upload_desc', { max: phpCeilingMb }) }}
+                                </p>
+                                <p v-if="form.errors.max_upload_bytes" :style="{ fontSize: '11px', color: 'var(--danger)', marginTop: '4px' }">
+                                    {{ form.errors.max_upload_bytes }}
+                                </p>
                             </div>
 
                             <div>

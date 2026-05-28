@@ -24,6 +24,7 @@ class AppSetting extends Model
         'max_share_days' => 'integer',
         'default_personal_storage_bytes' => 'integer',
         'default_entity_storage_bytes' => 'integer',
+        'max_upload_bytes' => 'integer',
     ];
 
     public static function current(): self
@@ -46,6 +47,8 @@ class AppSetting extends Model
             // resolution. Customer/user overrides still take precedence —
             // this is the "nothing configured" fallback.
             'default_personal_storage_bytes' => 5 * 1024 * 1024 * 1024,
+            // 50 MB per-file upload ceiling out of the box.
+            'max_upload_bytes' => 50 * 1024 * 1024,
         ]);
     }
 }

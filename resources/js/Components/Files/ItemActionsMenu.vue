@@ -27,6 +27,9 @@ const emit = defineEmits<{
     delete: [];
     shareToCompany: [];
     unshareFromCompany: [];
+    details: [];
+    copyLink: [];
+    openNewTab: [];
 }>();
 
 const { t } = useI18n();
@@ -45,6 +48,21 @@ const items = computed(() => {
             icon: 'pi pi-download',
             url: props.downloadUrl,
             command: () => emit('download'),
+        });
+        out.push({
+            label: t('files.open_new_tab'),
+            icon: 'pi pi-external-link',
+            command: () => emit('openNewTab'),
+        });
+        out.push({
+            label: t('files.copy_link'),
+            icon: 'pi pi-link',
+            command: () => emit('copyLink'),
+        });
+        out.push({
+            label: t('files.details.title'),
+            icon: 'pi pi-info-circle',
+            command: () => emit('details'),
         });
     }
 

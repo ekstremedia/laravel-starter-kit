@@ -23,8 +23,18 @@ class FileItemResource extends JsonResource
         $docPreview = $this->isFolder() ? null : $this->getFirstMedia('doc_preview');
         $videoPoster = $this->isFolder() ? null : $this->getFirstMedia('video_preview');
         $videoWeb = $this->isFolder() ? null : $this->getFirstMedia('video_web');
+        $imagePreview = $this->isFolder() ? null : $this->getFirstMedia('image_preview');
+
+        // For RAW/TIFF/HEIC the conversion ladder lives on `image_preview`; for
+        // native images it's on `file`. `$previewMedia` is whichever one carries
+        // the thumb/medium/large sizes the UI serves.
+        $previewMedia = $imagePreview ?? $media;
 
         $isVideo = $this->isVideo();
+        $isPreviewableImage = $this->isPreviewableImage();
+
+        // RAW/TIFF/HEIC are "processing" until their generated JPEG lands.
+        $imageProcessing = $this->needsImagePreview() && $imagePreview === null;
         // For videos we consider processing complete once we either have a
         // transcoded web MP4, or the source was already web-compatible
         // (flagged on the original media row by the job).
@@ -36,8 +46,12 @@ class FileItemResource extends JsonResource
         // allowlist but the doc_preview media row hasn't arrived yet. The
         // queued GenerateDocumentPreview job broadcasts FileItemUpdated when
         // it finishes, which flips this off in the UI.
+        // Text/code/markdown render inline (the text endpoint) rather than via
+        // the Gotenberg doc-preview pipeline, so they never sit in a
+        // "generating preview" state even though text/plain is a preview mime.
         $docPreviewMimes = config('files.preview_mime_types', []);
         $docPreviewProcessing = ! $this->isFolder()
+            && ! $this->isTextPreviewable()
             && in_array((string) $this->mime_type, $docPreviewMimes, true)
             && $docPreview === null;
 
@@ -46,7 +60,7 @@ class FileItemResource extends JsonResource
         // dispatches FileItemUpdated when Spatie's queued `thumb` conversion
         // finishes, so flagging images as processing would leave the shimmer
         // stuck forever.
-        $previewProcessing = $videoProcessing || $docPreviewProcessing;
+        $previewProcessing = $videoProcessing || $docPreviewProcessing || $imageProcessing;
 
         // `shared_to_company` drives the "shared" badge + unshare action in
         // My Files. Callers MUST eager-load `companyLink` (and `user` if
@@ -69,11 +83,16 @@ class FileItemResource extends JsonResource
             'mime_type' => $this->mime_type,
             'size' => (int) $this->size,
             'parent_id' => $this->parent_id,
-            'is_image' => $this->isImage(),
+            'is_image' => $isPreviewableImage,
+            'is_audio' => $this->isAudio(),
             'is_video' => $isVideo,
+            'is_text' => $this->isTextPreviewable(),
+            'is_markdown' => $this->isMarkdown(),
             'video_processing' => $videoProcessing,
             'video_ready' => $videoReady,
+            'image_processing' => $imageProcessing,
             'preview_processing' => $previewProcessing,
+            'has_metadata' => ! $this->isFolder() && $this->metadata !== null,
             'shared_to_company' => $companyLink !== null,
             'company_link_id' => $companyLink?->id,
             'owner' => $owner ? [
@@ -84,18 +103,22 @@ class FileItemResource extends JsonResource
             'created_at' => $this->created_at->toIso8601String(),
             'updated_at' => $this->updated_at->toIso8601String(),
 
-            'thumbnail_url' => $media && $media->hasGeneratedConversion('thumb')
-                ? $media->getUrl('thumb')
+            'thumbnail_url' => $previewMedia && $previewMedia->hasGeneratedConversion('thumb')
+                ? $previewMedia->getUrl('thumb')
                 : ($this->isImage() && $media
                     ? $media->getUrl()
                     : ($videoPoster?->getUrl() ?? $docPreview?->getUrl())),
-            'preview_url' => $media && $media->hasGeneratedConversion('medium')
-                ? $media->getUrl('medium')
-                : ($videoPoster?->getUrl() ?? $docPreview?->getUrl() ?? $media?->getUrl()),
+            'preview_url' => $previewMedia && $previewMedia->hasGeneratedConversion('medium')
+                ? $previewMedia->getUrl('medium')
+                : ($videoPoster?->getUrl() ?? $docPreview?->getUrl() ?? ($this->isImage() ? $media?->getUrl() : null)),
+            // The real original — for RAW this is the undisplayable camera file,
+            // served only via the download button (never as a lightbox <img>).
             'original_url' => $media?->getUrl(),
             'video_web_url' => $videoWeb ? $videoWeb->getUrl() : ($webCompatible ? $media->getUrl() : null),
             'video_poster_url' => $videoPoster?->getUrl(),
-            'available_sizes' => $media ? $this->availableSizes($media) : null,
+            // Conversion ladder from whichever media carries it (image_preview
+            // for RAW/TIFF, file for native images).
+            'available_sizes' => $previewMedia ? $this->availableSizes($previewMedia) : null,
             'has_doc_preview' => $docPreview !== null,
         ];
     }

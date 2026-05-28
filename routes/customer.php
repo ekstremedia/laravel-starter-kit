@@ -102,6 +102,13 @@ Route::delete('/files/{file}/share-to-company', [FileItemController::class, 'uns
     ->whereNumber('file')
     ->name('files.unshareFromCompany');
 
+// Bulk actions — literal /files/bulk/* segments, registered before the
+// numeric {folder} catch-all below.
+Route::get('/files/folders', [FileItemController::class, 'folders'])->name('files.folders');
+Route::post('/files/bulk/delete', [FileItemController::class, 'bulkDelete'])->name('files.bulk.delete');
+Route::post('/files/bulk/move', [FileItemController::class, 'bulkMove'])->name('files.bulk.move');
+Route::get('/files/bulk/zip', [FileItemController::class, 'bulkZip'])->name('files.bulk.zip');
+
 Route::get('/files/{folder}', [FileItemController::class, 'index'])
     ->whereNumber('folder')
     ->name('files.show');
@@ -118,6 +125,12 @@ Route::delete('/files/{file}', [FileItemController::class, 'destroy'])
 Route::get('/files/{file}/download', [FileItemController::class, 'download'])
     ->whereNumber('file')
     ->name('files.download');
+Route::get('/files/{file}/details', [FileItemController::class, 'details'])
+    ->whereNumber('file')
+    ->name('files.details');
+Route::get('/files/{file}/text', [FileItemController::class, 'text'])
+    ->whereNumber('file')
+    ->name('files.text');
 
 // Share-link management (creating / listing / revoking links). Public viewing
 // of shared items is in routes/web.php under /share/*.

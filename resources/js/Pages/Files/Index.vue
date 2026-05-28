@@ -6,8 +6,10 @@ import CommandLayout from '@/Layouts/CommandLayout.vue';
 import Icon from '@/Components/Command/Icon.vue';
 import UploadDialog from '@/Components/Files/UploadDialog.vue';
 import ImageLightbox from '@/Components/Files/ImageLightbox.vue';
-import VideoPlayer from '@/Components/Files/VideoPlayer.vue';
 import ItemActionsMenu from '@/Components/Files/ItemActionsMenu.vue';
+import FileDetailsDialog from '@/Components/Files/FileDetailsDialog.vue';
+import TextPreviewDialog from '@/Components/Files/TextPreviewDialog.vue';
+import BulkActionBar from '@/Components/Files/BulkActionBar.vue';
 import FilesToolbar from '@/Components/Files/FilesToolbar.vue';
 import FilesUsageBar from '@/Components/Files/FilesUsageBar.vue';
 import { humanBytes as formatBytes } from '@/utils/bytes';
@@ -34,6 +36,10 @@ interface FileItem {
     parent_id: number | null;
     is_image: boolean;
     is_video?: boolean;
+    is_audio?: boolean;
+    is_text?: boolean;
+    is_markdown?: boolean;
+    image_processing?: boolean;
     video_processing?: boolean;
     video_ready?: boolean;
     preview_processing?: boolean;
@@ -65,6 +71,7 @@ interface PageData {
     usage: { used_bytes: number; quota_bytes: number | null; percent: number };
     trashed_count: number;
     search: string | null;
+    max_upload_bytes: number;
 }
 
 const props = defineProps<PageData>();
@@ -78,9 +85,9 @@ const uploadDialogRef = ref<InstanceType<typeof UploadDialog> | null>(null);
 const externalDragOver = ref(false);
 let externalDragCounter = 0;
 const lightboxIndex = ref<number | null>(null);
-const videoOpen = ref(false);
-const videoItem = ref<FileItem | null>(null);
 const docPreviewItem = ref<FileItem | null>(null);
+const detailsItem = ref<FileItem | null>(null);
+const textItem = ref<FileItem | null>(null);
 const searchQuery = ref(props.search ?? '');
 const renamingId = ref<number | null>(null);
 const renameValue = ref('');
@@ -219,6 +226,167 @@ async function quickShare(item: FileItem) {
     }
 }
 
+// ── Multi-select + bulk actions ────────────────────────────────────
+const selectedIds = ref<Set<number>>(new Set());
+const lastClickedId = ref<number | null>(null);
+const selectedCount = computed(() => selectedIds.value.size);
+
+function isSelected(id: number): boolean {
+    return selectedIds.value.has(id);
+}
+
+function toggleSelect(item: FileItem, event?: MouseEvent) {
+    const next = new Set(selectedIds.value);
+    // Shift-click selects the contiguous range from the last clicked item.
+    if (event?.shiftKey && lastClickedId.value !== null) {
+        const ids = mergedItems.value.map((i) => i.id);
+        const a = ids.indexOf(lastClickedId.value);
+        const b = ids.indexOf(item.id);
+        if (a >= 0 && b >= 0) {
+            const [lo, hi] = a < b ? [a, b] : [b, a];
+            for (let i = lo; i <= hi; i++) next.add(ids[i]);
+            selectedIds.value = next;
+            lastClickedId.value = item.id;
+            return;
+        }
+    }
+    if (next.has(item.id)) next.delete(item.id);
+    else next.add(item.id);
+    selectedIds.value = next;
+    lastClickedId.value = item.id;
+}
+
+function clearSelection() {
+    selectedIds.value = new Set();
+    lastClickedId.value = null;
+}
+
+function bulkDownload() {
+    if (!selectedIds.value.size) return;
+    const ids = Array.from(selectedIds.value).join(',');
+    window.location.href = customerUrl(`/files/bulk/zip?ids=${ids}`);
+}
+
+function confirmBulkDelete() {
+    if (!selectedIds.value.size) return;
+    confirm.require({
+        group: 'files',
+        message: t('files.bulk.confirm_delete', { count: selectedIds.value.size }),
+        header: t('files.bulk.delete'),
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: t('files.delete'),
+        rejectLabel: t('common.cancel'),
+        acceptProps: { severity: 'danger' },
+        accept: () => {
+            router.post(
+                customerUrl('/files/bulk/delete'),
+                { ids: Array.from(selectedIds.value) },
+                { preserveScroll: true, onSuccess: () => clearSelection() },
+            );
+        },
+    });
+}
+
+// Move dialog
+const moveDialogOpen = ref(false);
+const moveFolders = ref<{ id: number; name: string; parent_id: number | null }[]>([]);
+// 0 is the "Root (top level)" sentinel — folder ids are always positive, so it
+// can't collide. Converted to null (= root) when submitting.
+const moveTargetId = ref<number>(0);
+
+async function openMoveDialog() {
+    if (!selectedIds.value.size) return;
+    moveTargetId.value = 0;
+    try {
+        const res = await fetch(customerUrl('/files/folders'), {
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+        });
+        const data = await res.json();
+        // Exclude folders that are part of the selection (can't move into self).
+        moveFolders.value = (data.folders ?? []).filter((f: { id: number }) => !selectedIds.value.has(f.id));
+    } catch {
+        moveFolders.value = [];
+    }
+    moveDialogOpen.value = true;
+}
+
+// Indented label list for the destination <select>: Root first, then folders.
+const moveFolderOptions = computed(() => {
+    const byId = new Map(moveFolders.value.map((f) => [f.id, f]));
+    function depth(f: { parent_id: number | null }): number {
+        let d = 0;
+        let cur = f.parent_id;
+        while (cur !== null && byId.has(cur)) {
+            d++;
+            cur = byId.get(cur)!.parent_id;
+        }
+        return d;
+    }
+    const opts: { value: number; label: string }[] = [{ value: 0, label: t('files.root') }];
+    for (const f of moveFolders.value) {
+        opts.push({ value: f.id, label: `${'  '.repeat(depth(f))}${f.name}` });
+    }
+    return opts;
+});
+
+function submitMove() {
+    router.post(
+        customerUrl('/files/bulk/move'),
+        { ids: Array.from(selectedIds.value), parent_id: moveTargetId.value || null },
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                moveDialogOpen.value = false;
+                clearSelection();
+            },
+        },
+    );
+}
+
+function openDetails(item: FileItem) {
+    if (item.type !== 'file') return;
+    detailsItem.value = item;
+}
+
+// Used from the lightbox header-actions slot, which only carries the id.
+function openDetailsById(id: string | number) {
+    const found = mergedItems.value.find((i) => i.id === Number(id));
+    if (found) detailsItem.value = found;
+}
+
+function openInNewTab(item: FileItem) {
+    if (item.type !== 'file') return;
+    // Images/PDF previews are viewable inline; everything else downloads.
+    const url = item.is_image && item.original_url ? item.original_url : customerUrl(`/files/${item.id}/download`);
+    window.open(url, '_blank', 'noopener');
+}
+
+async function copyLink(item: FileItem) {
+    if (item.type !== 'file') return;
+    try {
+        const res = await fetch(customerUrl(`/files/${item.id}/shares/signed`), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-XSRF-TOKEN': decodeURIComponent((document.cookie.match(/XSRF-TOKEN=([^;]+)/) ?? [])[1] ?? ''),
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ hours: 24 }),
+        });
+        if (!res.ok) {
+            shareErrorToast();
+            return;
+        }
+        const data = await res.json();
+        await navigator.clipboard?.writeText(data.url).catch(() => undefined);
+        toast.add({ severity: 'success', summary: t('files.copy_link'), detail: t('files.link_copied'), life: 3000 });
+    } catch {
+        shareErrorToast();
+    }
+}
+
 const currentFolderId = computed(() => props.current_folder?.id ?? null);
 
 const perms = computed<string[]>(() => (page.props.auth?.user?.permissions ?? []) as string[]);
@@ -232,17 +400,62 @@ const canDelete = computed(() => hasPerm('delete files'));
 const canShare = computed(() => hasPerm('share files'));
 
 const mergedItems = computed(() => (props.items?.data ?? []).map((i) => ({ ...i, ...(liveItems[i.id] ?? {}) })));
-const imageItems = computed(() => mergedItems.value.filter((i) => i.type === 'file' && i.is_image));
+
+// Everything that opens in the unified lightbox: images, ready videos, audio.
+// A video that's still transcoding is excluded (it has nothing to play yet);
+// openItem() shows the processing nudge instead.
+function isLightboxMedia(i: FileItem): boolean {
+    if (i.type !== 'file') return false;
+    if (i.is_image) return true;
+    if (i.is_video) return !!(i.video_ready && i.video_web_url);
+    if (i.is_audio) return true;
+    return false;
+}
+const mediaItems = computed(() => mergedItems.value.filter(isLightboxMedia));
 
 const lightboxItems = computed<LightboxItem[]>(() =>
-    imageItems.value.map((i) => ({
-        id: i.id,
-        src: i.preview_url ?? i.original_url ?? '',
-        zoomSrc: i.available_sizes?.large?.url ?? i.available_sizes?.xlarge?.url ?? i.original_url ?? undefined,
-        originalSrc: i.original_url ?? undefined,
-        alt: i.name,
-        canZoom: true,
-    })),
+    mediaItems.value.map((i) => {
+        const downloadUrl = customerUrl(`/files/${i.id}/download`);
+        if (i.is_video) {
+            return {
+                id: i.id,
+                kind: 'video' as const,
+                src: i.video_poster_url ?? i.thumbnail_url ?? '',
+                videoSrc: i.video_web_url ?? undefined,
+                poster: i.video_poster_url ?? i.thumbnail_url ?? undefined,
+                alt: i.name,
+                canZoom: false,
+                downloadUrl,
+                mime: i.mime_type ?? undefined,
+            };
+        }
+        if (i.is_audio) {
+            return {
+                id: i.id,
+                kind: 'audio' as const,
+                src: i.thumbnail_url ?? '',
+                audioSrc: i.original_url ?? undefined,
+                poster: i.thumbnail_url ?? undefined,
+                alt: i.name,
+                canZoom: false,
+                downloadUrl,
+                mime: i.mime_type ?? undefined,
+            };
+        }
+        return {
+            id: i.id,
+            kind: 'image' as const,
+            src: i.preview_url ?? i.original_url ?? '',
+            zoomSrc: i.available_sizes?.large?.url ?? i.available_sizes?.xlarge?.url ?? i.preview_url ?? undefined,
+            // For RAW the "original" is the undisplayable camera file, so zoom
+            // tops out at the largest generated size instead.
+            originalSrc: i.is_image && i.mime_type?.startsWith('image/') ? (i.original_url ?? undefined) : undefined,
+            alt: i.name,
+            canZoom: true,
+            downloadUrl,
+            mime: i.mime_type ?? undefined,
+        };
+    }),
 );
 
 function openItem(item: FileItem) {
@@ -251,14 +464,9 @@ function openItem(item: FileItem) {
         router.visit(customerUrl(`/files/${item.id}`));
         return;
     }
-    if (item.is_image) {
-        const idx = imageItems.value.findIndex((i) => i.id === item.id);
+    if (isLightboxMedia(item)) {
+        const idx = mediaItems.value.findIndex((i) => i.id === item.id);
         if (idx >= 0) lightboxIndex.value = idx;
-        return;
-    }
-    if (item.is_video && item.video_ready && item.video_web_url) {
-        videoItem.value = item;
-        videoOpen.value = true;
         return;
     }
     if (item.is_video && item.video_processing) {
@@ -269,6 +477,11 @@ function openItem(item: FileItem) {
     // The modal has a Download button for users who want the original.
     if (item.has_doc_preview) {
         docPreviewItem.value = item;
+        return;
+    }
+    // Text / code / markdown render inline.
+    if (item.is_text) {
+        textItem.value = item;
         return;
     }
     // Still rendering a preview? Wait for the broadcast to flip
@@ -452,6 +665,9 @@ function onKey(e: KeyboardEvent) {
         uploadOpen.value = false;
         shareDialogFile.value = null;
         docPreviewItem.value = null;
+        detailsItem.value = null;
+        textItem.value = null;
+        if (selectedIds.value.size) clearSelection();
     }
 }
 
@@ -495,6 +711,8 @@ watch(
 
 const uploadUrl = computed(() => customerUrl('/files'));
 const extraUploadData = computed(() => ({ parent_id: currentFolderId.value }));
+// UploadDialog's max-file-size prop is in MB; the server sends a byte ceiling.
+const maxUploadMb = computed(() => props.max_upload_bytes / (1024 * 1024));
 // FilesUsageBar formats its own "used / quota" label (including the
 // "Disabled" branch for quota === 0), so the page no longer needs a
 // computed wrapper.
@@ -619,8 +837,9 @@ const extraUploadData = computed(() => ({ parent_id: currentFolderId.value }));
                     v-for="item in mergedItems"
                     :key="item.id"
                     class="cmd-file-card"
+                    :class="{ 'cmd-file-card-selected': isSelected(item.id) }"
                     :style="{
-                        border: `1px solid ${dragOverId === item.id ? 'var(--accent)' : 'var(--border)'}`,
+                        border: `1px solid ${isSelected(item.id) ? 'var(--accent)' : dragOverId === item.id ? 'var(--accent)' : 'var(--border)'}`,
                         background: 'var(--panel)',
                         borderRadius: '6px',
                         overflow: 'hidden',
@@ -637,6 +856,16 @@ const extraUploadData = computed(() => ({ parent_id: currentFolderId.value }));
                     @drop="onDropOnFolder(item, $event)"
                     @click="openItem(item)"
                 >
+                    <!-- Selection checkbox (shows on hover or when any selected) -->
+                    <button
+                        type="button"
+                        class="cmd-select-box"
+                        :class="{ 'cmd-select-box-on': isSelected(item.id), 'cmd-select-box-active': selectedCount > 0 }"
+                        :aria-label="t('files.bulk.select')"
+                        @click.stop="toggleSelect(item, $event)"
+                    >
+                        <i v-if="isSelected(item.id)" class="pi pi-check" :style="{ fontSize: '10px' }" />
+                    </button>
                     <div
                         :style="{
                             position: 'relative',
@@ -781,6 +1010,9 @@ const extraUploadData = computed(() => ({ parent_id: currentFolderId.value }));
                             :canShareToCompany="canShareToCompany"
                             @shareToCompany="shareToCompany(item)"
                             @unshareFromCompany="unshareFromCompany(item)"
+                            @details="openDetails(item)"
+                            @copyLink="copyLink(item)"
+                            @openNewTab="openInNewTab(item)"
                         />
                     </div>
                 </div>
@@ -868,6 +1100,15 @@ const extraUploadData = computed(() => ({ parent_id: currentFolderId.value }));
                         >
                             <td :style="{ padding: '8px 14px', color: 'var(--fg)' }">
                                 <div :style="{ display: 'flex', alignItems: 'center', gap: '8px' }">
+                                    <button
+                                        type="button"
+                                        class="cmd-select-box cmd-select-box-inline"
+                                        :class="{ 'cmd-select-box-on': isSelected(item.id), 'cmd-select-box-active': selectedCount > 0 }"
+                                        :aria-label="t('files.bulk.select')"
+                                        @click.stop="toggleSelect(item, $event)"
+                                    >
+                                        <i v-if="isSelected(item.id)" class="pi pi-check" :style="{ fontSize: '9px' }" />
+                                    </button>
                                     <i :class="`pi ${iconFor(item)}`" :style="{ color: 'var(--fg-mute)', fontSize: '12px' }" />
                                     <button
                                         v-if="renamingId !== item.id"
@@ -925,6 +1166,9 @@ const extraUploadData = computed(() => ({ parent_id: currentFolderId.value }));
                                     :canShareToCompany="canShareToCompany"
                                     @shareToCompany="shareToCompany(item)"
                                     @unshareFromCompany="unshareFromCompany(item)"
+                                    @details="openDetails(item)"
+                                    @copyLink="copyLink(item)"
+                                    @openNewTab="openInNewTab(item)"
                                 />
                             </td>
                         </tr>
@@ -938,18 +1182,66 @@ const extraUploadData = computed(() => ({ parent_id: currentFolderId.value }));
             v-model:open="uploadOpen"
             :upload-url="uploadUrl"
             :extra-data="extraUploadData"
-            :max-file-size="50"
+            :max-file-size="maxUploadMb"
             :multiple="true"
         />
 
-        <ImageLightbox v-if="lightboxItems.length" v-model="lightboxIndex" :items="lightboxItems" />
+        <ImageLightbox v-if="lightboxItems.length" v-model="lightboxIndex" :items="lightboxItems">
+            <template #header-actions="{ item }">
+                <button
+                    type="button"
+                    :aria-label="t('files.details.title')"
+                    :title="t('files.details.title')"
+                    class="rounded-lg bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+                    @click.stop="openDetailsById(item.id)"
+                >
+                    <i class="pi pi-info-circle" :style="{ fontSize: '18px' }" />
+                </button>
+            </template>
+        </ImageLightbox>
 
-        <VideoPlayer
-            v-model="videoOpen"
-            :src="videoItem?.video_web_url ?? null"
-            :poster="videoItem?.video_poster_url ?? videoItem?.thumbnail_url ?? null"
-            :title="videoItem?.name ?? null"
+        <FileDetailsDialog :item="detailsItem" @close="detailsItem = null" />
+
+        <TextPreviewDialog
+            :item="textItem"
+            :download-url="textItem ? customerUrl(`/files/${textItem.id}/download`) : undefined"
+            @close="textItem = null"
         />
+
+        <!-- Bulk action bar -->
+        <BulkActionBar
+            :count="selectedCount"
+            :can-delete="canDelete"
+            :can-move="canRename"
+            @download="bulkDownload"
+            @move="openMoveDialog"
+            @delete="confirmBulkDelete"
+            @clear="clearSelection"
+        />
+
+        <!-- Bulk move dialog -->
+        <CommandDialog
+            v-model:visible="moveDialogOpen"
+            :title="t('files.bulk.move_title', { count: selectedCount })"
+            width="420px"
+        >
+            <CmdSelect
+                v-model="moveTargetId"
+                :label="t('files.bulk.move_to')"
+                :options="moveFolderOptions"
+            />
+            <template #footer>
+                <CmdButton variant="ghost" size="sm" @click="moveDialogOpen = false">
+                    {{ t('common.cancel') }}
+                </CmdButton>
+                <CmdButton variant="primary" size="sm" @click="submitMove">
+                    <template #icon>
+                        <i class="pi pi-folder-open" :style="{ fontSize: '11px' }" />
+                    </template>
+                    {{ t('files.bulk.move') }}
+                </CmdButton>
+            </template>
+        </CommandDialog>
 
         <!-- Doc preview dialog -->
         <Teleport to="body">
@@ -1214,6 +1506,45 @@ const extraUploadData = computed(() => ({ parent_id: currentFolderId.value }));
 .cmd-file-actions {
     opacity: 0;
     transition: opacity 0.12s;
+}
+/* Selection checkbox — hidden until hover or until a selection is active. */
+.cmd-select-box {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    z-index: 5;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    border: 1.5px solid var(--border);
+    background: var(--overlay, rgba(0, 0, 0, 0.45));
+    color: #fff;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.12s, background 0.12s, border-color 0.12s;
+}
+.cmd-select-box-inline {
+    position: static;
+    opacity: 0;
+    background: var(--panel2);
+    color: var(--fg);
+}
+.cmd-file-card:hover .cmd-select-box,
+.cmd-file-row:hover .cmd-select-box,
+.cmd-select-box-active,
+.cmd-select-box-on {
+    opacity: 1;
+}
+.cmd-select-box-on {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+.cmd-file-card-selected {
+    background: var(--accent-soft) !important;
 }
 .cmd-file-card:hover .cmd-file-actions,
 .cmd-file-card:focus-within .cmd-file-actions {

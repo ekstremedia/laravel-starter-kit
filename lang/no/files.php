@@ -18,6 +18,8 @@ return [
     'upload_success' => ':count fil(er) lastet opp.',
     'updated' => 'Oppdatert.',
     'deleted' => 'Slettet.',
+    'bulk_deleted' => ':count element(er) slettet.',
+    'bulk_moved' => ':count element(er) flyttet.',
     'new_folder' => 'Ny mappe',
     'upload' => 'Last opp',
     'search_placeholder' => 'Søk i filer …',

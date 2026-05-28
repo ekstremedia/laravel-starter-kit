@@ -6,12 +6,15 @@ namespace App\Domains\Files\Http\Controllers;
 
 use App\Domains\Files\Events\FileItemUpdated;
 use App\Domains\Files\Http\Resources\CompanyFileItemResource;
+use App\Domains\Files\Jobs\ExtractFileMetadata;
 use App\Domains\Files\Jobs\GenerateDocumentPreview;
+use App\Domains\Files\Jobs\GenerateImagePreview;
 use App\Domains\Files\Jobs\GenerateVideoPreview;
 use App\Domains\Files\Models\CompanyFileLink;
 use App\Domains\Files\Models\FileItem;
 use App\Domains\Files\Services\StorageUsageService;
 use App\Domains\Files\Support\CompanyFilesCache;
+use App\Domains\Files\Support\UploadLimits;
 use App\Domains\Notifications\Notifications\CompanyFileDeletedByAdminNotification;
 use App\Domains\Notifications\Notifications\CompanyFileUnlinkedByAdminNotification;
 use App\Domains\Settings\Models\AppSetting;
@@ -198,7 +201,7 @@ class CompanyFileController extends Controller
 
         $request->validate([
             'files' => 'required|array|min:1',
-            'files.*' => 'file|max:'.config('files.max_upload_kilobytes', 51200),
+            'files.*' => 'file|max:'.UploadLimits::maxUploadKilobytes(),
             'parent_id' => ['nullable', 'integer', $this->existsFileItemRule()],
         ]);
 
@@ -211,7 +214,9 @@ class CompanyFileController extends Controller
         $created = 0;
         $previewTargets = [];
         $videoTargets = [];
-        DB::connection((string) config('tenancy.database.central_connection'))->transaction(function () use ($request, $tenant, $user, $parentId, &$created, &$previewTargets, &$videoTargets): void {
+        $imageTargets = [];
+        $allTargets = [];
+        DB::connection((string) config('tenancy.database.central_connection'))->transaction(function () use ($request, $tenant, $user, $parentId, &$created, &$previewTargets, &$videoTargets, &$imageTargets, &$allTargets): void {
             foreach ($request->file('files', []) as $file) {
                 $name = $this->uniqueNameCompany($tenant->id, $parentId, $file->getClientOriginalName());
                 $size = $file->getSize();
@@ -230,12 +235,17 @@ class CompanyFileController extends Controller
 
                 $item->addMedia($file)->toMediaCollection('file');
                 $created++;
+                $allTargets[] = $item->id;
 
-                if (in_array((string) $item->mime_type, config('files.preview_mime_types', []), true)) {
+                if (! $item->isTextPreviewable()
+                    && in_array((string) $item->mime_type, config('files.preview_mime_types', []), true)) {
                     $previewTargets[] = $item->id;
                 }
                 if ($item->isVideo()) {
                     $videoTargets[] = $item->id;
+                }
+                if ($item->needsImagePreview()) {
+                    $imageTargets[] = $item->id;
                 }
             }
         });
@@ -246,7 +256,13 @@ class CompanyFileController extends Controller
         foreach ($videoTargets as $id) {
             GenerateVideoPreview::dispatch($id);
         }
-        foreach (array_unique(array_merge($previewTargets, $videoTargets)) as $id) {
+        foreach ($imageTargets as $id) {
+            GenerateImagePreview::dispatch($id);
+        }
+        foreach ($allTargets as $id) {
+            ExtractFileMetadata::dispatch($id);
+        }
+        foreach (array_unique(array_merge($previewTargets, $videoTargets, $imageTargets)) as $id) {
             $fresh = FileItem::with('media')->find($id);
             if ($fresh) {
                 event(new FileItemUpdated($fresh));

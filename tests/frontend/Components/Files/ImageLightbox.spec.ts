@@ -82,3 +82,37 @@ describe('ImageLightbox', () => {
         wrapper.unmount();
     });
 });
+
+describe('ImageLightbox — unified media (video/audio/download)', () => {
+    const mixed: LightboxItem[] = [
+        { id: 1, kind: 'image', src: '/img.jpg', canZoom: true, downloadUrl: '/dl/1', alt: 'pic' },
+        { id: 2, kind: 'video', src: '/poster.jpg', videoSrc: '/clip.mp4', poster: '/poster.jpg', canZoom: false, downloadUrl: '/dl/2', alt: 'clip' },
+        { id: 3, kind: 'audio', src: '', audioSrc: '/song.mp3', canZoom: false, downloadUrl: '/dl/3', alt: 'song' },
+    ];
+
+    it('renders a <video> for video items', () => {
+        const wrapper = mount(ImageLightbox, { props: { modelValue: 1, items: mixed }, attachTo: document.body });
+        const video = document.querySelector('video');
+        expect(video).not.toBeNull();
+        expect(video?.getAttribute('src')).toBe('/clip.mp4');
+        expect(video?.getAttribute('poster')).toBe('/poster.jpg');
+        wrapper.unmount();
+    });
+
+    it('renders an <audio> for audio items', () => {
+        const wrapper = mount(ImageLightbox, { props: { modelValue: 2, items: mixed }, attachTo: document.body });
+        const audio = document.querySelector('audio');
+        expect(audio).not.toBeNull();
+        expect(audio?.getAttribute('src')).toBe('/song.mp3');
+        wrapper.unmount();
+    });
+
+    it('exposes a download control and play/stop controls for media', () => {
+        const wrapper = mount(ImageLightbox, { props: { modelValue: 1, items: mixed }, attachTo: document.body });
+        const labels = Array.from(document.querySelectorAll('button')).map((b) => b.getAttribute('aria-label'));
+        expect(labels).toContain('lightbox.download');
+        expect(labels).toContain('lightbox.stop');
+        expect(labels.some((l) => l === 'lightbox.play' || l === 'lightbox.pause')).toBe(true);
+        wrapper.unmount();
+    });
+});

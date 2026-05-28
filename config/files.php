@@ -18,6 +18,10 @@ use App\Domains\Users\Models\User;
 return [
     'gotenberg_url' => env('GOTENBERG_URL', 'http://gotenberg:3000'),
 
+    // Path to the exiftool binary used for metadata extraction and RAW preview
+    // extraction. Override in env if it isn't on PATH.
+    'exiftool_binary' => env('EXIFTOOL_BINARY', 'exiftool'),
+
     // Polymorphic owner types this app accepts for FileItem ownership.
     // Add new types (Building, Customer, Property…) here as the domain grows
     // — the controller refuses to morph to anything not on this list to
@@ -49,6 +53,28 @@ return [
         'text/rtf',
         'application/rtf',
     ],
+
+    // Camera RAW extensions. Browsers can't render these and the uploaded
+    // mime is usually application/octet-stream, so we detect by extension and
+    // generate a normalized JPEG preview (embedded JPEG via exiftool, else
+    // ImageMagick). Add formats as needed.
+    'raw_extensions' => ['arw', 'cr2', 'cr3', 'nef', 'dng', 'raf', 'orf', 'rw2', 'srw', 'pef'],
+
+    // Non-RAW image formats browsers also can't (reliably) display inline; we
+    // rasterize them to JPEG via ImageMagick/Imagick.
+    'rasterize_extensions' => ['tif', 'tiff', 'heic', 'heif'],
+
+    // Plain-text / source-code / data files we preview inline instead of
+    // forcing a download. Markdown extensions additionally render formatted.
+    'text_extensions' => [
+        'txt', 'md', 'markdown', 'json', 'xml', 'csv', 'tsv', 'log', 'yml', 'yaml',
+        'ini', 'conf', 'env', 'js', 'ts', 'jsx', 'tsx', 'vue', 'css', 'scss', 'html',
+        'php', 'py', 'rb', 'go', 'rs', 'java', 'c', 'cpp', 'h', 'sh', 'bash', 'sql',
+    ],
+    'markdown_extensions' => ['md', 'markdown'],
+
+    // Cap how much of a text file we stream into the inline preview (bytes).
+    'text_preview_max_bytes' => 256 * 1024,
 
     // Clamp to at least 1 — downstream commands subtract this from "now" to
     // compute the cutoff; 0 or negative would hard-delete everything on the

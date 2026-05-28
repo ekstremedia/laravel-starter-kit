@@ -2,6 +2,7 @@
 
 namespace App\Domains\Settings\Http\Controllers;
 
+use App\Domains\Files\Support\UploadLimits;
 use App\Domains\Settings\Models\AppSetting;
 use App\Domains\Tenancy\Support\CustomerMembership;
 use App\Http\Controllers\Controller;
@@ -22,7 +23,12 @@ class AppSettingsController extends Controller
                 'maintenance_message', 'announcement_banner', 'announcement_severity',
                 'files_feature_enabled', 'max_share_days',
                 'default_personal_storage_bytes', 'default_entity_storage_bytes',
+                'max_upload_bytes',
             ]),
+            // The hard ceiling the running PHP process accepts. Surfaced so the
+            // settings UI can show the admin what they can't exceed (and why a
+            // larger value is rejected).
+            'php_upload_ceiling_bytes' => UploadLimits::phpCeilingBytes(),
             // Only customer-scoped roles are valid as a Fortify default — the
             // registration flow hands the new user off to `CustomerMembership`,
             // which would reject SuperAdmin (a platform flag, not a role).
@@ -53,6 +59,11 @@ class AppSettingsController extends Controller
             // Global fallback cap for file-owning entities (Assets, …). Same
             // sentinel convention as the personal default above.
             'default_entity_storage_bytes' => ['sometimes', 'nullable', 'integer', 'min:-1', 'max:'.((2 ** 53) - 1)],
+            // Per-file upload ceiling. Clamped server-side to the running PHP
+            // process limit — the admin can't promise more than the server
+            // accepts. Floor of 1 KB so it can never be set to "nothing".
+            // `sometimes` so partial settings updates that omit it still pass.
+            'max_upload_bytes' => ['sometimes', 'integer', 'min:1024', 'max:'.UploadLimits::phpCeilingBytes()],
         ]);
 
         $settings = AppSetting::current();

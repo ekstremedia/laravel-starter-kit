@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { LightboxItem } from '@/types/lightbox';
-import { Check, ChevronLeft, ChevronRight, Circle, Grid3x3, Loader2, Maximize, X } from 'lucide-vue-next';
+import { Check, ChevronLeft, ChevronRight, Circle, Download, Grid3x3, Loader2, Maximize, Pause, Play, Square, X } from 'lucide-vue-next';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
@@ -28,6 +28,58 @@ const MAX_ZOOM = 10;
 const isOpen = computed(() => props.modelValue !== null);
 const currentIndex = computed(() => props.modelValue ?? 0);
 const currentItem = computed(() => props.items[currentIndex.value] ?? null);
+
+// ── Media kind (image | video | audio) ─────────────────────────────
+const currentKind = computed(() => currentItem.value?.kind ?? 'image');
+const isImageKind = computed(() => currentKind.value === 'image');
+const isVideoKind = computed(() => currentKind.value === 'video');
+const isAudioKind = computed(() => currentKind.value === 'audio');
+
+// Playback element for video/audio + explicit transport controls.
+const mediaPlayerRef = ref<HTMLVideoElement | HTMLAudioElement | null>(null);
+const isPlaying = ref(false);
+
+function onMediaPlay() {
+    isPlaying.value = true;
+}
+function onMediaPause() {
+    isPlaying.value = false;
+}
+function togglePlay() {
+    const el = mediaPlayerRef.value;
+    if (!el) return;
+    if (el.paused) el.play?.()?.catch?.(() => undefined);
+    else el.pause?.();
+}
+function stopMedia() {
+    const el = mediaPlayerRef.value;
+    if (!el) return;
+    el.pause?.();
+    el.currentTime = 0;
+}
+
+// Auto-play (muted, so browsers allow it) when a video/audio item opens or is
+// navigated to. The native controls let the user unmute immediately.
+watch([currentIndex, isOpen], () => {
+    if (!isOpen.value) return;
+    if (isImageKind.value) return;
+    isPlaying.value = false;
+    setTimeout(() => {
+        const el = mediaPlayerRef.value;
+        if (!el) return;
+        if (el instanceof HTMLVideoElement) el.muted = true;
+        el.play?.()?.catch?.(() => undefined);
+    }, 60);
+});
+
+function downloadCurrent() {
+    const url = currentItem.value?.downloadUrl;
+    if (!url) return;
+    const a = document.createElement('a');
+    a.href = url;
+    a.rel = 'noopener';
+    a.click();
+}
 
 const lightboxImageLoading = ref(false);
 const lightboxContainerRef = ref<HTMLElement | null>(null);
@@ -437,11 +489,16 @@ function onImageLoad() {
 function onKeydown(e: KeyboardEvent) {
     if (!isOpen.value) return;
     const key = e.key.toLowerCase();
+    const tag = (e.target as HTMLElement | null)?.tagName;
+    const inField = tag === 'INPUT' || tag === 'TEXTAREA';
     if (e.key === 'ArrowLeft') prev();
     else if (e.key === 'ArrowRight') next();
-    else if (key === 'f') toggleFullscreen();
-    else if (key === 'o') toggleOriginal();
-    else if (key === '0') toggleOriginal();
+    else if (e.key === ' ' && !isImageKind.value && !inField) {
+        e.preventDefault();
+        togglePlay();
+    } else if (key === 'f') toggleFullscreen();
+    else if (key === 'o' && isImageKind.value) toggleOriginal();
+    else if (key === '0' && isImageKind.value) toggleOriginal();
     else if (e.key === 'Escape') {
         if (isZoomed.value) resetZoom();
         else close();
@@ -616,6 +673,38 @@ defineExpose({
                                 {{ t('lightbox.loadOriginal') }}
                             </button>
 
+                            <!-- Transport controls for video / audio -->
+                            <template v-if="!isImageKind">
+                                <button
+                                    @click.stop="togglePlay"
+                                    :aria-label="isPlaying ? t('lightbox.pause') : t('lightbox.play')"
+                                    :title="isPlaying ? t('lightbox.pause') : t('lightbox.play')"
+                                    class="rounded-lg bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+                                >
+                                    <Pause v-if="isPlaying" class="h-5 w-5" />
+                                    <Play v-else class="h-5 w-5" />
+                                </button>
+                                <button
+                                    @click.stop="stopMedia"
+                                    :aria-label="t('lightbox.stop')"
+                                    :title="t('lightbox.stop')"
+                                    class="rounded-lg bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+                                >
+                                    <Square class="h-5 w-5" />
+                                </button>
+                            </template>
+
+                            <!-- Download (any kind that provides a target) -->
+                            <button
+                                v-if="currentItem.downloadUrl"
+                                @click.stop="downloadCurrent"
+                                :aria-label="t('lightbox.download')"
+                                :title="t('lightbox.download')"
+                                class="rounded-lg bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+                            >
+                                <Download class="h-5 w-5" />
+                            </button>
+
                             <button
                                 @click.stop="toggleFullscreen"
                                 :aria-label="t('lightbox.fullscreen')"
@@ -625,7 +714,7 @@ defineExpose({
                                 <Maximize class="h-5 w-5" />
                             </button>
 
-                            <!-- Slot for extra header actions (EXIF, download, etc.) -->
+                            <!-- Slot for extra header actions (EXIF, details, etc.) -->
                             <slot name="header-actions" :item="currentItem" :index="currentIndex" />
 
                             <button
@@ -714,6 +803,7 @@ defineExpose({
                     >
                         <!-- Default: image with zoom/pan -->
                         <img
+                            v-if="isImageKind"
                             :src="displaySrc"
                             :srcset="displaySrcset"
                             sizes="100vw"
@@ -729,6 +819,41 @@ defineExpose({
                             @click.stop="toggleZoom"
                             draggable="false"
                         />
+
+                        <!-- Video -->
+                        <video
+                            v-else-if="isVideoKind"
+                            ref="mediaPlayerRef"
+                            :src="currentItem.videoSrc ?? currentItem.src"
+                            :poster="currentItem.poster ?? undefined"
+                            controls
+                            playsinline
+                            class="max-h-full max-w-full rounded-lg bg-black"
+                            @play="onMediaPlay"
+                            @pause="onMediaPause"
+                            @click.stop
+                        />
+
+                        <!-- Audio -->
+                        <div
+                            v-else
+                            class="flex w-full max-w-md flex-col items-center gap-6 px-6"
+                            @click.stop
+                        >
+                            <div class="flex h-48 w-48 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-2xl">
+                                <img v-if="currentItem.poster" :src="currentItem.poster" :alt="currentItem.alt || ''" class="h-full w-full object-cover" />
+                                <i v-else class="pi pi-volume-up text-5xl text-white/50" />
+                            </div>
+                            <p v-if="currentItem.alt" class="max-w-full truncate text-center font-medium text-white">{{ currentItem.alt }}</p>
+                            <audio
+                                ref="mediaPlayerRef"
+                                :src="currentItem.audioSrc ?? currentItem.src"
+                                controls
+                                class="w-full"
+                                @play="onMediaPlay"
+                                @pause="onMediaPause"
+                            />
+                        </div>
                     </slot>
 
                     <!-- Status & hotkeys widget (inside content area, moves up when footer visible) -->

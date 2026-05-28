@@ -78,6 +78,7 @@ class FileItem extends Model implements HasMedia
         'name',
         'mime_type',
         'size',
+        'metadata',
     ];
 
     /**
@@ -204,12 +205,83 @@ class FileItem extends Model implements HasMedia
         return $this->mime_type !== null && str_starts_with($this->mime_type, 'image/');
     }
 
+    public function isAudio(): bool
+    {
+        return $this->mime_type !== null && str_starts_with($this->mime_type, 'audio/');
+    }
+
+    /**
+     * True for files we render inline as text/code instead of downloading.
+     */
+    public function isTextPreviewable(): bool
+    {
+        if ($this->isFolder()) {
+            return false;
+        }
+        if ($this->mime_type !== null && str_starts_with($this->mime_type, 'text/')) {
+            return true;
+        }
+        if (in_array((string) $this->mime_type, ['application/json', 'application/xml', 'application/x-yaml'], true)) {
+            return true;
+        }
+
+        return in_array($this->extension(), (array) config('files.text_extensions', []), true);
+    }
+
+    public function isMarkdown(): bool
+    {
+        return in_array($this->extension(), (array) config('files.markdown_extensions', []), true);
+    }
+
+    /**
+     * Lowercase file extension derived from the stored name (no leading dot).
+     */
+    public function extension(): string
+    {
+        return strtolower((string) pathinfo($this->name, PATHINFO_EXTENSION));
+    }
+
+    /**
+     * True for files that aren't browser-displayable as-is but for which we
+     * generate a normalized JPEG preview: camera RAW, TIFF, HEIC/HEIF. Detected
+     * by extension OR mime, since RAW usually arrives as octet-stream.
+     */
+    public function needsImagePreview(): bool
+    {
+        if ($this->isFolder()) {
+            return false;
+        }
+
+        $ext = $this->extension();
+        $raw = (array) config('files.raw_extensions', []);
+        $rasterize = (array) config('files.rasterize_extensions', []);
+
+        if (in_array($ext, $raw, true) || in_array($ext, $rasterize, true)) {
+            return true;
+        }
+
+        return in_array((string) $this->mime_type, ['image/tiff', 'image/heic', 'image/heif'], true);
+    }
+
+    /**
+     * True when this item should be treated as an image in the UI — either a
+     * genuinely browser-displayable image, or a RAW/TIFF/HEIC that gets a
+     * generated JPEG preview.
+     */
+    public function isPreviewableImage(): bool
+    {
+        return $this->isImage() || $this->needsImagePreview();
+    }
+
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('file')->singleFile();
         $this->addMediaCollection('doc_preview')->singleFile();
         $this->addMediaCollection('video_preview')->singleFile();
         $this->addMediaCollection('video_web')->singleFile();
+        // Normalized JPEG rendered from RAW/TIFF/HEIC originals (the browser
+        // can't show those). Carries the same size conversions as `file`.
+        $this->addMediaCollection('image_preview')->singleFile();
     }
 
     public function isVideo(): bool
@@ -232,7 +304,9 @@ class FileItem extends Model implements HasMedia
                 ->fit(Fit::Contain, $cfg['width'], $cfg['height'])
                 ->format('webp')
                 ->quality($cfg['quality'])
-                ->performOnCollections('file');
+                // The generated image_preview JPEG gets the same thumb/medium/
+                // large/xlarge ladder as a native image upload.
+                ->performOnCollections('file', 'image_preview');
         }
     }
 
@@ -257,6 +331,7 @@ class FileItem extends Model implements HasMedia
             'user_id' => 'integer',
             'owner_id' => 'integer',
             'parent_id' => 'integer',
+            'metadata' => 'array',
         ];
     }
 
