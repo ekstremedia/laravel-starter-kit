@@ -196,3 +196,58 @@
         grid-column: auto !important;
     }
 }
+
+/* Data-table responsive pattern: the tabular grid (.cmd-dt-grid) shows on
+ * desktop/tablet; on phones it's swapped for a stacked card list
+ * (.cmd-dt-cards) — one card per row, each column a label/value pair. Shared
+ * by the Command DataTable and the bespoke admin Users table. */
+.cmd-dt-cards {
+    display: none;
+}
+@media (max-width: 640px) {
+    .cmd-dt-grid {
+        display: none;
+    }
+    .cmd-dt-cards {
+        display: block;
+    }
+}
+.cmd-dt-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+}
+.cmd-dt-field {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 4px 0;
+    font-size: 12.5px;
+    min-width: 0;
+}
+.cmd-dt-label {
+    flex-shrink: 0;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 9.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--fg-mute);
+}
+.cmd-dt-value {
+    min-width: 0;
+    text-align: right;
+    color: var(--fg);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cmd-dt-card-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border);
+}

@@ -342,9 +342,8 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
 
     <!-- Table -->
     <div class="cmd-card">
-      <!-- Scroll horizontally on narrow screens so the columns stay readable. -->
-      <div :style="{ overflowX: 'auto' }">
-       <div :style="{ minWidth: '760px' }">
+      <!-- Desktop: tabular grid. Phones use the stacked card list below. -->
+      <div class="cmd-dt-grid">
         <div
             class="cmd-mono cmd-uc"
             :style="{
@@ -653,7 +652,93 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
                 </div>
             </div>
         </template>
-       </div>
+      </div>
+
+      <!-- Mobile: one card per user. -->
+      <div class="cmd-dt-cards">
+        <div
+            v-if="rows.length === 0"
+            :style="{ padding: '28px 16px', textAlign: 'center', color: 'var(--fg-mute)', fontSize: '12px' }"
+        >{{ t('admin.users.no_users_found') }}</div>
+        <div
+            v-for="u in rows"
+            :key="`card-${u.id}`"
+            class="cmd-dt-card"
+            :style="{ background: selected.has(u.id) ? 'var(--accent-soft)' : 'transparent' }"
+        >
+            <div class="cmd-dt-field">
+                <span class="cmd-dt-label">{{ t('common.name') }}</span>
+                <span class="cmd-dt-value" :style="{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-end' }">
+                    <span :style="{ width: '22px', height: '22px', borderRadius: '4px', background: avatarColor(u) + '22', color: avatarColor(u), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9.5px', fontWeight: 700, fontFamily: 'var(--font-mono)', flexShrink: 0 }">{{ initials(u) }}</span>
+                    <Link :href="`/admin/users/${u.id}`" :style="{ color: 'var(--fg)', fontWeight: 500, textDecoration: 'none' }">{{ u.first_name }} {{ u.last_name }}</Link>
+                </span>
+            </div>
+            <div class="cmd-dt-field">
+                <span class="cmd-dt-label">{{ t('admin.users.email') }}</span>
+                <span class="cmd-dt-value cmd-mono" :style="{ fontSize: '11px' }">{{ u.email }}</span>
+            </div>
+            <div class="cmd-dt-field">
+                <span class="cmd-dt-label">{{ t('admin.users.companies_col', 'Selskaper') }}</span>
+                <span class="cmd-dt-value" :style="{ display: 'flex', flexWrap: 'wrap', gap: '4px', justifyContent: 'flex-end' }">
+                    <span
+                        v-if="u.is_super_admin"
+                        class="cmd-mono"
+                        :style="{ fontSize: '9.5px', padding: '2px 6px', borderRadius: '3px', color: roleToneColor('SuperAdmin'), background: roleToneBg('SuperAdmin'), border: `1px solid ${roleToneBorder('SuperAdmin')}` }"
+                    >SUPER</span>
+                    <span
+                        v-for="c in u.customer_roles"
+                        :key="c.id"
+                        class="cmd-mono"
+                        :style="{ fontSize: '10.5px', padding: '2px 7px', borderRadius: '3px', background: 'var(--panel2)', color: 'var(--fg-dim)', border: '1px solid var(--border)' }"
+                    >{{ c.name }}</span>
+                    <span
+                        v-if="!u.is_super_admin && u.customer_roles.length === 0"
+                        :style="{ fontSize: '11px', color: 'var(--fg-mute)', fontStyle: 'italic' }"
+                    >—</span>
+                </span>
+            </div>
+            <div class="cmd-dt-field">
+                <span class="cmd-dt-label">{{ t('common.storage') }}</span>
+                <span class="cmd-dt-value cmd-mono" :style="{ fontSize: '10.5px' }">{{ formatBytes(u.storage_used_bytes) }}</span>
+            </div>
+            <div class="cmd-dt-field">
+                <span class="cmd-dt-label">{{ t('admin.users.last_seen_col') }}</span>
+                <span class="cmd-dt-value cmd-mono" :style="{ fontSize: '11px' }">{{ lastSeen(u) }}</span>
+            </div>
+            <div class="cmd-dt-card-actions">
+                <Link
+                    :href="`/admin/users/${u.id}/edit`"
+                    :title="t('common.edit')"
+                    :style="{ color: 'var(--fg-dim)', padding: '4px', display: 'flex' }"
+                ><Icon name="edit" :size="14" /></Link>
+                <button
+                    type="button"
+                    :title="t('admin.users.send_test')"
+                    @click="sendTest(u)"
+                    :style="{ background: 'transparent', border: 'none', color: 'var(--fg-dim)', cursor: 'pointer', padding: '4px', display: 'flex' }"
+                ><Icon name="mail" :size="14" /></button>
+                <button
+                    v-if="u.banned_at"
+                    type="button"
+                    :title="t('admin.users.unban')"
+                    @click="unban(u)"
+                    :style="{ background: 'transparent', border: 'none', color: 'var(--accent)', cursor: 'pointer', padding: '4px', display: 'flex' }"
+                ><Icon name="restore" :size="14" /></button>
+                <button
+                    v-else-if="canBan(u)"
+                    type="button"
+                    :title="t('admin.users.ban')"
+                    @click="ban(u)"
+                    :style="{ background: 'transparent', border: 'none', color: 'var(--fg-dim)', cursor: 'pointer', padding: '4px', display: 'flex' }"
+                ><Icon name="shield" :size="14" /></button>
+                <button
+                    type="button"
+                    :title="t('common.delete')"
+                    @click="deleteOne(u)"
+                    :style="{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px', display: 'flex' }"
+                ><Icon name="trash" :size="14" /></button>
+            </div>
+        </div>
       </div>
 
         <!-- Footer / pagination -->

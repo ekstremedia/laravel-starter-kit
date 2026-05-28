@@ -229,6 +229,7 @@ export default {
         save: 'Save',
         delete: 'Delete',
         edit: 'Edit',
+        select: 'Select',
         add: 'Add',
         remove: 'Remove',
         back: '← Back',

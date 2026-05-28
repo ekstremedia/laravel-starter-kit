@@ -229,6 +229,7 @@ export default {
         save: 'Lagre',
         delete: 'Slett',
         edit: 'Rediger',
+        select: 'Velg',
         add: 'Legg til',
         remove: 'Fjern',
         back: '← Tilbake',
