@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-use App\Models\AppSetting;
-use App\Models\FileItem;
-use App\Models\Message;
-use App\Models\Tenant;
-use App\Models\User;
-use App\Notifications\ApproachingStorageLimitNotification;
-use App\Services\StorageUsageService;
+use App\Domains\Chat\Models\Message;
+use App\Domains\Files\Models\FileItem;
+use App\Domains\Files\Services\StorageUsageService;
+use App\Domains\Notifications\Notifications\ApproachingStorageLimitNotification;
+use App\Domains\Settings\Models\AppSetting;
+use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Users\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
@@ -16,7 +16,10 @@ use Illuminate\Support\Str;
 function seedMediaRow(string $modelType, int $modelId, int $size, string $mime = 'image/jpeg', string $collection = 'file'): void
 {
     DB::table('media')->insert([
-        'model_type' => $modelType,
+        // Store the polymorphic morph alias (see the morph map in
+        // AppServiceProvider), matching what Eloquent writes and what
+        // StorageUsageService queries — not the raw FQCN.
+        'model_type' => (new $modelType)->getMorphClass(),
         'model_id' => $modelId,
         'uuid' => (string) Str::uuid(),
         'collection_name' => $collection,

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Models\AppSetting;
-use App\Models\FileItem;
-use App\Models\FileShare;
-use App\Models\User;
+use App\Domains\Files\Models\FileItem;
+use App\Domains\Files\Models\FileShare;
+use App\Domains\Settings\Models\AppSetting;
+use App\Domains\Users\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Support\Facades\Hash;
 

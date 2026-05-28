@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\AppSetting;
-use App\Models\User;
+use App\Domains\Settings\Models\AppSetting;
+use App\Domains\Users\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 
 beforeEach(function () {

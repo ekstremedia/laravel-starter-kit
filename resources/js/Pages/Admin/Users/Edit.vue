@@ -220,7 +220,7 @@ function confirmRemove() {
         <div
             :style="{
                 display: 'grid',
-                gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
                 gap: '20px',
             }"
         >
@@ -229,7 +229,7 @@ function confirmRemove() {
                 class="cmd-card"
                 :style="{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }"
             >
-                <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' }">
+                <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }">
                     <Field
                         v-model="form.first_name"
                         :label="t('admin.users.first_name')"
@@ -247,7 +247,7 @@ function confirmRemove() {
                     :label="t('admin.users.email')"
                     :error="form.errors.email"
                 />
-                <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' }">
+                <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }">
                     <div>
                         <label
                             class="cmd-mono cmd-uc"

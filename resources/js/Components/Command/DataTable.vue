@@ -30,8 +30,11 @@ export interface Column<T = any> {
  */
 import { computed, ref, useSlots, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
+import { useI18n } from 'vue-i18n';
 import Icon from './Icon.vue';
 import Skeleton from './Skeleton.vue';
+
+const { t } = useI18n();
 
 type SortDir = 'asc' | 'desc';
 
@@ -65,7 +68,6 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
     search: '',
-    searchPlaceholder: 'Søk…',
     searchable: true,
     sortKey: '',
     sortDir: 'desc',
@@ -75,10 +77,14 @@ const props = withDefaults(defineProps<Props>(), {
     selectable: false,
     selected: () => new Set(),
     actionColumnWidth: '120px',
-    emptyText: 'Ingen treff.',
     rowLink: () => null,
     searchKeys: () => [],
 });
+
+// Localized fallbacks: callers can still pass explicit strings, but the
+// defaults follow the active locale instead of being hardcoded.
+const resolvedSearchPlaceholder = computed(() => props.searchPlaceholder ?? `${t('common.search')}…`);
+const resolvedEmptyText = computed(() => props.emptyText ?? t('common.no_results'));
 
 const emit = defineEmits<{
     'update:search': [value: string];
@@ -227,7 +233,7 @@ function colAlign(col: Column<Row>) {
                 />
                 <input
                     v-model="localSearch"
-                    :placeholder="searchPlaceholder"
+                    :placeholder="resolvedSearchPlaceholder"
                     :style="{
                         background: 'var(--panel2)',
                         border: '1px solid var(--border)',
@@ -244,6 +250,9 @@ function colAlign(col: Column<Row>) {
         </div>
 
         <div class="cmd-card">
+          <!-- Desktop: tabular grid. Hidden on phones, where the stacked card
+               list below renders instead (see <style>). -->
+          <div class="cmd-dt-grid">
             <!-- Header row -->
             <div
                 class="cmd-mono cmd-uc"
@@ -303,7 +312,7 @@ function colAlign(col: Column<Row>) {
                     </span>
                 </div>
                 <div v-if="hasSlot('actions')" :style="{ textAlign: 'right' }">
-                    <slot name="actions-header">Handlinger</slot>
+                    <slot name="actions-header">{{ t('common.actions') }}</slot>
                 </div>
             </div>
 
@@ -319,7 +328,7 @@ function colAlign(col: Column<Row>) {
                 <div
                     v-if="displayRows.length === 0"
                     :style="{ padding: '28px 16px', textAlign: 'center', color: 'var(--fg-mute)', fontSize: '12px' }"
-                >{{ emptyText }}</div>
+                >{{ resolvedEmptyText }}</div>
 
                 <!-- Rows -->
                 <div
@@ -379,6 +388,51 @@ function colAlign(col: Column<Row>) {
                     </div>
                 </div>
             </template>
+          </div>
+
+          <!-- Mobile: one card per row, columns stacked as label/value pairs. -->
+          <div class="cmd-dt-cards">
+            <div
+                v-if="loading"
+                :style="{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }"
+            >
+                <Skeleton v-for="i in 4" :key="i" :width="'100%'" :height="56" :radius="6" />
+            </div>
+            <template v-else>
+                <div
+                    v-if="displayRows.length === 0"
+                    :style="{ padding: '28px 16px', textAlign: 'center', color: 'var(--fg-mute)', fontSize: '12px' }"
+                >{{ resolvedEmptyText }}</div>
+
+                <div
+                    v-for="row in displayRows"
+                    :key="row.id"
+                    class="cmd-dt-card"
+                    :style="{ background: selected.has(row.id) ? 'var(--accent-soft)' : 'transparent' }"
+                >
+                    <label v-if="selectable" class="cmd-dt-field">
+                        <span class="cmd-dt-label">{{ t('common.select') }}</span>
+                        <input
+                            type="checkbox"
+                            :checked="selected.has(row.id)"
+                            @change="toggleOne(row)"
+                            :style="{ accentColor: 'var(--accent)' }"
+                        />
+                    </label>
+                    <div v-for="col in columns" :key="col.key" class="cmd-dt-field">
+                        <span class="cmd-dt-label">{{ col.label }}</span>
+                        <span class="cmd-dt-value" :class="col.mono ? 'cmd-mono' : ''">
+                            <slot :name="`cell:${col.key}`" :row="row" :value="cellValue(row, col)">
+                                {{ cellValue(row, col) }}
+                            </slot>
+                        </span>
+                    </div>
+                    <div v-if="hasSlot('actions')" class="cmd-dt-card-actions">
+                        <slot name="actions" :row="row" />
+                    </div>
+                </div>
+            </template>
+          </div>
 
             <!-- Footer -->
             <div

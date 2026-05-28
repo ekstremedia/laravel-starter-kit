@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Models\User;
+use App\Domains\Users\Models\User;
 
 // The `admin.health` private broadcast channel in routes/channels.php gates
 // on `$user->isSuperAdmin()` — these two tests lock that contract in so a

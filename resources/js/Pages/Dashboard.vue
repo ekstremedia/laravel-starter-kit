@@ -95,7 +95,7 @@ function formatDate(iso: string | null): string {
             <div
                 :style="{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
                     gap: '1px',
                     background: 'var(--border)',
                     border: '1px solid var(--border)',

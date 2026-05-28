@@ -65,6 +65,9 @@ export interface PageProps extends InertiaPageProps {
     request_id?: string;
     auth: {
         user?: User;
+        can?: {
+            manage_email_templates?: boolean;
+        };
     };
     debug: {
         easy_login_enabled: boolean;
@@ -82,6 +85,7 @@ export interface PageProps extends InertiaPageProps {
     chat: {
         enabled: boolean;
     };
+    assetsEnabled?: boolean;
     oauth?: {
         providers: Array<{ name: string; label: string }>;
     };

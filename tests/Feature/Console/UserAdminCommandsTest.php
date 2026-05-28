@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\User;
+use App\Domains\Users\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\PermissionRegistrar;

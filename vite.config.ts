@@ -6,15 +6,21 @@ import { resolve } from 'path';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd(), '');
-    let devServerHost = env.VITE_DEV_SERVER_HOST || 'starter-kit.test';
+    let devServerHost = env.VITE_DEV_SERVER_HOST || 'localhost';
 
     if (! env.VITE_DEV_SERVER_HOST && env.APP_URL) {
         try {
             devServerHost = new URL(env.APP_URL).hostname;
         } catch {
-            devServerHost = 'starter-kit.test';
+            devServerHost = 'localhost';
         }
     }
+
+    // Vite listens on this port inside the container AND it's the port the
+    // browser loads assets/HMR from, so docker-compose publishes it 1:1
+    // (VITE_HOST_PORT:VITE_HOST_PORT). Keep them equal — running a second stack
+    // just needs a different VITE_HOST_PORT in that project's .env.
+    const vitePort = Number(env.VITE_HOST_PORT) || 5173;
 
     return {
         plugins: [
@@ -39,12 +45,23 @@ export default defineConfig(({ mode }) => {
         },
         server: {
             host: '0.0.0.0',
-            port: 5173,
+            port: vitePort,
+            // Fail loudly if the port is taken instead of silently drifting to
+            // the next one — the published Docker host port is mapped 1:1, so a
+            // drifted port would serve assets the browser can't reach.
+            strictPort: true,
             hmr: {
                 host: devServerHost,
+                clientPort: vitePort,
             },
             watch: {
                 ignored: ['**/storage/framework/views/**'],
+                // Docker bind mounts on macOS/Windows don't reliably deliver
+                // native filesystem events, so edits (notably to *.ts like the
+                // i18n files) can go unseen until Vite restarts. Polling trades
+                // a little CPU for dependable HMR across hosts.
+                usePolling: true,
+                interval: 300,
             },
         },
     };

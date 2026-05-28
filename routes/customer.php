@@ -2,16 +2,18 @@
 
 declare(strict_types=1);
 
-use App\Http\Controllers\AvatarController;
-use App\Http\Controllers\CompanyFileController;
-use App\Http\Controllers\CompanyFileTrashController;
-use App\Http\Controllers\Customer\CustomerProfileController;
-use App\Http\Controllers\CustomerMembersController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\FileItemController;
-use App\Http\Controllers\FileShareController;
-use App\Http\Controllers\FileTrashController;
-use App\Http\Controllers\NotificationController;
+use App\Domains\Assets\Http\Controllers\AssetController;
+use App\Domains\Files\Http\Controllers\CompanyFileController;
+use App\Domains\Files\Http\Controllers\CompanyFileTrashController;
+use App\Domains\Files\Http\Controllers\EntityFileController;
+use App\Domains\Files\Http\Controllers\FileItemController;
+use App\Domains\Files\Http\Controllers\FileShareController;
+use App\Domains\Files\Http\Controllers\FileTrashController;
+use App\Domains\Notifications\Http\Controllers\NotificationController;
+use App\Domains\Tenancy\Http\Controllers\CustomerMembersController;
+use App\Domains\Tenancy\Http\Controllers\CustomerProfileController;
+use App\Domains\Tenancy\Http\Controllers\DashboardController;
+use App\Domains\Users\Http\Controllers\AvatarController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -129,6 +131,30 @@ Route::post('/files/{file}/shares/signed', [FileShareController::class, 'quickSi
     ->whereNumber('file')
     ->name('files.shares.signed');
 Route::delete('/files/shares/{share}', [FileShareController::class, 'destroy'])->name('files.shares.destroy');
+
+// Generic entity-file mutations — the reusable "attach files to any entity"
+// kit. The owner is passed as owner_type/owner_id and authorized via
+// FileItemPolicy + the owner's canManageFiles rules, so this works for any
+// FileOwner entity (Asset today, Vehicle/Medicine/Building tomorrow).
+Route::post('/entity-files/folder', [EntityFileController::class, 'storeFolder'])->name('entity-files.folder.store');
+Route::post('/entity-files', [EntityFileController::class, 'store'])
+    ->middleware('storage.available')
+    ->name('entity-files.store');
+Route::patch('/entity-files/{file}', [EntityFileController::class, 'update'])->whereNumber('file')->name('entity-files.update');
+Route::delete('/entity-files/{file}', [EntityFileController::class, 'destroy'])->whereNumber('file')->name('entity-files.destroy');
+Route::get('/entity-files/{file}/download', [EntityFileController::class, 'download'])->whereNumber('file')->name('entity-files.download');
+
+// Demo entity: Assets + their document area. Gated by config('assets.enabled')
+// — remove the app/Domains/Assets module + this block to drop the demo.
+if (config('assets.enabled')) {
+    Route::get('/assets', [AssetController::class, 'index'])->name('assets.index');
+    Route::post('/assets', [AssetController::class, 'store'])->name('assets.store');
+    Route::get('/assets/{asset}', [AssetController::class, 'show'])->whereNumber('asset')->name('assets.show');
+    Route::get('/assets/{asset}/folders/{folder}', [AssetController::class, 'show'])
+        ->whereNumber('asset')->whereNumber('folder')->name('assets.folder');
+    Route::put('/assets/{asset}', [AssetController::class, 'update'])->whereNumber('asset')->name('assets.update');
+    Route::delete('/assets/{asset}', [AssetController::class, 'destroy'])->whereNumber('asset')->name('assets.destroy');
+}
 
 // Customer-Admin — manage the members of the active customer. `role:Admin`
 // resolves against the team id set by InitializeTenancyByPath, so it means

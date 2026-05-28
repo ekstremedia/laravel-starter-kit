@@ -1,9 +1,9 @@
 <?php
 
-use App\Models\User;
-use App\Notifications\CustomerMemberAddedNotification;
-use App\Notifications\CustomerMemberRemovedNotification;
-use App\Support\CustomerMembership;
+use App\Domains\Notifications\Notifications\CustomerMemberAddedNotification;
+use App\Domains\Notifications\Notifications\CustomerMemberRemovedNotification;
+use App\Domains\Tenancy\Support\CustomerMembership;
+use App\Domains\Users\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Support\Facades\Notification;
 

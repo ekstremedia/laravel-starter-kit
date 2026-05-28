@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\User;
-use App\Models\UserSetting;
+use App\Domains\Users\Models\User;
+use App\Domains\Users\Models\UserSetting;
 
 it('creates settings with defaults when user is created', function () {
     $user = User::factory()->create();

@@ -20,6 +20,8 @@ class DatabaseSeeder extends Seeder
             CustomerSeeder::class,
             UserSeeder::class,
             EmailTemplateSeeder::class,
+            // Demo file-owning entity. Remove with the rest of the Assets module.
+            AssetSeeder::class,
         ]);
     }
 }

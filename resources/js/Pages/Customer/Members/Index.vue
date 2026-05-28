@@ -11,7 +11,6 @@ import { Head, router, useForm } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useConfirm } from 'primevue/useconfirm';
-import ConfirmDialog from 'primevue/confirmdialog';
 import CommandLayout from '@/Layouts/CommandLayout.vue';
 import CmdButton from '@/Components/Command/Button.vue';
 import Icon from '@/Components/Command/Icon.vue';
@@ -114,7 +113,6 @@ function remove(member: Member) {
 <template>
     <div class="page">
         <Head :title="t('customer.members.title')" />
-        <ConfirmDialog group="command" />
         <header class="page__head">
             <div>
                 <h1>{{ t('customer.members.title') }}</h1>

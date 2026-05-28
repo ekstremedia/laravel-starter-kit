@@ -6,14 +6,20 @@ services:
     restart: unless-stopped
     ports:
       - "${APP_HOST_PORT:-80}:80"
-      - "${VITE_HOST_PORT:-5173}:5173"
+      # Vite is published 1:1 — the browser loads assets/HMR from this exact
+      # port, so the container must also listen on it (see vite.config.ts).
+      - "${VITE_HOST_PORT:-5173}:${VITE_HOST_PORT:-5173}"
       - "${REVERB_HOST_PORT:-8080}:8080"
     volumes:
-      # Full project bind-mount. vendor/ and node_modules/ are host-visible
-      # so PhpStorm can index them. On Docker Desktop (macOS/Windows) you may
-      # want to re-add anonymous volumes for `/var/www/html/vendor` and
-      # `/var/www/html/node_modules` for performance.
+      # Full project bind-mount for live code editing.
       - .:/var/www/html
+      # Named volumes shadow the bind-mount for vendor/ and node_modules/.
+      # Docker populates them from the pre-built image on first creation, which
+      # avoids slow bind-mount IO on Docker Desktop (macOS/Windows) and keeps
+      # dependencies isolated from the host. Want them host-visible for IDE
+      # indexing instead? Remove these two lines and run `make build`.
+      - app-vendor:/var/www/html/vendor
+      - app-node-modules:/var/www/html/node_modules
     depends_on:
       postgres:
         condition: service_healthy
@@ -64,3 +70,5 @@ services:
 volumes:
   postgres-data:
   redis-data:
+  app-vendor:
+  app-node-modules:

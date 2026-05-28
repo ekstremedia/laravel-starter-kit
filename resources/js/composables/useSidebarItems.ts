@@ -21,8 +21,10 @@ export function useSidebarItems() {
     const tenancyEnabled = computed(() => page.props.tenancy?.enabled ?? false);
     const chatEnabled = computed(() => page.props.chat?.enabled ?? false);
     const globalFilesEnabled = computed(() => page.props.app_settings?.files_feature_enabled ?? false);
+    const assetsEnabled = computed(() => page.props.assetsEnabled ?? false);
     const userPermissions = computed<string[]>(() => (user.value as { permissions?: string[] } | undefined)?.permissions ?? []);
     const canViewCompanyFiles = computed(() => isSuperAdmin.value || userPermissions.value.includes('view company files'));
+    const canManageEmailTemplates = computed(() => page.props.auth?.can?.manage_email_templates === true);
 
     const customer = computed(() => page.props.customer);
     const customerSlug = computed(() => customer.value?.slug ?? null);
@@ -52,6 +54,10 @@ export function useSidebarItems() {
                 { id: 'about', href: `/c/${slug}/about`, label: t('rail.about'), icon: 'customer', match: (p) => p.startsWith(`/c/${slug}/about`) },
                 { id: 'files', href: `/c/${slug}/files`, label: t('rail.files'), icon: 'disk', match: filesActive, hideWhen: () => !globalFilesEnabled.value || !customer.value?.files_feature_enabled },
                 { id: 'company-files', href: `/c/${slug}/files/company`, label: t('rail.company_files'), icon: 'customer', match: companyFilesActive, hideWhen: () => !globalFilesEnabled.value || !customer.value?.company_files_enabled || !canViewCompanyFiles.value },
+                // Demo entity documents. Remove this entry (and the Assets
+                // module) to drop the demo — it's the template for real
+                // file-owning entities (Vehicle, Medicine, …).
+                { id: 'assets', href: `/c/${slug}/assets`, label: t('rail.assets'), icon: 'box', match: (p) => p.startsWith(`/c/${slug}/assets`), hideWhen: () => !assetsEnabled.value || !canViewCompanyFiles.value },
             );
 
             if (isCustomerAdmin.value) {
@@ -77,6 +83,13 @@ export function useSidebarItems() {
                 { id: 'server', href: '/admin/system', label: t('rail.server'), icon: 'server', match: (p) => p.startsWith('/admin/system') || p.startsWith('/admin/health') },
                 { separator: true, key: 's3' },
                 { id: 'logs', href: '/admin/monitoring', label: t('rail.logs'), icon: 'log', match: (p) => p.startsWith('/admin/monitoring') || p.startsWith('/admin/activity') },
+            );
+        } else if (canManageEmailTemplates.value) {
+            // Delegated email editors aren't super admins, so they don't get
+            // the admin section — surface a single entry to the mail page.
+            entries.push(
+                { separator: true, key: 'mail-sep' },
+                { id: 'mail', href: '/admin/mail', label: t('rail.mail'), icon: 'mail', match: (p) => p.startsWith('/admin/mail') },
             );
         }
 

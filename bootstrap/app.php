@@ -1,14 +1,14 @@
 <?php
 
-use App\Http\Middleware\EnforceAppSettings;
-use App\Http\Middleware\EnsureChatEnabled;
-use App\Http\Middleware\EnsureCompanyStorageAvailable;
-use App\Http\Middleware\EnsureCustomerAdmin;
-use App\Http\Middleware\EnsureStorageAvailable;
-use App\Http\Middleware\EnsureSuperAdmin;
+use App\Domains\Access\Http\Middleware\EnsureCustomerAdmin;
+use App\Domains\Access\Http\Middleware\EnsureSuperAdmin;
+use App\Domains\Chat\Http\Middleware\EnsureChatEnabled;
+use App\Domains\Files\Http\Middleware\EnsureCompanyStorageAvailable;
+use App\Domains\Files\Http\Middleware\EnsureStorageAvailable;
+use App\Domains\Settings\Http\Middleware\EnforceAppSettings;
+use App\Domains\Tenancy\Http\Middleware\InitializeTenancyByPath;
 use App\Http\Middleware\EnsureUserIsNotBanned;
 use App\Http\Middleware\HandleInertiaRequests;
-use App\Http\Middleware\InitializeTenancyByPath;
 use App\Http\Middleware\RequestId;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetLocaleFromUser;
@@ -38,6 +38,11 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->group(__DIR__.'/../routes/customer.php');
         },
     )
+    // Auto-discover Artisan commands living inside domain modules
+    // (app/Domains/*/Console). The framework only scans app/Console/Commands
+    // by default; this recursively registers any Command subclass under a
+    // domain so commands move with their domain.
+    ->withCommands([__DIR__.'/../app/Domains'])
     ->withMiddleware(function (Middleware $middleware): void {
         // Runs before route matching so 404s / redirects also get the headers
         // and correlation id.

@@ -1,8 +1,7 @@
 {
     "agents": [
         "claude_code",
-        "codex",
-        "opencode"
+        "codex"
     ],
     "guidelines": true,
     "mcp": true,

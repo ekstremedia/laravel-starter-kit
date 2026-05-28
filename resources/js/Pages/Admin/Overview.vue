@@ -86,9 +86,9 @@ function formatBytes(n: number | null | undefined): string {
 function relativeHours(iso: string | null | undefined): string {
     if (!iso) return '—';
     const diffMs = Date.now() - new Date(iso).getTime();
-    if (diffMs < 0) return 'nå';
+    if (diffMs < 0) return t('admin.overview.rel_now');
     const hr = Math.floor(diffMs / 3_600_000);
-    if (hr < 1) return 'nylig';
+    if (hr < 1) return t('admin.overview.rel_recent');
     if (hr < 24) return `${hr}t`;
     const day = Math.floor(hr / 24);
     return `${day}d`;
@@ -99,10 +99,10 @@ function formatTime(iso: string | null): string {
     return new Date(iso).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
-const lastUpdated = ref('0s siden');
+const lastUpdated = ref(t('admin.overview.seconds_ago', { n: 0 }));
 function tickLastUpdated() {
     const sec = Math.max(0, Math.floor((Date.now() - new Date(metrics.value.generated_at).getTime()) / 1000));
-    lastUpdated.value = sec < 60 ? `${sec}s siden` : `${Math.floor(sec / 60)}m siden`;
+    lastUpdated.value = sec < 60 ? t('admin.overview.seconds_ago', { n: sec }) : t('admin.overview.minutes_ago', { n: Math.floor(sec / 60) });
 }
 let tickHandle: ReturnType<typeof setInterval> | null = null;
 onMounted(() => {
@@ -122,14 +122,14 @@ interface Kpi {
 const kpis = computed<Kpi[]>(() => {
     const m = metrics.value;
     return [
-        { label: 'BRUKERE', value: m.users.total, delta: `+${m.users.new_last_7d} siste 7d`, trend: m.users.new_last_7d > 0 ? 'up' : 'flat', animate: true },
+        { label: t('admin.overview.kpi_users'), value: m.users.total, delta: t('admin.overview.delta_new_7d', { n: m.users.new_last_7d }), trend: m.users.new_last_7d > 0 ? 'up' : 'flat', animate: true },
         m.customers
-            ? { label: 'KUNDER', value: m.customers.total, delta: `${m.customers.active} aktive`, trend: 'flat', animate: true }
-            : { label: 'AKTIVITET', value: m.activity.total, delta: 'totalt', trend: 'flat', animate: true },
-        { label: 'LAGRING', value: formatBytes(m.storage.used_bytes), delta: 'stabil', trend: 'flat', animate: false },
-        { label: 'JOBBER I KØ', value: m.queue.pending, delta: m.queue.failed > 0 ? `${m.queue.failed} feilet` : 'alt klart', trend: m.queue.failed > 0 ? 'down' : 'flat', animate: true },
-        { label: 'SISTE BACKUP', value: relativeHours(m.backups.last_at), delta: m.backups.count > 0 ? 'vellykket' : 'ingen', trend: m.backups.count > 0 ? 'up' : 'flat', animate: false },
-        { label: 'UBEKR. BRUKERE', value: m.users.unverified, delta: m.users.unverified === 0 ? 'alle ok' : 'se over', trend: m.users.unverified === 0 ? 'up' : 'down', animate: true },
+            ? { label: t('admin.overview.kpi_customers'), value: m.customers.total, delta: t('admin.overview.delta_active', { n: m.customers.active }), trend: 'flat', animate: true }
+            : { label: t('admin.overview.kpi_activity'), value: m.activity.total, delta: t('admin.overview.delta_total'), trend: 'flat', animate: true },
+        { label: t('admin.overview.kpi_storage'), value: formatBytes(m.storage.used_bytes), delta: t('admin.overview.delta_stable'), trend: 'flat', animate: false },
+        { label: t('admin.overview.kpi_queue'), value: m.queue.pending, delta: m.queue.failed > 0 ? t('admin.overview.delta_failed', { n: m.queue.failed }) : t('admin.overview.delta_all_clear'), trend: m.queue.failed > 0 ? 'down' : 'flat', animate: true },
+        { label: t('admin.overview.kpi_last_backup'), value: relativeHours(m.backups.last_at), delta: m.backups.count > 0 ? t('admin.overview.delta_success') : t('admin.overview.delta_none'), trend: m.backups.count > 0 ? 'up' : 'flat', animate: false },
+        { label: t('admin.overview.kpi_unverified'), value: m.users.unverified, delta: m.users.unverified === 0 ? t('admin.overview.delta_all_ok') : t('admin.overview.delta_review'), trend: m.users.unverified === 0 ? 'up' : 'down', animate: true },
     ];
 });
 
@@ -167,7 +167,7 @@ const registrationChart = computed(() => {
             tooltip: { theme: tweaks.value.theme === 'light' ? 'light' : 'dark', x: { format: 'dd MMM' } },
             markers: { size: 0, hover: { size: 4 } },
         } as ApexOptions,
-        series: [{ name: 'Registreringer', data: points }],
+        series: [{ name: t('admin.overview.chart_registrations'), data: points }],
     };
 });
 
@@ -196,7 +196,7 @@ const activityChart = computed(() => {
             yaxis: { labels: { style: { colors: axisColor.value, fontSize: '9.5px', fontFamily: "'JetBrains Mono', monospace" } } },
             tooltip: { theme: tweaks.value.theme === 'light' ? 'light' : 'dark', x: { format: 'dd MMM' } },
         } as ApexOptions,
-        series: [{ name: 'Aktivitet', data: points }],
+        series: [{ name: t('admin.overview.chart_activity'), data: points }],
     };
 });
 
@@ -205,11 +205,11 @@ const systemStatus = computed<SystemStatusRow[]>(() => {
     const m = metrics.value;
     const storageMb = m.storage.used_bytes / (1024 * 1024);
     return [
-        { label: 'Database', v: 'operativ', mono: '4ms', tone: 'ok' },
-        { label: 'Kø', v: `${m.queue.pending} ventende`, mono: `${m.queue.pending} / ∞`, tone: m.queue.failed > 0 ? 'warn' : 'ok' },
-        { label: 'Sikkerhetskopi', v: m.backups.last_at ? `sist ${relativeHours(m.backups.last_at)}` : 'ingen', mono: m.backups.count > 0 ? 'daglig' : '—', tone: m.backups.count > 0 ? 'ok' : 'warn' },
-        { label: 'Disk', v: `${formatBytes(m.storage.used_bytes)} brukt`, mono: `${storageMb.toFixed(2)} MB`, tone: 'ok' },
-        { label: 'Aktivitet', v: `${m.activity.total} hendelser`, mono: 'log', tone: 'ok' },
+        { label: t('admin.overview.status_database'), v: t('admin.overview.status_operational'), mono: '4ms', tone: 'ok' },
+        { label: t('admin.overview.status_queue'), v: t('admin.overview.status_pending', { n: m.queue.pending }), mono: `${m.queue.pending} / ∞`, tone: m.queue.failed > 0 ? 'warn' : 'ok' },
+        { label: t('admin.overview.status_backup'), v: m.backups.last_at ? t('admin.overview.status_backup_last', { when: relativeHours(m.backups.last_at) }) : t('admin.overview.status_backup_none'), mono: m.backups.count > 0 ? t('admin.overview.status_backup_daily') : '—', tone: m.backups.count > 0 ? 'ok' : 'warn' },
+        { label: t('admin.overview.status_disk'), v: t('admin.overview.status_disk_used', { size: formatBytes(m.storage.used_bytes) }), mono: `${storageMb.toFixed(2)} MB`, tone: 'ok' },
+        { label: t('admin.overview.status_activity'), v: t('admin.overview.status_events', { n: m.activity.total }), mono: t('admin.overview.status_log'), tone: 'ok' },
     ];
 });
 
@@ -230,7 +230,7 @@ function eventLevel(a: RecentActivity): 'INFO' | 'WARN' {
 }
 
 function handleRefresh() {
-    router.reload({ only: ['metrics'], onSuccess: () => push('Oppdatert', 'success') });
+    router.reload({ only: ['metrics'], onSuccess: () => push(t('admin.overview.toast_refreshed'), 'success') });
 }
 </script>
 
@@ -242,23 +242,23 @@ function handleRefresh() {
     <div :style="{ marginBottom: 'var(--pad-page)' }">
         <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '14px' }">
             <div>
-                <h1 :style="{ margin: 0, fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--fg)' }">Dashbord</h1>
+                <h1 :style="{ margin: 0, fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--fg)' }">{{ t('admin.overview.dashboard') }}</h1>
                 <div
                     class="cmd-mono"
                     :style="{ marginTop: '3px', fontSize: '11.5px', color: 'var(--fg-mute)' }"
-                >oppdatert {{ lastUpdated }} · realtime</div>
+                >{{ t('admin.overview.updated_realtime', { when: lastUpdated }) }}</div>
             </div>
             <div :style="{ display: 'flex', gap: '6px' }">
                 <button
                     type="button"
-                    @click="push('Eksport kommer snart', 'info')"
+                    @click="push(t('admin.overview.toast_export_soon'), 'info')"
                     :style="{ background: 'transparent', color: 'var(--fg-dim)', border: '1px solid var(--border)', padding: '5px 10px', borderRadius: '5px', fontSize: '11.5px', cursor: 'pointer', fontFamily: 'inherit' }"
-                >Eksporter</button>
+                >{{ t('admin.overview.export') }}</button>
                 <button
                     type="button"
                     @click="handleRefresh"
                     :style="{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '5px 11px', borderRadius: '5px', fontSize: '11.5px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }"
-                >Oppdater</button>
+                >{{ t('admin.overview.refresh') }}</button>
             </div>
         </div>
     </div>
@@ -267,7 +267,7 @@ function handleRefresh() {
     <div
         :style="{
             display: 'grid',
-            gridTemplateColumns: 'repeat(6, minmax(0, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
             gap: '1px',
             background: 'var(--border)',
             border: '1px solid var(--border)',
@@ -311,11 +311,11 @@ function handleRefresh() {
     </div>
 
     <!-- Charts row -->
-    <div :style="{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }">
+    <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginBottom: '16px' }">
         <div class="cmd-card" :style="{ padding: '16px' }">
             <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }">
                 <div>
-                    <div :style="{ fontSize: '13px', fontWeight: 600, color: 'var(--fg)' }">Registreringer</div>
+                    <div :style="{ fontSize: '13px', fontWeight: 600, color: 'var(--fg)' }">{{ t('admin.overview.chart_registrations') }}</div>
                     <div
                         class="cmd-mono"
                         :style="{ fontSize: '10px', color: 'var(--fg-mute)', marginTop: '2px' }"
@@ -352,7 +352,7 @@ function handleRefresh() {
 
         <div class="cmd-card" :style="{ padding: '16px' }">
             <div :style="{ marginBottom: '12px' }">
-                <div :style="{ fontSize: '13px', fontWeight: 600, color: 'var(--fg)' }">Aktivitet</div>
+                <div :style="{ fontSize: '13px', fontWeight: 600, color: 'var(--fg)' }">{{ t('admin.overview.chart_activity') }}</div>
                 <div
                     class="cmd-mono"
                     :style="{ fontSize: '10px', color: 'var(--fg-mute)', marginTop: '2px' }"
@@ -370,7 +370,7 @@ function handleRefresh() {
     </div>
 
     <!-- Log + status row -->
-    <div :style="{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '16px' }">
+    <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }">
         <div class="cmd-card">
             <div
                 :style="{
@@ -381,7 +381,7 @@ function handleRefresh() {
                     alignItems: 'center',
                 }"
             >
-                <div :style="{ fontSize: '12.5px', fontWeight: 600, color: 'var(--fg)' }">Hendelseslogg</div>
+                <div :style="{ fontSize: '12.5px', fontWeight: 600, color: 'var(--fg)' }">{{ t('admin.overview.event_log') }}</div>
                 <span
                     class="cmd-mono"
                     :style="{ fontSize: '10px', color: 'var(--fg-mute)' }"
@@ -398,7 +398,7 @@ function handleRefresh() {
                     <div
                         v-if="metrics.recent_activity.length === 0"
                         :style="{ padding: '16px', color: 'var(--fg-mute)' }"
-                    >Ingen hendelser enda.</div>
+                    >{{ t('admin.overview.no_events') }}</div>
                     <div
                         v-for="(r, i) in metrics.recent_activity"
                         :key="r.id"
@@ -445,7 +445,7 @@ function handleRefresh() {
                     fontWeight: 600,
                     color: 'var(--fg)',
                 }"
-            >Systemstatus</div>
+            >{{ t('admin.overview.system_status') }}</div>
             <div :style="{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }">
                 <template v-if="loading">
                     <Skeleton v-for="i in 5" :key="i" :width="'100%'" :height="18" :radius="2" />

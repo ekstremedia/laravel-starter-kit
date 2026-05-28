@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Models\FileItem;
-use App\Models\Tenant;
-use App\Models\User;
+use App\Domains\Files\Models\FileItem;
+use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Users\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -16,6 +16,9 @@ use Illuminate\Support\Str;
  */
 class FileItemFactory extends Factory
 {
+    /** @var class-string<FileItem> */
+    protected $model = FileItem::class;
+
     /**
      * Default: a User-owned (personal-scope) file. The creator and the owner
      * are the same User by convention; tests that need divergent
@@ -49,14 +52,14 @@ class FileItemFactory extends Factory
         return $this->afterMaking(function (FileItem $item): void {
             $attrs = $item->getAttributes();
             if (! isset($attrs['owner_type']) && isset($attrs['user_id'])) {
-                $item->owner_type = User::class;
+                $item->owner_type = (new User)->getMorphClass();
                 $item->owner_id = (int) $attrs['user_id'];
             }
         })->afterCreating(function (FileItem $item): void {
             $attrs = $item->getAttributes();
             if (! isset($attrs['owner_type']) && isset($attrs['user_id'])) {
                 $item->forceFill([
-                    'owner_type' => User::class,
+                    'owner_type' => (new User)->getMorphClass(),
                     'owner_id' => (int) $attrs['user_id'],
                 ])->saveQuietly();
             }
@@ -80,7 +83,7 @@ class FileItemFactory extends Factory
     public function ownedBy(Model $owner): static
     {
         return $this->state(fn () => [
-            'owner_type' => $owner::class,
+            'owner_type' => $owner->getMorphClass(),
             'owner_id' => $owner->getKey(),
             'scope' => $owner instanceof Tenant ? FileItem::SCOPE_COMPANY : FileItem::SCOPE_PERSONAL,
         ]);
@@ -90,7 +93,7 @@ class FileItemFactory extends Factory
     {
         return $this->state(fn () => [
             'tenant_id' => $tenant->getKey(),
-            'owner_type' => Tenant::class,
+            'owner_type' => $tenant->getMorphClass(),
             'owner_id' => $tenant->getKey(),
             'scope' => FileItem::SCOPE_COMPANY,
         ]);

@@ -48,6 +48,8 @@ const props = defineProps<{
     customer: CustomerData;
     global_files_feature_enabled: boolean;
     global_default_personal_storage_bytes: number | null;
+    assignableRoles: string[];
+    defaultRole: string;
 }>();
 
 // --- Helpers for "GB input + radio mode" ---
@@ -152,14 +154,22 @@ function save() {
     form.put(`/admin/customers/${props.customer.id}`, { preserveScroll: true });
 }
 
-const memberForm = useForm({ email: '' });
+// The member-add panel sends a role alongside the email — the backend
+// requires at least one assignable role. `memberRole` drives the selector and
+// is folded into the `roles` array on submit.
+const memberRole = ref<string>(props.defaultRole);
+const memberForm = useForm<{ email: string; roles: string[] }>({ email: '', roles: [props.defaultRole] });
 
 function attach() {
+    memberForm.roles = [memberRole.value];
     // Server flashes flash.customers.member_added — reset the input
     // here but let the flash surface the confirmation toast.
     memberForm.post(`/admin/customers/${props.customer.id}/members`, {
         preserveScroll: true,
-        onSuccess: () => memberForm.reset('email'),
+        onSuccess: () => {
+            memberForm.reset('email');
+            memberRole.value = props.defaultRole;
+        },
     });
 }
 
@@ -459,6 +469,23 @@ function detach(member: Member) {
                         fontFamily: 'inherit',
                     }"
                 />
+                <select
+                    v-model="memberRole"
+                    :aria-label="t('admin.customers.member_role')"
+                    :style="{
+                        background: 'var(--panel2)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '5px',
+                        padding: '7px 10px',
+                        color: 'var(--fg)',
+                        fontSize: '12.5px',
+                        outline: 'none',
+                        fontFamily: 'inherit',
+                        cursor: 'pointer',
+                    }"
+                >
+                    <option v-for="r in assignableRoles" :key="r" :value="r">{{ r }}</option>
+                </select>
                 <button
                     type="submit"
                     :disabled="memberForm.processing"
@@ -482,8 +509,8 @@ function detach(member: Member) {
                     {{ t('common.add') }}
                 </button>
             </form>
-            <p v-if="memberForm.errors.email" :style="{ fontSize: '11px', color: 'var(--danger)', marginTop: '-10px', marginBottom: '10px' }">
-                {{ memberForm.errors.email }}
+            <p v-if="memberForm.errors.email || memberForm.errors.roles" :style="{ fontSize: '11px', color: 'var(--danger)', marginTop: '-10px', marginBottom: '10px' }">
+                {{ memberForm.errors.email || memberForm.errors.roles }}
             </p>
 
             <ul

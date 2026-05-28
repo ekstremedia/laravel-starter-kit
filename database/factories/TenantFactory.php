@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Models\Tenant;
+use App\Domains\Tenancy\Models\Tenant;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -12,6 +12,9 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class TenantFactory extends Factory
 {
+    /** @var class-string<Tenant> */
+    protected $model = Tenant::class;
+
     /**
      * @return array<string, mixed>
      */

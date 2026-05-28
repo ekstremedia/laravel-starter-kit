@@ -32,20 +32,22 @@ init: ## Initialize .env for a new project
 	@bash scripts/init-starter.sh
 
 # Docker commands
-build: ## Build and start all containers
+build: ## Build and start all containers (creates .env if missing)
+	@[ -f .env ] || { cp .env.example .env; echo "  → created .env from .env.example"; }
 	docker compose up -d --build --renew-anon-volumes
 	@echo ""
 	@echo "  App:     $(DISPLAY_URL)"
 	@echo "  Mailpit: http://localhost:$(MAILPIT_HOST_PORT)"
-	@echo "  Reverb:  ws://$(VITE_REVERB_HOST):$(REVERB_PORT)"
+	@echo "  Reverb:  ws://$(VITE_REVERB_HOST):$(REVERB_HOST_PORT)"
 	@echo ""
 
-up: ## Start all containers
+up: ## Start all containers (creates .env if missing)
+	@[ -f .env ] || { cp .env.example .env; echo "  → created .env from .env.example"; }
 	docker compose up -d
 	@echo ""
 	@echo "  App:     $(DISPLAY_URL)"
 	@echo "  Mailpit: http://localhost:$(MAILPIT_HOST_PORT)"
-	@echo "  Reverb:  ws://$(VITE_REVERB_HOST):$(REVERB_PORT)"
+	@echo "  Reverb:  ws://$(VITE_REVERB_HOST):$(REVERB_HOST_PORT)"
 	@echo ""
 
 down: ## Stop all containers

@@ -1,37 +1,43 @@
 <?php
 
-use App\Http\Controllers\Admin\AppSettingsController;
-use App\Http\Controllers\Admin\BackupController;
-use App\Http\Controllers\Admin\CustomerController;
-use App\Http\Controllers\Admin\EmailTemplateController;
-use App\Http\Controllers\Admin\HealthController;
-use App\Http\Controllers\Admin\ImpersonateController;
-use App\Http\Controllers\Admin\MailSettingsController;
-use App\Http\Controllers\Admin\MonitoringController;
-use App\Http\Controllers\Admin\OverviewController;
-use App\Http\Controllers\Admin\PermissionController;
-use App\Http\Controllers\Admin\RoleController;
-use App\Http\Controllers\Admin\StorageDashboardController;
-use App\Http\Controllers\Admin\SystemInfoController;
-use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Auth\DevLoginController;
-use App\Http\Controllers\Auth\SocialiteController;
-use App\Http\Controllers\AvatarController;
-use App\Http\Controllers\ChatController;
-use App\Http\Controllers\CustomerLandingController;
-use App\Http\Controllers\HomeController;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\NotificationPreferenceController;
-use App\Http\Controllers\PersonalAccessTokenController;
-use App\Http\Controllers\PublicShareController;
-use App\Http\Controllers\SettingsController;
-use App\Http\Controllers\UserProfileController;
+use App\Domains\Access\Http\Controllers\PermissionController;
+use App\Domains\Access\Http\Controllers\RoleController;
+use App\Domains\Auth\Http\Controllers\DevLoginController;
+use App\Domains\Auth\Http\Controllers\SocialiteController;
+use App\Domains\Chat\Http\Controllers\ChatController;
+use App\Domains\Files\Http\Controllers\PublicShareController;
+use App\Domains\Notifications\Http\Controllers\EmailTemplateController;
+use App\Domains\Notifications\Http\Controllers\MailLayoutController;
+use App\Domains\Notifications\Http\Controllers\MailSettingsController;
+use App\Domains\Notifications\Http\Controllers\NotificationController;
+use App\Domains\Notifications\Http\Controllers\NotificationPreferenceController;
+use App\Domains\Operations\Http\Controllers\BackupController;
+use App\Domains\Operations\Http\Controllers\HealthController;
+use App\Domains\Operations\Http\Controllers\HomeController;
+use App\Domains\Operations\Http\Controllers\ImpersonateController;
+use App\Domains\Operations\Http\Controllers\MonitoringController;
+use App\Domains\Operations\Http\Controllers\OverviewController;
+use App\Domains\Operations\Http\Controllers\StorageDashboardController;
+use App\Domains\Operations\Http\Controllers\SystemInfoController;
+use App\Domains\Settings\Http\Controllers\AppSettingsController;
+use App\Domains\Settings\Http\Controllers\SettingsController;
+use App\Domains\Tenancy\Http\Controllers\CustomerController;
+use App\Domains\Tenancy\Http\Controllers\CustomerLandingController;
+use App\Domains\Users\Http\Controllers\AvatarController;
+use App\Domains\Users\Http\Controllers\PersonalAccessTokenController;
+use App\Domains\Users\Http\Controllers\UserController;
+use App\Domains\Users\Http\Controllers\UserProfileController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
     return Inertia::render('Welcome');
 })->name('home');
+
+// Public legal pages — shipped as styled placeholders the marketing footer
+// links resolve to out of the box. Replace the copy in resources/js/Pages/Legal.vue.
+Route::get('/privacy', fn () => Inertia::render('Legal', ['kind' => 'privacy']))->name('legal.privacy');
+Route::get('/terms', fn () => Inertia::render('Legal', ['kind' => 'terms']))->name('legal.terms');
 
 // Public, unauthenticated share links. Full shares carry optional password
 // gating; signed links are Laravel-signed URLs with no DB row.
@@ -141,6 +147,7 @@ Route::middleware(['auth', 'verified', 'super.admin'])
         Route::post('users/{user}/notify-test', [UserController::class, 'notifyTest'])->name('users.notifyTest');
         Route::patch('users/{user}/quota', [UserController::class, 'setQuota'])->name('users.setQuota');
         Route::patch('users/{user}/role', [UserController::class, 'setRole'])->name('users.setRole');
+        Route::patch('users/{user}/platform-permission', [UserController::class, 'setPlatformPermission'])->name('users.platformPermission');
 
         Route::resource('roles', RoleController::class)->except(['show']);
 
@@ -155,13 +162,13 @@ Route::middleware(['auth', 'verified', 'super.admin'])
         Route::post('health/broadcast', [HealthController::class, 'broadcastPing'])->name('health.broadcast');
         Route::get('health/queue-last', [HealthController::class, 'queueLast'])->name('health.queue.last');
 
-        Route::patch('mail/templates/{template}', [EmailTemplateController::class, 'update'])->name('mail.templates.update');
-        Route::post('mail/templates/{template}/preview', [EmailTemplateController::class, 'preview'])->name('mail.templates.preview');
-        Route::post('mail/templates/{template}/test', [EmailTemplateController::class, 'testSend'])->name('mail.templates.test');
-
-        Route::get('mail', [MailSettingsController::class, 'show'])->name('mail.show');
+        // SMTP transport + the global email layout (branding) are super-admin
+        // only. The per-email content editor (GET mail page + template routes)
+        // lives in a separate, delegatable group below.
         Route::patch('mail', [MailSettingsController::class, 'update'])->name('mail.update');
         Route::post('mail/test', [MailSettingsController::class, 'test'])->name('mail.test');
+        Route::patch('mail/layout', [MailLayoutController::class, 'update'])->name('mail.layout.update');
+        Route::post('mail/layout/preview', [MailLayoutController::class, 'preview'])->name('mail.layout.preview');
 
         Route::get('system', [SystemInfoController::class, 'show'])->name('system.show');
         Route::get('health', fn () => redirect()->route('admin.system.show'))->name('health.show');
@@ -187,6 +194,19 @@ Route::middleware(['auth', 'verified', 'super.admin'])
         Route::delete('users/{user}/customers/{customer}', [UserController::class, 'detachCustomer'])->name('users.customers.detach');
 
         Route::post('users/{user}/impersonate', [ImpersonateController::class, 'take'])->name('users.impersonate');
+    });
+
+// Email content editor — delegatable beyond super-admins via the
+// `manage email templates` capability (super-admins pass through Gate::before).
+// The page + template routes live here; SMTP + layout stay super-admin-only above.
+Route::middleware(['auth', 'verified', 'can:manage email templates'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('mail', [MailSettingsController::class, 'show'])->name('mail.show');
+        Route::patch('mail/templates/{template}', [EmailTemplateController::class, 'update'])->name('mail.templates.update');
+        Route::post('mail/templates/{template}/preview', [EmailTemplateController::class, 'preview'])->name('mail.templates.preview');
+        Route::post('mail/templates/{template}/test', [EmailTemplateController::class, 'testSend'])->name('mail.templates.test');
     });
 
 // Impersonation — leave action must be available from within the impersonated session

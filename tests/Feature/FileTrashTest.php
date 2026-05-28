@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Console\Commands\PurgeTrashedFileItems;
-use App\Models\AppSetting;
-use App\Models\FileItem;
-use App\Models\User;
+use App\Domains\Files\Console\PurgeTrashedFileItems;
+use App\Domains\Files\Models\FileItem;
+use App\Domains\Settings\Models\AppSetting;
+use App\Domains\Users\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 
 beforeEach(function () {

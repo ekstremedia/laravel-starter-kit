@@ -112,7 +112,7 @@ function submit() {
             <p
                 class="cmd-mono"
                 :style="{ fontSize: '10.5px', color: 'var(--fg-mute)', marginTop: '6px' }"
-            >{{ form.permissions.length }} valgt</p>
+            >{{ t('common.n_selected', { n: form.permissions.length }) }}</p>
         </div>
 
         <div :style="{ display: 'flex', gap: '6px', paddingTop: '4px' }">

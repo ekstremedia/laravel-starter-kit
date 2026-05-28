@@ -8,9 +8,9 @@ import CmdButton from '@/Components/Command/Button.vue';
 import Field from '@/Components/Command/Field.vue';
 import Icon from '@/Components/Command/Icon.vue';
 import Dot from '@/Components/Command/Dot.vue';
+import Toggle from '@/Components/Command/Toggle.vue';
 import MultiSelect from 'primevue/multiselect';
 import { formatDateTime } from '@/composables/useDateTime';
-import ConfirmDialog from 'primevue/confirmdialog';
 import { useConfirm } from 'primevue/useconfirm';
 
 defineOptions({ layout: AdminLayout });
@@ -24,6 +24,7 @@ interface Props {
         last_login_at: string | null; created_at: string; two_factor_enabled: boolean;
         is_super_admin: boolean; avatar_url: string | null; avatar_thumb_url: string | null;
         unread_notifications_count: number;
+        platform_permissions: string[];
         customers: CustomerMembership[];
     };
     assignable_roles: string[];
@@ -54,6 +55,27 @@ function syncCustomerRoles(customer: CustomerMembership) {
         {
             preserveScroll: true,
             onFinish: () => { roleUpdating.value = null; },
+        },
+    );
+}
+
+// Platform-level capabilities (column-backed, not Spatie). Optimistic local
+// state so the toggle responds immediately; props refresh on the PATCH reload.
+const platformPermUpdating = ref(false);
+const emailTemplatesGranted = ref(props.user.platform_permissions.includes('manage_email_templates'));
+
+function toggleEmailTemplates(value: boolean) {
+    const previous = emailTemplatesGranted.value;
+    emailTemplatesGranted.value = value;
+    platformPermUpdating.value = true;
+    router.patch(
+        `/admin/users/${props.user.id}/platform-permission`,
+        { capability: 'manage_email_templates', enabled: value },
+        {
+            preserveScroll: true,
+            // Revert the optimistic toggle if the request fails.
+            onError: () => { emailTemplatesGranted.value = previous; },
+            onFinish: () => { platformPermUpdating.value = false; },
         },
     );
 }
@@ -138,7 +160,6 @@ function chipStyle(tone: Tone) {
 <template>
     <div :style="{ padding: '24px 32px', maxWidth: '1100px', margin: '0 auto' }">
         <Head :title="`${user.full_name} · Admin`" />
-        <ConfirmDialog group="command" />
 
         <!-- Ban dialog -->
         <CommandDialog
@@ -265,7 +286,7 @@ function chipStyle(tone: Tone) {
             </div>
         </div>
 
-        <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '16px' }">
+        <div class="cmd-stack-sm" :style="{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '16px' }">
             <!-- Actions -->
             <section class="cmd-card" :style="{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '6px' }">
                 <h2 :style="{ margin: '0 0 8px', fontSize: '13px', fontWeight: 600, color: 'var(--fg)' }">
@@ -390,6 +411,41 @@ function chipStyle(tone: Tone) {
                     <dt class="cmd-mono cmd-uc" :style="{ fontSize: '10px', color: 'var(--fg-mute)', letterSpacing: '0.06em' }">{{ t('admin.users.unread_notifications') }}</dt>
                     <dd class="cmd-mono" :style="{ margin: 0, color: 'var(--fg)' }">{{ user.unread_notifications_count }}</dd>
                 </dl>
+            </section>
+
+            <!-- Platform access (grantable capabilities) -->
+            <section class="cmd-card" :style="{ padding: '16px', gridColumn: 'span 3' }">
+                <h2 :style="{ margin: '0 0 4px', fontSize: '13px', fontWeight: 600, color: 'var(--fg)' }">
+                    {{ t('admin.users.platform_access') }}
+                </h2>
+                <p :style="{ margin: '0 0 14px', fontSize: '12px', color: 'var(--fg-dim)' }">
+                    {{ t('admin.users.platform_access_desc') }}
+                </p>
+
+                <div
+                    :style="{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', padding: '12px 14px', border: '1px solid var(--border)', borderRadius: '6px', background: 'var(--bg)' }"
+                >
+                    <div :style="{ minWidth: 0 }">
+                        <div :style="{ fontSize: '13px', fontWeight: 500, color: 'var(--fg)' }">
+                            {{ t('admin.users.cap_manage_email_templates') }}
+                        </div>
+                        <div :style="{ fontSize: '11.5px', color: 'var(--fg-mute)', marginTop: '2px' }">
+                            {{ t('admin.users.cap_manage_email_templates_desc') }}
+                        </div>
+                    </div>
+                    <div :style="{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }">
+                        <span v-if="isAdmin" :style="{ fontSize: '11.5px', color: 'var(--fg-mute)', fontStyle: 'italic' }">
+                            {{ t('admin.users.granted_via_superadmin') }}
+                        </span>
+                        <Toggle
+                            v-else
+                            :model-value="emailTemplatesGranted"
+                            :disabled="platformPermUpdating"
+                            :label="t('admin.users.cap_manage_email_templates')"
+                            @update:model-value="toggleEmailTemplates"
+                        />
+                    </div>
+                </div>
             </section>
 
             <!-- Customer memberships with per-customer role -->

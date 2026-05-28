@@ -1,7 +1,8 @@
 <?php
 
-use App\Models\Tenant;
-use App\Models\User;
+use App\Domains\Assets\Models\Asset;
+use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Users\Models\User;
 
 /**
  * File-system module configuration.
@@ -24,6 +25,7 @@ return [
     'allowed_owner_types' => [
         User::class,
         Tenant::class,
+        Asset::class,
     ],
 
     // Per-file upload size limit applied to files.* validation. Expressed

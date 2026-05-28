@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { Link, router } from '@inertiajs/vue3';
 import { useToast } from 'primevue/usetoast';
 import { useCustomer } from '@/composables/useCustomer';
 import { useUnreadCounts } from '@/composables/useUnreadCounts';
@@ -322,6 +322,23 @@ function notificationTitle(n: NotificationItem): string {
                         </button>
                     </li>
                 </ul>
+
+                <!-- Footer: link to the full notifications page -->
+                <Link
+                    :href="notificationsUrl"
+                    @click="open = false"
+                    :style="{
+                        display: 'block',
+                        padding: '9px 14px',
+                        borderTop: '1px solid var(--border)',
+                        textAlign: 'center',
+                        fontSize: '11.5px',
+                        color: 'var(--fg-dim)',
+                        textDecoration: 'none',
+                        background: 'var(--panel)',
+                    }"
+                    class="cmd-notif-viewall"
+                >{{ t('notifications.view_all') }}</Link>
             </div>
         </Transition>
         <div
@@ -335,5 +352,9 @@ function notificationTitle(n: NotificationItem): string {
 <style scoped>
 .cmd-notif-delete:hover {
     color: var(--danger) !important;
+}
+.cmd-notif-viewall:hover {
+    background: var(--row-hover) !important;
+    color: var(--fg) !important;
 }
 </style>

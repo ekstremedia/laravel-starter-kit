@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Models\User;
-use App\Support\CustomerMembership;
+use App\Domains\Tenancy\Support\CustomerMembership;
+use App\Domains\Users\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Spatie\Permission\PermissionRegistrar;
 

@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\User;
-use App\Notifications\VerifyEmailNotification as VerifyEmail;
+use App\Domains\Notifications\Notifications\VerifyEmailNotification as VerifyEmail;
+use App\Domains\Users\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;

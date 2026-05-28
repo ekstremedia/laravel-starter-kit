@@ -2,9 +2,9 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\AppSetting;
-use App\Models\Tenant;
-use App\Models\UserSetting;
+use App\Domains\Settings\Models\AppSetting;
+use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Users\Models\UserSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Middleware;
@@ -74,6 +74,11 @@ class HandleInertiaRequests extends Middleware
                         : 0,
                     'is_impersonating' => session()->has('impersonated_by'),
                 ] : null,
+                // Grantable platform capabilities, surfaced for nav/tab gating.
+                // SuperAdmins resolve true via Gate::before.
+                'can' => fn () => [
+                    'manage_email_templates' => $request->user()?->can('manage email templates') ?? false,
+                ],
             ],
             'locale' => app()->getLocale(),
             'debug' => [
@@ -99,6 +104,10 @@ class HandleInertiaRequests extends Middleware
             'chat' => [
                 'enabled' => (bool) config('chat.enabled'),
             ],
+            // Named `assetsEnabled` (not `assets`) to avoid colliding with the
+            // Assets/Index page's own `assets` paginator prop, which would
+            // otherwise shadow this shared flag on that page.
+            'assetsEnabled' => (bool) config('assets.enabled'),
             // Which OAuth providers to render "Sign in with …" buttons for.
             // Empty array when the whole feature is gated off, so the Vue
             // template's v-if collapses cleanly.

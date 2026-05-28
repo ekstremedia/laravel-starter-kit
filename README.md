@@ -1,87 +1,80 @@
 # Laravel Starter Kit
 
-A batteries-included Laravel 13 + Inertia/Vue starter, so you can skip the yak-shaving on day one.
-
-Everything you usually bolt on to a fresh Laravel app is already wired up: auth with 2FA, an admin dashboard, roles & permissions, queues, broadcasting, media uploads, activity log, backups, observability, notifications, impersonation, Docker, and a full test suite.
+A Laravel 13 + Inertia/Vue starter with the usual production pieces already wired up — auth with 2FA, an admin dashboard, roles & permissions, queues, broadcasting, media uploads, activity log, backups, observability, and tests — all running in Docker.
 
 ## Stack
 
 - **Laravel 13 · PHP 8.4** · PostgreSQL 17 · Redis 7 · Mailpit
 - **Inertia.js v3 + Vue 3 + TypeScript** · Tailwind v4 · PrimeVue v4
-- **Docker** with php-fpm, nginx, Vite, Reverb, Horizon, Pulse, and the scheduler all running under supervisor
+- **Docker** — php-fpm, nginx, Vite, Reverb, Horizon, Pulse, and the scheduler under supervisor
 - **Fortify** (login, register, email verification, password reset, TOTP 2FA + recovery codes) · **Sanctum** · **Spatie Permission** (`Admin` / `Editor` / `User` seeded)
-- **Spatie** Medialibrary · Activitylog · Backup · Laravel Pulse · Horizon · Sentry · opcodesio log-viewer · lab404 impersonate
-- **Pest 4** backend tests · **Vitest 4** frontend tests · Pint · Larastan · Husky pre-commit · GitHub Actions CI
+- **Spatie** Medialibrary · Activitylog · Backup · Pulse · Horizon · Sentry · opcodesio log-viewer · lab404 impersonate
+- **Pest 4** + **Vitest 4** tests · Pint · Larastan · Husky pre-commit · GitHub Actions CI
+
+Backend code is organised into domain modules under `app/Domains/*` (Auth, Users, Access, Files, Chat, Tenancy, Notifications, Settings, Operations). Conventions live in `AGENTS.md`.
 
 ## Quick start
 
-```bash
-make init     # creates .env, prompts for app name, URL, DB creds, seeded admin
-make build    # builds and starts the Docker stack
-```
-
-Point your hostname at the container in `/etc/hosts`, then open `APP_URL`. Mailpit is at `http://localhost:${MAILPIT_HOST_PORT:-8126}`.
-
-Log in with the admin you seeded, or flip on `DEV_EASY_LOGIN_ENABLED=true` and click the local-only shortcut button on `/login`.
-
-`make help` lists every Make target. The ones you'll actually use:
+Requires **Docker** only — no host PHP, Node, Postgres, or `/etc/hosts` edits.
 
 ```bash
-make shell           # drop into the app container
-make test            # Pest
-make test-all        # Pest + Larastan + typecheck + Vitest
-make fresh           # migrate:fresh --seed (local only)
-make logs            # tail app logs
+make build    # creates .env, builds the image, starts the stack, migrates + seeds
 ```
 
-Destructive targets (`destroy`, `fresh`, `rebuild`) refuse to run unless `APP_ENV=local`.
+Open **http://localhost:8120** and sign in as the seeded admin (`admin@example.test` / `password`). Captured email is at **http://localhost:8126** (Mailpit). For a one-click local login button on `/login`, set `DEV_EASY_LOGIN_ENABLED=true`.
+
+`make help` lists every target. The common ones:
+
+```bash
+make shell      # shell into the app container
+make test       # Pest
+make test-all   # Pest + Larastan + typecheck + Vitest
+make fresh      # migrate:fresh --seed (local only)
+make logs       # tail app logs
+```
+
+`destroy`, `fresh`, and `rebuild` refuse to run unless `APP_ENV=local`.
+
+## Configuration
+
+`.env.example` is tuned for a zero-config localhost run. Override in `.env` when you need to:
+
+- **Different port** — set `APP_HOST_PORT` and the matching port in `APP_URL`.
+- **Run a second copy alongside this one** — also give it free `VITE_HOST_PORT`, `REVERB_HOST_PORT`, and `MAILPIT_HOST_PORT` values.
+- **Custom hostname** (e.g. `app.test`) — point `APP_URL`, `VITE_DEV_SERVER_HOST`, and `VITE_REVERB_HOST` at it and add it to `/etc/hosts`.
+- **Guided setup** — `make init` prompts for app name, host port, URL, DB creds, and the seeded admin, then writes `.env`. Optional; `make build` works without it.
 
 ## Admin
 
-Everything at `/admin/*` is gated by `role:Admin`.
+Everything under `/admin/*` is gated by `role:Admin`.
 
 | Route | What's there |
 | --- | --- |
-| `/admin` | Live dashboard — stats, charts, recent activity, quick links |
-| `/admin/users` | Users CRUD, role assignment, quotas, impersonate |
-| `/admin/customers` | Customer (tenant) CRUD — only when `TENANCY_ENABLED=true` |
+| `/admin` | Dashboard — stats, charts, recent activity |
+| `/admin/users` | Users CRUD, roles, quotas, impersonate |
+| `/admin/customers` | Customer (tenant) CRUD — when `TENANCY_ENABLED=true` |
 | `/admin/roles` · `/admin/permissions` | Roles + granular permissions |
 | `/admin/mail` | SMTP settings (encrypted) + test send |
 | `/admin/storage` | Per-user storage usage and quotas |
-| `/admin/backups` | Run/clean backups · download archives · prepare restores |
-| `/admin/system` | Queue / Reverb / Redis pings + runtime snapshot |
-| `/admin/monitoring` | Activity log + embedded Horizon · Pulse · log-viewer tabs |
-
-Impersonation shows an amber banner while active; click **Stop impersonating** to return.
-
-## Multi-customer (optional)
-
-`stancl/tenancy` v3 is pre-wired but off by default — ship single-tenant out of the box. Flip `TENANCY_ENABLED=true` and `php artisan migrate:fresh --seed`, and you get `/c/{slug}/*` URLs, a `default` customer, `/admin/customers` CRUD, and a dedicated Postgres schema per customer.
-
-The user-visible name is **Customer**. Under the hood the package model stays `App\Models\Tenant` — the boundary is intentional. Full notes in `AGENTS.md`.
-
-## Table prefix (optional)
-
-Set `DB_TABLE_PREFIX=acme_`, run `migrate:fresh`, and every core table is namespaced (`acme_users`, `acme_tenants`, …). Only queries that go through Eloquent / Query Builder / Schema inherit the prefix — raw SQL must call `DB::getTablePrefix()` itself.
-
-## Auth & 2FA
-
-Login, register, email verify, forgot password, TOTP 2FA, recovery codes. All backed by Fortify actions in `app/Actions/Fortify/` and custom response classes in `app/Http/Responses/`. Views are Inertia pages registered by `FortifyServiceProvider`. When a 2FA user logs in they're redirected to `/two-factor-challenge`.
+| `/admin/backups` | Run/clean backups, download archives, prepare restores |
+| `/admin/system` | Queue / Reverb / Redis health + runtime snapshot |
+| `/admin/monitoring` | Activity log + embedded Horizon · Pulse · log-viewer |
 
 Users self-manage profile, password, and 2FA at `/profile`.
 
+## Optional features
+
+- **Multi-customer** — `stancl/tenancy` v3 is pre-wired but off. Set `TENANCY_ENABLED=true` and re-seed for `/c/{slug}/*` routes, a `default` customer, the `/admin/customers` UI, and a Postgres schema per customer. The user-facing name is "Customer"; the model stays `App\Domains\Tenancy\Models\Tenant`.
+- **Table prefix** — set `DB_TABLE_PREFIX=acme_` and re-migrate to namespace every core table. Only Eloquent / Query Builder / Schema queries inherit it; raw SQL must call `DB::getTablePrefix()`.
+
 ## Testing
 
-```bash
-make test         # Pest (SQLite :memory: — no Reverb needed)
-make test-all     # Pest + Larastan + vue-tsc + Vitest
-```
-
-Pest lives in `tests/`, Vitest in `tests/frontend/`. CI (`.github/workflows/tests.yml`) runs both suites in parallel with Postgres + Redis service containers.
+Pest lives in `tests/`, Vitest in `tests/frontend/`. `make test` runs Pest on SQLite in-memory; `make test-all` runs the full suite (Pint, Larastan, vue-tsc, Vitest). CI runs both suites against Postgres + Redis.
 
 ## Customize first
 
-- Welcome page copy — `resources/js/i18n/{en,no}.ts`, keys under `welcome.*`
-- Permissions — `database/seeders/RoleAndPermissionSeeder.php`
-- Branding + favicon — `public/`, `resources/js/Pages/Welcome.vue`, `.env`'s `APP_NAME`
-- Any env vars you'll want to review — see `.env.example` (every setting is commented)
+- Welcome page copy — `resources/js/i18n/{en,no}.ts` (`welcome.*` keys)
+- Roles & permissions — `database/seeders/RoleAndPermissionSeeder.php`
+- Branding — `public/`, `resources/js/Pages/Welcome.vue`, `APP_NAME`
+- Env vars — `.env.example` (every setting is commented)
+</content>

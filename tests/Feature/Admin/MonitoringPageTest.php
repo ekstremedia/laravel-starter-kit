@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\User;
+use App\Domains\Users\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Support\Facades\DB;
 use Spatie\Activitylog\Models\Activity;
@@ -55,8 +55,8 @@ it('keeps the legacy /admin/activity URL working via redirect', function () {
 it('filters activity by user', function () {
     $other = User::factory()->create();
 
-    Activity::create(['log_name' => 'user', 'description' => 'a', 'causer_id' => $this->admin->id, 'causer_type' => User::class]);
-    Activity::create(['log_name' => 'user', 'description' => 'b', 'causer_id' => $other->id, 'causer_type' => User::class]);
+    Activity::create(['log_name' => 'user', 'description' => 'a', 'causer_id' => $this->admin->id, 'causer_type' => (new User)->getMorphClass()]);
+    Activity::create(['log_name' => 'user', 'description' => 'b', 'causer_id' => $other->id, 'causer_type' => (new User)->getMorphClass()]);
 
     $this->actingAs($this->admin)
         ->get('/admin/monitoring?user_id='.$this->admin->id)

@@ -1,8 +1,8 @@
 <?php
 
-use App\Events\PingEvent;
-use App\Jobs\PingJob;
-use App\Models\User;
+use App\Domains\Operations\Events\PingEvent;
+use App\Domains\Operations\Jobs\PingJob;
+use App\Domains\Users\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Event;

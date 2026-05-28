@@ -78,7 +78,7 @@ const pillStyle = {
             :style="pillStyle"
         >
             <Icon name="customer" :size="12" :style="{ color: 'var(--accent)' }" />
-            <span :style="{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">
+            <span class="cmd-cust-name" :style="{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">
                 {{ soleCustomer.name }}
             </span>
         </Link>
@@ -91,7 +91,7 @@ const pillStyle = {
             :style="pillStyle"
         >
             <Icon name="customer" :size="12" :style="{ color: 'var(--accent)' }" />
-            <span :style="{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">
+            <span class="cmd-cust-name" :style="{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">
                 {{ triggerLabel }}
             </span>
             <Icon v-if="hasMany" name="chevD" :size="10" :style="{ color: 'var(--fg-mute)' }" />
@@ -117,7 +117,7 @@ const pillStyle = {
             <div
                 class="cmd-mono cmd-uc"
                 :style="{ padding: '8px 10px 4px', fontSize: '9.5px', color: 'var(--fg-mute)', fontWeight: 500 }"
-            >Kunder</div>
+            >{{ t('customer_switcher.customers') }}</div>
             <Link
                 v-for="c in list"
                 :key="c.id"
@@ -144,3 +144,12 @@ const pillStyle = {
         </div>
     </div>
 </template>
+
+<style scoped>
+/* On narrow screens collapse the pill to an icon so the topbar fits. */
+@media (max-width: 640px) {
+    .cmd-cust-name {
+        display: none;
+    }
+}
+</style>

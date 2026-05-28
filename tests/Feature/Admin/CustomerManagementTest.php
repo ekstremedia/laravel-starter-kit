@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\Tenant;
-use App\Models\User;
+use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Users\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Support\Facades\DB;
 

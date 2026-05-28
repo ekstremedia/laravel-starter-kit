@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import CommandLayout from '@/Layouts/CommandLayout.vue';
 import Dot from '@/Components/Command/Dot.vue';
 import Icon from '@/Components/Command/Icon.vue';
@@ -9,6 +10,8 @@ import Toggle from '@/Components/Command/Toggle.vue';
 import { useCommandToasts } from '@/composables/useCommandToasts';
 
 defineOptions({ layout: CommandLayout });
+
+const { t } = useI18n();
 
 type Severity = 'info' | 'warn' | 'danger' | 'success';
 
@@ -27,6 +30,7 @@ interface Settings {
     max_share_days: number;
     // null/null = unlimited, -1 = explicit unlimited, 0 = blocked, N>0 = cap.
     default_personal_storage_bytes: number | null;
+    default_entity_storage_bytes: number | null;
 }
 
 interface Props {
@@ -51,6 +55,7 @@ const form = useForm({
     files_feature_enabled: props.settings.files_feature_enabled,
     max_share_days: props.settings.max_share_days,
     default_personal_storage_bytes: props.settings.default_personal_storage_bytes,
+    default_entity_storage_bytes: props.settings.default_entity_storage_bytes,
 });
 
 // `v-model.number` gives us '' when the user clears the field, but the
@@ -63,47 +68,58 @@ const defaultPersonalStorageBytes = computed<number | null>({
     },
 });
 
+const defaultEntityStorageBytes = computed<number | null>({
+    get: () => form.default_entity_storage_bytes,
+    set: (v) => {
+        form.default_entity_storage_bytes = v === null || Number.isNaN(v as unknown as number) || (v as unknown as string) === '' ? null : Number(v);
+    },
+});
+
 const dirty = computed(() => form.isDirty);
 const loading = ref(true);
 setTimeout(() => { loading.value = false; }, 700);
 
-type SectionId = 'access' | 'policy' | 'banner' | 'fs';
-const active = ref<SectionId>('access');
-const sections: { id: SectionId; label: string }[] = [
-    { id: 'access', label: 'Tilgang' },
-    { id: 'policy', label: 'Retningslinjer' },
-    { id: 'banner', label: 'Annonsering' },
-    { id: 'fs', label: 'Filsystem' },
-];
+// Section registry — the single place to add a settings section. Add an id +
+// label here and a matching <template v-if="active === 'id'"> block below;
+// the sidebar, routing and active-state all derive from this list. Order
+// matters: the file system leads since it's the most-used feature.
+type SectionId = 'fs' | 'access' | 'policy' | 'banner';
+const sections = computed<{ id: SectionId; label: string }[]>(() => [
+    { id: 'fs', label: t('admin.app_settings.filesystem') },
+    { id: 'access', label: t('admin.app_settings.access') },
+    { id: 'policy', label: t('admin.app_settings.policy') },
+    { id: 'banner', label: t('admin.app_settings.announcement') },
+]);
+const active = ref<SectionId>('fs');
 
-const severityOptions: { id: Severity; label: string }[] = [
-    { id: 'info', label: 'Info' },
-    { id: 'warn', label: 'Advarsel' },
-    { id: 'danger', label: 'Feil' },
-    { id: 'success', label: 'Ok' },
-];
+const severityOptions = computed<{ id: Severity; label: string }[]>(() => [
+    { id: 'info', label: t('admin.app_settings.severity_info') },
+    { id: 'warn', label: t('admin.app_settings.severity_warn') },
+    { id: 'danger', label: t('admin.app_settings.severity_danger') },
+    { id: 'success', label: t('admin.app_settings.severity_success') },
+]);
 
 function save() {
     form.patch('/admin/settings', {
         preserveScroll: true,
         onSuccess: () => {
-            push('Innstillinger lagret', 'success');
+            push(t('admin.app_settings.toast_saved'), 'success');
             form.defaults();
         },
-        onError: () => push('Kunne ikke lagre — se felter', 'danger'),
+        onError: () => push(t('admin.app_settings.toast_error'), 'danger'),
     });
 }
 
 function discard() {
     form.reset();
-    push('Endringer forkastet', 'info');
+    push(t('admin.app_settings.toast_discarded'), 'info');
 }
 
 const roleOpen = ref(false);
 </script>
 
 <template>
-    <Head title="Appinnstillinger" />
+    <Head :title="t('admin.app_settings.title')" />
 
     <div :style="{ display: 'flex', gap: '16px', minHeight: 'calc(100vh - 42px - 48px)' }">
         <!-- Section sidebar -->
@@ -121,7 +137,7 @@ const roleOpen = ref(false);
             <div
                 class="cmd-mono cmd-uc"
                 :style="{ fontSize: '9px', color: 'var(--fg-mute)', padding: '0 8px 8px', fontWeight: 500 }"
-            >Seksjoner</div>
+            >{{ t('admin.app_settings.sections_label') }}</div>
             <div
                 v-for="s in sections"
                 :key="s.id"
@@ -142,11 +158,11 @@ const roleOpen = ref(false);
         <div :style="{ flex: 1, minWidth: 0 }">
             <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '20px' }">
                 <div>
-                    <h1 :style="{ margin: 0, fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--fg)' }">Appinnstillinger</h1>
+                    <h1 :style="{ margin: 0, fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--fg)' }">{{ t('admin.app_settings.title') }}</h1>
                     <div
                         class="cmd-mono"
                         :style="{ marginTop: '3px', fontSize: '11.5px', color: 'var(--fg-mute)' }"
-                    >Globale brytere som påvirker alle ikke-admin-brukere</div>
+                    >{{ t('admin.app_settings.subtitle') }}</div>
                 </div>
                 <div :style="{ display: 'flex', gap: '6px', alignItems: 'center' }">
                     <span
@@ -154,14 +170,14 @@ const roleOpen = ref(false);
                         :style="{ fontSize: '11px', color: 'var(--warning)', display: 'flex', alignItems: 'center', gap: '5px' }"
                     >
                         <Dot color="var(--warning)" :size="5" />
-                        Ulagrede endringer
+                        {{ t('admin.app_settings.unsaved') }}
                     </span>
                     <button
                         v-if="dirty"
                         type="button"
                         @click="discard"
                         :style="{ background: 'transparent', color: 'var(--fg-dim)', border: '1px solid var(--border)', padding: '5px 10px', borderRadius: '5px', fontSize: '11.5px', cursor: 'pointer', fontFamily: 'inherit' }"
-                    >Forkast</button>
+                    >{{ t('admin.app_settings.discard') }}</button>
                     <button
                         type="button"
                         :disabled="form.processing || !dirty"
@@ -178,7 +194,7 @@ const roleOpen = ref(false);
                             opacity: form.processing || !dirty ? 0.55 : 1,
                             fontFamily: 'inherit',
                         }"
-                    >Lagre</button>
+                    >{{ t('common.save') }}</button>
                 </div>
             </div>
 
@@ -192,26 +208,26 @@ const roleOpen = ref(false);
                 <template v-else>
                     <!-- Tilgang -->
                     <section v-show="active === 'access'">
-                        <div :style="{ fontSize: '15px', fontWeight: 600, marginBottom: '3px', color: 'var(--fg)' }">Tilgang</div>
+                        <div :style="{ fontSize: '15px', fontWeight: 600, marginBottom: '3px', color: 'var(--fg)' }">{{ t('admin.app_settings.access') }}</div>
                         <div :style="{ fontSize: '12px', color: 'var(--fg-dim)', marginBottom: '16px' }">
-                            Globale brytere som styrer om applikasjonen er tilgjengelig.
+                            {{ t('admin.app_settings.access_desc') }}
                         </div>
                         <div :style="{ display: 'flex', flexDirection: 'column', gap: '14px' }">
                             <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }">
                                 <div :style="{ flex: 1 }">
-                                    <div :style="{ fontSize: '12.5px', fontWeight: 500, color: 'var(--fg)' }">Nettstedet er oppe</div>
+                                    <div :style="{ fontSize: '12.5px', fontWeight: 500, color: 'var(--fg)' }">{{ t('admin.app_settings.site_up') }}</div>
                                     <div :style="{ fontSize: '11px', color: 'var(--fg-dim)', marginTop: '2px' }">
-                                        Slår av &amp; på service. Administratorer har alltid tilgang.
+                                        {{ t('admin.app_settings.site_up_desc') }}
                                     </div>
                                 </div>
-                                <Toggle v-model="form.site_up" label="Nettstedet er oppe" />
+                                <Toggle v-model="form.site_up" :label="t('admin.app_settings.site_up')" />
                             </div>
 
                             <div>
                                 <div
                                     class="cmd-mono cmd-uc"
                                     :style="{ fontSize: '10px', color: 'var(--fg-mute)', marginBottom: '6px', letterSpacing: '0.06em' }"
-                                >Vedlikeholdsmelding</div>
+                                >{{ t('admin.app_settings.maintenance_message') }}</div>
                                 <input
                                     v-model="form.maintenance_message"
                                     type="text"
@@ -234,48 +250,48 @@ const roleOpen = ref(false);
 
                             <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }">
                                 <div :style="{ flex: 1 }">
-                                    <div :style="{ fontSize: '12.5px', fontWeight: 500, color: 'var(--fg)' }">Innlogging aktivert</div>
+                                    <div :style="{ fontSize: '12.5px', fontWeight: 500, color: 'var(--fg)' }">{{ t('admin.app_settings.login_enabled') }}</div>
                                     <div :style="{ fontSize: '11px', color: 'var(--fg-dim)', marginTop: '2px' }">
-                                        La alle brukerinnlogginger skje som vanlig.
+                                        {{ t('admin.app_settings.login_enabled_desc') }}
                                     </div>
                                 </div>
-                                <Toggle v-model="form.login_enabled" label="Innlogging aktivert" />
+                                <Toggle v-model="form.login_enabled" :label="t('admin.app_settings.login_enabled')" />
                             </div>
 
                             <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }">
                                 <div :style="{ flex: 1 }">
-                                    <div :style="{ fontSize: '12.5px', fontWeight: 500, color: 'var(--fg)' }">Registrering åpen</div>
+                                    <div :style="{ fontSize: '12.5px', fontWeight: 500, color: 'var(--fg)' }">{{ t('admin.app_settings.registration_open') }}</div>
                                     <div :style="{ fontSize: '11px', color: 'var(--fg-dim)', marginTop: '2px' }">
-                                        Tillat nye brukerregistreringer.
+                                        {{ t('admin.app_settings.registration_open_desc') }}
                                     </div>
                                 </div>
-                                <Toggle v-model="form.registration_open" label="Registrering åpen" />
+                                <Toggle v-model="form.registration_open" :label="t('admin.app_settings.registration_open')" />
                             </div>
 
                             <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }">
                                 <div :style="{ flex: 1 }">
-                                    <div :style="{ fontSize: '12.5px', fontWeight: 500, color: 'var(--fg)' }">Krev e-postverifisering</div>
+                                    <div :style="{ fontSize: '12.5px', fontWeight: 500, color: 'var(--fg)' }">{{ t('admin.app_settings.require_verification') }}</div>
                                     <div :style="{ fontSize: '11px', color: 'var(--fg-dim)', marginTop: '2px' }">
-                                        Brukere må verifisere e-post før tilgang.
+                                        {{ t('admin.app_settings.require_verification_desc') }}
                                     </div>
                                 </div>
-                                <Toggle v-model="form.require_email_verification" label="Krev e-postverifisering" />
+                                <Toggle v-model="form.require_email_verification" :label="t('admin.app_settings.require_verification')" />
                             </div>
                         </div>
                     </section>
 
                     <!-- Retningslinjer -->
                     <section v-show="active === 'policy'">
-                        <div :style="{ fontSize: '15px', fontWeight: 600, marginBottom: '3px', color: 'var(--fg)' }">Retningslinjer</div>
+                        <div :style="{ fontSize: '15px', fontWeight: 600, marginBottom: '3px', color: 'var(--fg)' }">{{ t('admin.app_settings.policy') }}</div>
                         <div :style="{ fontSize: '12px', color: 'var(--fg-dim)', marginBottom: '16px' }">
-                            Standardverdier og krav for brukerkontoer.
+                            {{ t('admin.app_settings.policy_desc') }}
                         </div>
                         <div :style="{ display: 'flex', flexDirection: 'column', gap: '14px' }">
                             <div>
                                 <div
                                     class="cmd-mono cmd-uc"
                                     :style="{ fontSize: '10px', color: 'var(--fg-mute)', marginBottom: '6px', letterSpacing: '0.06em' }"
-                                >Standardrolle ved registrering</div>
+                                >{{ t('admin.app_settings.default_role') }}</div>
                                 <div :style="{ position: 'relative' }">
                                     <button
                                         type="button"
@@ -331,42 +347,42 @@ const roleOpen = ref(false);
 
                             <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }">
                                 <div :style="{ flex: 1 }">
-                                    <div :style="{ fontSize: '12.5px', fontWeight: 500, color: 'var(--fg)' }">Krev 2FA for administratorer</div>
+                                    <div :style="{ fontSize: '12.5px', fontWeight: 500, color: 'var(--fg)' }">{{ t('admin.app_settings.require_2fa_admin') }}</div>
                                     <div :style="{ fontSize: '11px', color: 'var(--fg-dim)', marginTop: '2px' }">
-                                        Admin uten 2FA blokkeres til det er aktivert.
+                                        {{ t('admin.app_settings.require_2fa_admin_desc') }}
                                     </div>
                                 </div>
-                                <Toggle v-model="form.require_2fa_for_admins" label="Krev 2FA for administratorer" />
+                                <Toggle v-model="form.require_2fa_for_admins" :label="t('admin.app_settings.require_2fa_admin')" />
                             </div>
 
                             <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }">
                                 <div :style="{ flex: 1 }">
-                                    <div :style="{ fontSize: '12.5px', fontWeight: 500, color: 'var(--fg)' }">Send velkomstvarsling</div>
+                                    <div :style="{ fontSize: '12.5px', fontWeight: 500, color: 'var(--fg)' }">{{ t('admin.app_settings.send_welcome') }}</div>
                                     <div :style="{ fontSize: '11px', color: 'var(--fg-dim)', marginTop: '2px' }">
-                                        Send e-post ved registrering.
+                                        {{ t('admin.app_settings.send_welcome_desc') }}
                                     </div>
                                 </div>
-                                <Toggle v-model="form.send_welcome_notification" label="Send velkomstvarsling" />
+                                <Toggle v-model="form.send_welcome_notification" :label="t('admin.app_settings.send_welcome')" />
                             </div>
                         </div>
                     </section>
 
                     <!-- Annonsering -->
                     <section v-show="active === 'banner'">
-                        <div :style="{ fontSize: '15px', fontWeight: 600, marginBottom: '3px', color: 'var(--fg)' }">Annonsering</div>
+                        <div :style="{ fontSize: '15px', fontWeight: 600, marginBottom: '3px', color: 'var(--fg)' }">{{ t('admin.app_settings.announcement') }}</div>
                         <div :style="{ fontSize: '12px', color: 'var(--fg-dim)', marginBottom: '16px' }">
-                            Globalt banner som vises øverst for alle brukere.
+                            {{ t('admin.app_settings.announcement_desc') }}
                         </div>
                         <div :style="{ display: 'flex', flexDirection: 'column', gap: '14px' }">
                             <div>
                                 <div
                                     class="cmd-mono cmd-uc"
                                     :style="{ fontSize: '10px', color: 'var(--fg-mute)', marginBottom: '6px', letterSpacing: '0.06em' }"
-                                >Bannertekst</div>
+                                >{{ t('admin.app_settings.banner_text') }}</div>
                                 <input
                                     v-model="form.announcement_banner"
                                     type="text"
-                                    placeholder="(tom = skjult)"
+                                    :placeholder="t('admin.app_settings.banner_placeholder')"
                                     :style="{
                                         width: '100%',
                                         background: 'var(--panel2)',
@@ -385,7 +401,7 @@ const roleOpen = ref(false);
                                 <div
                                     class="cmd-mono cmd-uc"
                                     :style="{ fontSize: '10px', color: 'var(--fg-mute)', marginBottom: '6px', letterSpacing: '0.06em' }"
-                                >Alvorlighetstone</div>
+                                >{{ t('admin.app_settings.severity') }}</div>
                                 <div :style="{ display: 'inline-flex', gap: '1px', background: 'var(--border)', padding: '1px', borderRadius: '4px' }">
                                     <button
                                         v-for="o in severityOptions"
@@ -410,26 +426,26 @@ const roleOpen = ref(false);
 
                     <!-- Filsystem -->
                     <section v-show="active === 'fs'">
-                        <div :style="{ fontSize: '15px', fontWeight: 600, marginBottom: '3px', color: 'var(--fg)' }">Filsystem</div>
+                        <div :style="{ fontSize: '15px', fontWeight: 600, marginBottom: '3px', color: 'var(--fg)' }">{{ t('admin.app_settings.filesystem') }}</div>
                         <div :style="{ fontSize: '12px', color: 'var(--fg-dim)', marginBottom: '16px' }">
-                            Innstillinger for personlig lagring.
+                            {{ t('admin.app_settings.filesystem_desc') }}
                         </div>
                         <div :style="{ display: 'flex', flexDirection: 'column', gap: '14px' }">
                             <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }">
                                 <div :style="{ flex: 1 }">
-                                    <div :style="{ fontSize: '12.5px', fontWeight: 500, color: 'var(--fg)' }">Aktiver personlig filsystem</div>
+                                    <div :style="{ fontSize: '12.5px', fontWeight: 500, color: 'var(--fg)' }">{{ t('admin.app_settings.files_feature_enabled') }}</div>
                                     <div :style="{ fontSize: '11px', color: 'var(--fg-dim)', marginTop: '2px' }">
-                                        Gi brukere et privat lagringsområde.
+                                        {{ t('admin.app_settings.files_feature_enabled_desc') }}
                                     </div>
                                 </div>
-                                <Toggle v-model="form.files_feature_enabled" label="Aktiver personlig filsystem" />
+                                <Toggle v-model="form.files_feature_enabled" :label="t('admin.app_settings.files_feature_enabled')" />
                             </div>
 
                             <div>
                                 <div
                                     class="cmd-mono cmd-uc"
                                     :style="{ fontSize: '10px', color: 'var(--fg-mute)', marginBottom: '6px', letterSpacing: '0.06em' }"
-                                >Maks slettetid (dager)</div>
+                                >{{ t('admin.app_settings.max_share_days') }}</div>
                                 <input
                                     v-model.number="form.max_share_days"
                                     type="number"
@@ -453,13 +469,13 @@ const roleOpen = ref(false);
                                 <div
                                     class="cmd-mono cmd-uc"
                                     :style="{ fontSize: '10px', color: 'var(--fg-mute)', marginBottom: '6px', letterSpacing: '0.06em' }"
-                                >Standard personlig lagring (bytes)</div>
+                                >{{ t('admin.app_settings.default_personal_storage') }}</div>
                                 <input
                                     v-model.number="defaultPersonalStorageBytes"
                                     type="number"
                                     min="-1"
                                     class="cmd-mono"
-                                    placeholder="tom = ubegrenset, -1 = ubegrenset, 0 = blokkert"
+                                    :placeholder="t('admin.app_settings.storage_placeholder')"
                                     :style="{
                                         width: '100%',
                                         maxWidth: '360px',
@@ -473,7 +489,35 @@ const roleOpen = ref(false);
                                     }"
                                 />
                                 <p :style="{ fontSize: '11px', color: 'var(--fg-mute)', marginTop: '4px' }">
-                                    Standard byte-grense for alle brukeres personlige filer. Kan overstyres per kunde og per bruker.
+                                    {{ t('admin.app_settings.default_personal_storage_desc') }}
+                                </p>
+                            </div>
+
+                            <div>
+                                <div
+                                    class="cmd-mono cmd-uc"
+                                    :style="{ fontSize: '10px', color: 'var(--fg-mute)', marginBottom: '6px', letterSpacing: '0.06em' }"
+                                >{{ t('admin.app_settings.default_entity_storage') }}</div>
+                                <input
+                                    v-model.number="defaultEntityStorageBytes"
+                                    type="number"
+                                    min="-1"
+                                    class="cmd-mono"
+                                    :placeholder="t('admin.app_settings.storage_placeholder')"
+                                    :style="{
+                                        width: '100%',
+                                        maxWidth: '360px',
+                                        background: 'var(--panel2)',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '5px',
+                                        padding: '7px 10px',
+                                        color: 'var(--fg)',
+                                        fontSize: '12px',
+                                        outline: 'none',
+                                    }"
+                                />
+                                <p :style="{ fontSize: '11px', color: 'var(--fg-mute)', marginTop: '4px' }">
+                                    {{ t('admin.app_settings.default_entity_storage_desc') }}
                                 </p>
                             </div>
                         </div>
