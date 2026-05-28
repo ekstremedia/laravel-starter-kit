@@ -115,6 +115,10 @@ rebuild: _require-local ## Reset starter kit to a clean slate: drop tenant schem
 	@echo ""
 	@echo "  ✓ Starter kit reset complete."
 	@echo ""
+	@echo "  App:     $(DISPLAY_URL)"
+	@echo "  Mailpit: http://localhost:$(MAILPIT_HOST_PORT)"
+	@echo "  Reverb:  ws://$(VITE_REVERB_HOST):$(REVERB_HOST_PORT)"
+	@echo ""
 
 rollback: ## Rollback last migration
 	docker compose exec $(APP_SERVICE) php artisan migrate:rollback
