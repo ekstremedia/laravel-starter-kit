@@ -40,9 +40,9 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
 
 # Upload limits — kept slightly below nginx's client_max_body_size
 RUN { \
-        echo 'upload_max_filesize=50M'; \
-        echo 'post_max_size=55M'; \
-        echo 'memory_limit=512M'; \
+        echo 'upload_max_filesize=500M'; \
+        echo 'post_max_size=550M'; \
+        echo 'memory_limit=768M'; \
     } > /usr/local/etc/php/conf.d/uploads.ini
 
 # Install Composer
