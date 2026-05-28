@@ -11,7 +11,6 @@ import Dot from '@/Components/Command/Dot.vue';
 import Toggle from '@/Components/Command/Toggle.vue';
 import MultiSelect from 'primevue/multiselect';
 import { formatDateTime } from '@/composables/useDateTime';
-import ConfirmDialog from 'primevue/confirmdialog';
 import { useConfirm } from 'primevue/useconfirm';
 
 defineOptions({ layout: AdminLayout });
@@ -155,7 +154,6 @@ function chipStyle(tone: Tone) {
 <template>
     <div :style="{ padding: '24px 32px', maxWidth: '1100px', margin: '0 auto' }">
         <Head :title="`${user.full_name} · Admin`" />
-        <ConfirmDialog group="command" />
 
         <!-- Ban dialog -->
         <CommandDialog
