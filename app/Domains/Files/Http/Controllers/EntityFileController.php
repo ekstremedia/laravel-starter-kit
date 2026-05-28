@@ -161,6 +161,7 @@ class EntityFileController extends Controller
     public function download(Request $request, FileItem $file): BinaryFileResponse
     {
         $tenant = $this->currentTenant($request);
+        $this->assertFilesEnabled($tenant);
         Gate::forUser($request->user())->authorize('download', [$file, $tenant]);
 
         $media = $file->getFirstMedia('file');

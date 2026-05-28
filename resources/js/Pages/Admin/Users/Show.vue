@@ -65,12 +65,18 @@ const platformPermUpdating = ref(false);
 const emailTemplatesGranted = ref(props.user.platform_permissions.includes('manage_email_templates'));
 
 function toggleEmailTemplates(value: boolean) {
+    const previous = emailTemplatesGranted.value;
     emailTemplatesGranted.value = value;
     platformPermUpdating.value = true;
     router.patch(
         `/admin/users/${props.user.id}/platform-permission`,
         { capability: 'manage_email_templates', enabled: value },
-        { preserveScroll: true, onFinish: () => { platformPermUpdating.value = false; } },
+        {
+            preserveScroll: true,
+            // Revert the optimistic toggle if the request fails.
+            onError: () => { emailTemplatesGranted.value = previous; },
+            onFinish: () => { platformPermUpdating.value = false; },
+        },
     );
 }
 

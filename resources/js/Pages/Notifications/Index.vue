@@ -7,7 +7,7 @@
  */
 import { Head, router } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import CommandLayout from '@/Layouts/CommandLayout.vue';
 import Icon from '@/Components/Command/Icon.vue';
 import { useCustomer } from '@/composables/useCustomer';
@@ -34,6 +34,11 @@ const { setNotifications, decrementNotifications } = useUnreadCounts();
 
 const items = ref<NotificationItem[]>([...props.notifications]);
 const hoverId = ref<string | null>(null);
+
+// Derive the unread count from local state so the "mark all read" control
+// reacts to in-page mutations (mark/clear) — the unread_count prop is only
+// the initial server value and goes stale after the first action.
+const unreadCount = computed(() => items.value.filter((n) => !n.read_at).length);
 
 const nowTick = ref(Date.now());
 let tickHandle: number | undefined;
@@ -107,7 +112,7 @@ function title(n: NotificationItem): string {
             </h1>
             <div v-if="items.length > 0" :style="{ display: 'flex', gap: '14px' }">
                 <button
-                    v-if="unread_count > 0"
+                    v-if="unreadCount > 0"
                     type="button"
                     @click="markAllRead"
                     :style="{ background: 'transparent', border: 'none', color: 'var(--accent)', fontSize: '12px', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }"

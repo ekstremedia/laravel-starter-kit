@@ -221,9 +221,13 @@ class CustomerController extends Controller
         // central model_has_* tables keyed by team_id. Dropping the tenant
         // schema doesn't touch them, so clean them up here to avoid orphaned
         // rows that would otherwise leak onto a future customer reusing the id.
+        // Pin the central connection explicitly — this runs from /admin where
+        // tenancy isn't bootstrapped today, but a tenant-initialized caller
+        // would otherwise send these deletes to the wrong schema.
         $teamKey = config('permission.column_names.team_foreign_key', 'team_id');
-        DB::table(config('permission.table_names.model_has_roles'))->where($teamKey, $customer->id)->delete();
-        DB::table(config('permission.table_names.model_has_permissions'))->where($teamKey, $customer->id)->delete();
+        $central = config('tenancy.database.central_connection');
+        DB::connection($central)->table(config('permission.table_names.model_has_roles'))->where($teamKey, $customer->id)->delete();
+        DB::connection($central)->table(config('permission.table_names.model_has_permissions'))->where($teamKey, $customer->id)->delete();
 
         // Triggers the TenantDeleted job pipeline → drops the tenant<id> schema.
         $customer->delete();

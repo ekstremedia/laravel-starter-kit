@@ -65,10 +65,12 @@ it('denormalizes storage_used_bytes on recompute', function () {
 });
 
 it('delegates file permissions to the owning customer', function () {
-    app(PermissionRegistrar::class)->setPermissionsTeamId($this->customer->id);
-
     $admin = User::factory()->create();
     joinCustomer($admin, $this->customer, 'Admin');
+
+    // Scope permission resolution to the customer team *after* membership
+    // exists — joinCustomer() resets the team id to null when it returns.
+    app(PermissionRegistrar::class)->setPermissionsTeamId($this->customer->id);
 
     $stranger = User::factory()->create();
 
