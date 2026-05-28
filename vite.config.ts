@@ -49,6 +49,12 @@ export default defineConfig(({ mode }) => {
             },
             watch: {
                 ignored: ['**/storage/framework/views/**'],
+                // Docker bind mounts on macOS/Windows don't reliably deliver
+                // native filesystem events, so edits (notably to *.ts like the
+                // i18n files) can go unseen until Vite restarts. Polling trades
+                // a little CPU for dependable HMR across hosts.
+                usePolling: true,
+                interval: 300,
             },
         },
     };

@@ -439,6 +439,8 @@ export default {
     },
     notifications: {
         title: 'Varsler',
+        subtitle: 'Alt som trenger din oppmerksomhet, på ett sted.',
+        view_all: 'Se alle varsler',
         mark_all_read: 'Merk alle som lest',
         clear_all: 'Fjern alle',
         delete: 'Slett varsel',

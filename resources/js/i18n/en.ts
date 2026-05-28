@@ -439,6 +439,8 @@ export default {
     },
     notifications: {
         title: 'Notifications',
+        subtitle: 'Everything that needs your attention, in one place.',
+        view_all: 'View all notifications',
         mark_all_read: 'Mark all read',
         clear_all: 'Clear all',
         delete: 'Delete notification',
