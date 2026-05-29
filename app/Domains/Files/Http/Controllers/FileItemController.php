@@ -56,7 +56,7 @@ class FileItemController extends Controller
         $parentId = $folder?->id;
 
         $query = FileItem::query()
-            ->where('tenant_id', $tenant->id)
+            ->where('workspace_id', $tenant->id)
             ->forOwner($owner)
             ->where('parent_id', $parentId)
             ->with(['media', 'companyLink']);
@@ -75,7 +75,7 @@ class FileItemController extends Controller
         $usedBytes = $this->usage->usedBytesForOwnerInTenant($owner, $tenant);
 
         $trashedCount = FileItem::onlyTrashed()
-            ->where('tenant_id', $tenant->id)
+            ->where('workspace_id', $tenant->id)
             ->forOwner($owner)
             ->count();
 
@@ -119,7 +119,7 @@ class FileItemController extends Controller
         }
 
         $folder = FileItem::create([
-            'tenant_id' => $tenant->id,
+            'workspace_id' => $tenant->id,
             'user_id' => $user->id,
             'owner_type' => $owner->getMorphClass(),
             'owner_id' => $owner->getKey(),
@@ -166,7 +166,7 @@ class FileItemController extends Controller
                 $name = $this->uniqueName($tenant->id, $owner, $parentId, $file->getClientOriginalName());
                 $size = $file->getSize();
                 $item = FileItem::create([
-                    'tenant_id' => $tenant->id,
+                    'workspace_id' => $tenant->id,
                     'user_id' => $user->id,
                     'owner_type' => $owner->getMorphClass(),
                     'owner_id' => $owner->getKey(),
@@ -307,7 +307,7 @@ class FileItemController extends Controller
         if ($parentId !== null) {
             $parent = FileItem::findOrFail($parentId);
             if (
-                $parent->tenant_id !== $tenant->id
+                $parent->workspace_id !== $tenant->id
                 || $parent->scope !== FileItem::SCOPE_COMPANY
                 || ! $parent->isFolder()
             ) {
@@ -330,7 +330,7 @@ class FileItemController extends Controller
         DB::connection((string) config('tenancy.database.central_connection'))
             ->transaction(function () use ($file, $tenant, $user, $parentId): void {
                 CompanyFileLink::updateOrCreate(
-                    ['tenant_id' => $tenant->id, 'file_item_id' => $file->id],
+                    ['workspace_id' => $tenant->id, 'file_item_id' => $file->id],
                     ['company_parent_id' => $parentId, 'shared_by_user_id' => $user->id],
                 );
             });
@@ -358,7 +358,7 @@ class FileItemController extends Controller
                     $this->unshareFolderFromCompany($file, $tenant);
                 } else {
                     CompanyFileLink::query()
-                        ->where('tenant_id', $tenant->id)
+                        ->where('workspace_id', $tenant->id)
                         ->where('file_item_id', $file->id)
                         ->delete();
                 }
@@ -378,7 +378,7 @@ class FileItemController extends Controller
                 $this->unshareFolderFromCompany($child, $tenant);
             } else {
                 CompanyFileLink::query()
-                    ->where('tenant_id', $tenant->id)
+                    ->where('workspace_id', $tenant->id)
                     ->where('file_item_id', $child->id)
                     ->delete();
             }
@@ -518,7 +518,7 @@ class FileItemController extends Controller
         $this->authorizeOwnerAccess($user, $owner, $tenant, view: true);
 
         $folders = FileItem::query()
-            ->where('tenant_id', $tenant->id)
+            ->where('workspace_id', $tenant->id)
             ->forOwner($owner)
             ->where('type', FileItem::TYPE_FOLDER)
             ->orderBy('name')
@@ -827,7 +827,7 @@ class FileItemController extends Controller
         $base = $name;
         $i = 1;
         while (FileItem::query()
-            ->where('tenant_id', $tenantId)
+            ->where('workspace_id', $tenantId)
             ->where('owner_type', $ownerType)
             ->where('owner_id', $ownerId)
             ->where('parent_id', $parentId)

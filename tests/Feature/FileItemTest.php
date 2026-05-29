@@ -12,12 +12,12 @@ it('creates a file item scoped to a tenant and user', function () {
     $user->customers()->attach($tenant);
 
     $folder = FileItem::factory()->folder()->create([
-        'tenant_id' => $tenant->id,
+        'workspace_id' => $tenant->id,
         'user_id' => $user->id,
     ]);
 
     $child = FileItem::factory()->create([
-        'tenant_id' => $tenant->id,
+        'workspace_id' => $tenant->id,
         'user_id' => $user->id,
         'parent_id' => $folder->id,
     ]);
@@ -35,20 +35,20 @@ it('cascade-soft-deletes descendants when a folder is trashed', function () {
     $user = User::factory()->create();
 
     $folder = FileItem::factory()->folder()->create([
-        'tenant_id' => $tenant->id,
+        'workspace_id' => $tenant->id,
         'user_id' => $user->id,
     ]);
 
     FileItem::factory()->count(3)->create([
-        'tenant_id' => $tenant->id,
+        'workspace_id' => $tenant->id,
         'user_id' => $user->id,
         'parent_id' => $folder->id,
     ]);
 
     $folder->delete();
 
-    expect(FileItem::where('tenant_id', $tenant->id)->count())->toBe(0)
-        ->and(FileItem::withTrashed()->where('tenant_id', $tenant->id)->count())->toBe(4);
+    expect(FileItem::where('workspace_id', $tenant->id)->count())->toBe(0)
+        ->and(FileItem::withTrashed()->where('workspace_id', $tenant->id)->count())->toBe(4);
 });
 
 it('identifies image mime types', function () {

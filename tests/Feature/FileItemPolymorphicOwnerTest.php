@@ -24,7 +24,7 @@ beforeEach(function () {
 
 it('defaults a factory-created file to user ownership', function () {
     $item = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
     ]);
 
@@ -38,7 +38,7 @@ it('makes a tenant the owner via ->ownedBy()', function () {
     $item = FileItem::factory()
         ->ownedBy($this->customer)
         ->create([
-            'tenant_id' => $this->customer->id,
+            'workspace_id' => $this->customer->id,
             'user_id' => $this->user->id,
         ]);
 
@@ -53,11 +53,11 @@ it('scopes queries by owner using forOwner()', function () {
     joinCustomer($other, $this->customer);
 
     FileItem::factory()->count(2)->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
     ]);
     FileItem::factory()->count(3)->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $other->id,
     ]);
 
@@ -68,14 +68,14 @@ it('scopes queries by owner using forOwner()', function () {
 
 it('routes broadcast channels by owner type', function () {
     $userItem = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
     ]);
 
     $companyItem = FileItem::factory()
         ->ownedBy($this->customer)
         ->create([
-            'tenant_id' => $this->customer->id,
+            'workspace_id' => $this->customer->id,
             'user_id' => $this->user->id,
         ]);
 
@@ -94,7 +94,7 @@ it('lets a user manage their own files via the policy', function () {
     app(PermissionRegistrar::class)->setPermissionsTeamId($this->customer->id);
 
     $item = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
     ]);
 
@@ -109,7 +109,7 @@ it('blocks a non-owner user from managing another users file', function () {
     joinCustomer($stranger, $this->customer);
 
     $item = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
     ]);
 
@@ -125,7 +125,7 @@ it('lets the manage-all-files permission override owner checks', function () {
     app(PermissionRegistrar::class)->setPermissionsTeamId($this->customer->id);
 
     $item = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
     ]);
 

@@ -57,7 +57,7 @@ class Tenant extends Model implements FileOwner
      */
     public function users(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'tenant_user')
+        return $this->belongsToMany(User::class, 'workspace_user', 'workspace_id', 'user_id')
             ->withTimestamps();
     }
 
@@ -69,7 +69,7 @@ class Tenant extends Model implements FileOwner
      */
     public function companyFiles(): HasMany
     {
-        return $this->hasMany(FileItem::class)->where('scope', FileItem::SCOPE_COMPANY);
+        return $this->hasMany(FileItem::class, 'workspace_id')->where('scope', FileItem::SCOPE_COMPANY);
     }
 
     /**
@@ -77,7 +77,7 @@ class Tenant extends Model implements FileOwner
      */
     public function companyFileLinks(): HasMany
     {
-        return $this->hasMany(CompanyFileLink::class);
+        return $this->hasMany(CompanyFileLink::class, 'workspace_id');
     }
 
     /**

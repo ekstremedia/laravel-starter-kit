@@ -27,7 +27,7 @@ class AssetSeeder extends Seeder
         Tenant::query()->each(function (Tenant $tenant) use ($demo): void {
             foreach ($demo as $row) {
                 Asset::firstOrCreate(
-                    ['tenant_id' => $tenant->id, 'name' => $row['name']],
+                    ['workspace_id' => $tenant->id, 'name' => $row['name']],
                     ['category' => $row['category'], 'serial' => $row['serial']],
                 );
             }

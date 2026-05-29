@@ -119,7 +119,7 @@ it('returns JSON validation errors for JSON/XHR quota rejections', function () {
 
 it('renames a file', function () {
     $item = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
         'name' => 'old.jpg',
     ]);
@@ -133,11 +133,11 @@ it('renames a file', function () {
 
 it('moves a file into a folder', function () {
     $folder = FileItem::factory()->folder()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
     ]);
     $file = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
     ]);
 
@@ -150,7 +150,7 @@ it('moves a file into a folder', function () {
 
 it('refuses setting a folder as its own parent', function () {
     $folder = FileItem::factory()->folder()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
     ]);
 
@@ -163,11 +163,11 @@ it('refuses setting a folder as its own parent', function () {
 
 it('refuses moving a folder into its own descendant', function () {
     $parent = FileItem::factory()->folder()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
     ]);
     $child = FileItem::factory()->folder()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
         'parent_id' => $parent->id,
     ]);
@@ -184,7 +184,7 @@ it('denies access to another user\'s file', function () {
     joinCustomer($other, $this->customer);
 
     $theirs = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $other->id,
     ]);
 
@@ -197,7 +197,7 @@ it('denies access to another user\'s file', function () {
 
 it('deletes a file', function () {
     $item = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
     ]);
 
@@ -213,12 +213,12 @@ it('scopes list results to the authenticated user', function () {
     joinCustomer($other, $this->customer);
 
     FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
         'name' => 'mine.jpg',
     ]);
     FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $other->id,
         'name' => 'theirs.jpg',
     ]);

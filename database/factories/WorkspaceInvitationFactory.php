@@ -21,7 +21,7 @@ class WorkspaceInvitationFactory extends Factory
     public function definition(): array
     {
         return [
-            'tenant_id' => Tenant::factory(),
+            'workspace_id' => Tenant::factory(),
             'email' => $this->faker->unique()->safeEmail(),
             'role' => 'User',
             'token' => WorkspaceInvitation::freshToken(),

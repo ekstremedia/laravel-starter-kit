@@ -55,7 +55,7 @@ class EntityFileController extends Controller
         ]);
 
         $folder = FileItem::create([
-            'tenant_id' => $tenant->id,
+            'workspace_id' => $tenant->id,
             'user_id' => $request->user()->id,
             'owner_type' => $owner->getMorphClass(),
             'owner_id' => $owner->getKey(),
@@ -93,7 +93,7 @@ class EntityFileController extends Controller
             foreach ($request->file('files', []) as $file) {
                 $size = $file->getSize();
                 $item = FileItem::create([
-                    'tenant_id' => $tenant->id,
+                    'workspace_id' => $tenant->id,
                     'user_id' => $request->user()->id,
                     'owner_type' => $owner->getMorphClass(),
                     'owner_id' => $owner->getKey(),
@@ -214,7 +214,7 @@ class EntityFileController extends Controller
     private function existsRule(Tenant $tenant, Model $owner): Exists
     {
         return Rule::exists((string) config('tenancy.database.central_connection').'.file_items', 'id')
-            ->where('tenant_id', $tenant->id)
+            ->where('workspace_id', $tenant->id)
             ->where('owner_type', $owner->getMorphClass())
             ->where('owner_id', $owner->getKey())
             ->where('type', FileItem::TYPE_FOLDER);
@@ -229,7 +229,7 @@ class EntityFileController extends Controller
         $base = $name;
         $i = 1;
         while (FileItem::query()
-            ->where('tenant_id', $tenant->id)
+            ->where('workspace_id', $tenant->id)
             ->where('owner_type', $owner->getMorphClass())
             ->where('owner_id', $owner->getKey())
             ->where('parent_id', $parentId)

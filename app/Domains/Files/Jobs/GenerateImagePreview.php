@@ -100,7 +100,7 @@ class GenerateImagePreview implements ShouldQueue
         // in the generated JPEG (it listens for CompanyFilesChanged, not
         // FileItemUpdated).
         if ($item->scope === FileItem::SCOPE_COMPANY) {
-            CompanyFilesCache::bump((int) $item->tenant_id, 'preview_ready', $item->parent_id);
+            CompanyFilesCache::bump((int) $item->workspace_id, 'preview_ready', $item->parent_id);
         }
     }
 

@@ -72,7 +72,7 @@ class ShareFolderToCompany implements ShouldQueue
     {
         $companyFolder = FileItem::firstOrCreate(
             [
-                'tenant_id' => $tenant->id,
+                'workspace_id' => $tenant->id,
                 'scope' => FileItem::SCOPE_COMPANY,
                 'type' => FileItem::TYPE_FOLDER,
                 'parent_id' => $companyParentId,
@@ -95,7 +95,7 @@ class ShareFolderToCompany implements ShouldQueue
                     $this->mirrorFolder($child, $tenant, $actor, $companyFolder->id);
                 } else {
                     CompanyFileLink::updateOrCreate(
-                        ['tenant_id' => $tenant->id, 'file_item_id' => $child->id],
+                        ['workspace_id' => $tenant->id, 'file_item_id' => $child->id],
                         ['company_parent_id' => $companyFolder->id, 'shared_by_user_id' => $actor->id],
                     );
                 }

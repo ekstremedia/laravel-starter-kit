@@ -159,7 +159,7 @@ it('bulk-deletes selected files', function () {
 
 it('bulk-moves selected files into a folder', function () {
     $folder = FileItem::create([
-        'tenant_id' => $this->customer->id, 'user_id' => $this->user->id,
+        'workspace_id' => $this->customer->id, 'user_id' => $this->user->id,
         'owner_type' => $this->user->getMorphClass(), 'owner_id' => $this->user->id,
         'type' => 'folder', 'scope' => 'personal', 'name' => 'Dest',
     ]);

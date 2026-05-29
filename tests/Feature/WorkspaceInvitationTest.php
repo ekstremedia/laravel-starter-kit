@@ -15,7 +15,7 @@ beforeEach(function () {
 function makeInvitation($customer, string $email, array $overrides = []): WorkspaceInvitation
 {
     return WorkspaceInvitation::create(array_merge([
-        'tenant_id' => $customer->id,
+        'workspace_id' => $customer->id,
         'email' => $email,
         'role' => 'User',
         'token' => WorkspaceInvitation::freshToken(),
@@ -34,7 +34,7 @@ it('lets a workspace admin invite by email and emails the invitee', function () 
 
     $invitation = WorkspaceInvitation::query()->where('email', 'new@example.com')->first();
     expect($invitation)->not->toBeNull();
-    expect($invitation->tenant_id)->toBe($this->customer->id);
+    expect($invitation->workspace_id)->toBe($this->customer->id);
     expect($invitation->role)->toBe('Editor');
 
     Notification::assertSentOnDemand(WorkspaceInvitationNotification::class);

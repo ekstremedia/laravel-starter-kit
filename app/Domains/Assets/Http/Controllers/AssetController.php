@@ -31,7 +31,7 @@ class AssetController extends Controller
         abort_unless($tenant->canViewFiles($request->user(), $tenant), 403);
 
         $assets = Asset::query()
-            ->where('tenant_id', $tenant->id)
+            ->where('workspace_id', $tenant->id)
             ->withCount('files')
             ->when($request->string('q')->toString(), function ($query, string $search): void {
                 $like = '%'.addcslashes($search, '%_\\').'%';
@@ -58,7 +58,7 @@ class AssetController extends Controller
         abort_unless($tenant->canManageFiles($request->user(), $tenant), 403);
 
         $data = $this->validateAsset($request);
-        $asset = Asset::create([...$data, 'tenant_id' => $tenant->id]);
+        $asset = Asset::create([...$data, 'workspace_id' => $tenant->id]);
 
         return redirect()
             ->route('customer.assets.show', ['customer' => $tenant->slug, 'asset' => $asset->id])
@@ -76,7 +76,7 @@ class AssetController extends Controller
         }
 
         $items = FileItem::query()
-            ->where('tenant_id', $tenant->id)
+            ->where('workspace_id', $tenant->id)
             ->forOwner($asset)
             ->where('parent_id', $folder?->id)
             ->with(['media'])
@@ -153,7 +153,7 @@ class AssetController extends Controller
 
     private function assertBelongs(Asset $asset, Tenant $tenant): void
     {
-        abort_unless($asset->tenant_id === $tenant->id, 404);
+        abort_unless($asset->workspace_id === $tenant->id, 404);
     }
 
     private function currentTenant(Request $request): Tenant

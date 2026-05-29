@@ -14,7 +14,7 @@ use Spatie\Permission\PermissionRegistrar;
  * customer-scoped role assignments.
  *
  * Membership has two moving parts that need to stay in sync:
- *   - `tenant_user` pivot row   (who can enter the customer)
+ *   - `workspace_user` pivot row   (who can enter the customer)
  *   - one or more `model_has_roles` rows with `team_id = customer.id`
  *     (what they can do inside — permissions from all assigned roles are
  *     unioned automatically by Spatie's `can()` check)

@@ -22,7 +22,7 @@ beforeEach(function () {
 
 it('soft-deletes a file and lists it in the trash page', function () {
     $item = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
         'name' => 'doomed.jpg',
     ]);
@@ -43,7 +43,7 @@ it('soft-deletes a file and lists it in the trash page', function () {
 
 it('restores a trashed item', function () {
     $item = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
     ]);
     $item->delete();
@@ -58,11 +58,11 @@ it('restores a trashed item', function () {
 
 it('restores to root when the parent is also trashed', function () {
     $parent = FileItem::factory()->folder()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
     ]);
     $child = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
         'parent_id' => $parent->id,
     ]);
@@ -78,7 +78,7 @@ it('restores to root when the parent is also trashed', function () {
 
 it('force-deletes an item from the trash', function () {
     $item = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
     ]);
     $item->delete();
@@ -92,7 +92,7 @@ it('force-deletes an item from the trash', function () {
 
 it('empties the trash', function () {
     FileItem::factory()->count(3)->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
     ])->each->delete();
 
@@ -105,13 +105,13 @@ it('empties the trash', function () {
 
 it('purges items older than 30 days via the scheduled command', function () {
     $recent = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
     ]);
     $recent->delete();
 
     $old = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
     ]);
     $old->delete();

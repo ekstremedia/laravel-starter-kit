@@ -172,7 +172,7 @@ class FileShareController extends Controller
      */
     private function assertCanShare(FileItem $item, User $user, Tenant $tenant): void
     {
-        if ($item->tenant_id !== $tenant->id) {
+        if ($item->workspace_id !== $tenant->id) {
             throw new AccessDeniedHttpException;
         }
 

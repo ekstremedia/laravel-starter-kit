@@ -141,7 +141,7 @@ it('deletes a customer', function () {
     expect(Tenant::query()->where('slug', 'acme')->exists())->toBeFalse();
 });
 
-it('cascades tenant_user pivot rows when a customer is deleted', function () {
+it('cascades workspace_user pivot rows when a customer is deleted', function () {
     $customer = createCustomer('acme');
     $member = User::factory()->create();
     joinCustomer($member, $customer);
@@ -154,7 +154,7 @@ it('cascades tenant_user pivot rows when a customer is deleted', function () {
 
     // User survives; pivot is gone.
     expect(User::query()->whereKey($member->id)->exists())->toBeTrue()
-        ->and(DB::table('tenant_user')->where('user_id', $member->id)->count())->toBe(0);
+        ->and(DB::table('workspace_user')->where('user_id', $member->id)->count())->toBe(0);
 });
 
 // ---------- Membership ----------

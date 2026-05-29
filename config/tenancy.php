@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * Multi-tenancy configuration.
  *
- * Isolation is row-level: every workspace-scoped table carries a `tenant_id`
+ * Isolation is row-level: every workspace-scoped table carries a `workspace_id`
  * and the BelongsToTenant global scope filters queries to the current
  * workspace (resolved per request by InitializeTenancyByPath into the
  * App\Domains\Tenancy\Support\Tenancy singleton). There is NO schema- or

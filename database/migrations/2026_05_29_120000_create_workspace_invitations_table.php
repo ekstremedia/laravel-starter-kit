@@ -12,9 +12,9 @@ return new class extends Migration
     {
         Schema::create('workspace_invitations', function (Blueprint $table) {
             $table->id();
-            // `tenant_id` (renamed to workspace_id in the rename phase, with the
+            // `workspace_id` (renamed to workspace_id in the rename phase, with the
             // rest of the schema) — the workspace the invitee is invited into.
-            $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
+            $table->foreignId('workspace_id')->constrained('tenants')->cascadeOnDelete();
             $table->string('email');
             $table->string('role')->default('User');
             $table->string('token', 64)->unique();
@@ -23,7 +23,7 @@ return new class extends Migration
             $table->timestamp('accepted_at')->nullable();
             $table->timestamps();
 
-            $table->index(['tenant_id', 'email']);
+            $table->index(['workspace_id', 'email']);
         });
     }
 

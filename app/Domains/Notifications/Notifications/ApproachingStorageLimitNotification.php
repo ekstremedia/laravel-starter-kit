@@ -61,7 +61,7 @@ class ApproachingStorageLimitNotification extends Notification implements Should
     }
 
     /**
-     * @return array{title: string, message: string, icon: string, threshold: int, tenant_id: int|string|null}
+     * @return array{title: string, message: string, icon: string, threshold: int, workspace_id: int|string|null}
      */
     public function toArray(object $notifiable): array
     {
@@ -92,7 +92,7 @@ class ApproachingStorageLimitNotification extends Notification implements Should
             'message' => $message,
             'icon' => 'pi-database',
             'threshold' => $this->thresholdPercent,
-            'tenant_id' => $this->tenantId,
+            'workspace_id' => $this->tenantId,
         ];
     }
 

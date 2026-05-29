@@ -19,8 +19,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('activity_log', function (Blueprint $table): void {
-            if (! Schema::hasColumn('activity_log', 'tenant_id')) {
-                $table->unsignedBigInteger('tenant_id')->nullable()->after('causer_id')->index();
+            if (! Schema::hasColumn('activity_log', 'workspace_id')) {
+                $table->unsignedBigInteger('workspace_id')->nullable()->after('causer_id')->index();
             }
         });
     }
@@ -28,9 +28,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('activity_log', function (Blueprint $table): void {
-            if (Schema::hasColumn('activity_log', 'tenant_id')) {
-                $table->dropIndex(['tenant_id']);
-                $table->dropColumn('tenant_id');
+            if (Schema::hasColumn('activity_log', 'workspace_id')) {
+                $table->dropIndex(['workspace_id']);
+                $table->dropColumn('workspace_id');
             }
         });
     }

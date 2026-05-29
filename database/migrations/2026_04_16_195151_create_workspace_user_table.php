@@ -10,17 +10,17 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('tenant_user', function (Blueprint $table) {
-            $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
+        Schema::create('workspace_user', function (Blueprint $table) {
+            $table->foreignId('workspace_id')->constrained('tenants')->cascadeOnDelete();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->timestamps();
 
-            $table->primary(['tenant_id', 'user_id']);
+            $table->primary(['workspace_id', 'user_id']);
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('tenant_user');
+        Schema::dropIfExists('workspace_user');
     }
 };

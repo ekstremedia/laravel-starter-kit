@@ -57,7 +57,7 @@ class CompanyFileUnlinkedByAdminNotification extends Notification implements Sho
     }
 
     /**
-     * @return array{title: string, message: string, icon: string, tenant_id: int, file_name: string}
+     * @return array{title: string, message: string, icon: string, workspace_id: int, file_name: string}
      */
     public function toArray(object $notifiable): array
     {
@@ -71,7 +71,7 @@ class CompanyFileUnlinkedByAdminNotification extends Notification implements Sho
                 'actor' => $this->actorName,
             ], $locale),
             'icon' => 'pi-link',
-            'tenant_id' => $this->tenantId,
+            'workspace_id' => $this->tenantId,
             'file_name' => $this->fileName,
         ];
     }

@@ -30,7 +30,7 @@ class SnapshotStorageUsage extends Command
                 $bytes = $service->recomputeForUser($user);
                 $fileCount = $this->fileCountFor($user->id);
 
-                $key = ['user_id' => $user->id, 'tenant_id' => null, 'snapshot_date' => $today];
+                $key = ['user_id' => $user->id, 'workspace_id' => null, 'snapshot_date' => $today];
                 $now = now();
 
                 // Distinguish insert vs update so we don't overwrite the

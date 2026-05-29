@@ -74,7 +74,7 @@ class InitializeTenancyByPath
         // Activate the workspace for this request: the resolver holds the
         // current tenant and points Spatie's permission team scope at it, so
         // every downstream role/permission check resolves per-workspace. The
-        // global `tenant_id` scope (BelongsToTenant) reads the same resolver.
+        // global `workspace_id` scope (BelongsToTenant) reads the same resolver.
         // runFor() restores the prior context afterwards so a long-lived
         // worker can't leak one workspace into the next request.
         return $this->tenancy->runFor($customer, fn () => $next($request));

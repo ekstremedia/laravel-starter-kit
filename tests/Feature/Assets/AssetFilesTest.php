@@ -20,12 +20,12 @@ use Spatie\Permission\PermissionRegistrar;
 beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
     $this->customer = createCustomer();
-    $this->asset = Asset::factory()->create(['tenant_id' => $this->customer->id]);
+    $this->asset = Asset::factory()->create(['workspace_id' => $this->customer->id]);
 });
 
 it('owns a polymorphic file tree', function () {
     FileItem::factory()->count(3)->ownedBy($this->asset)->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => User::factory()->create()->id,
     ]);
 
@@ -86,7 +86,7 @@ it('authorizes asset-owned files through FileItemPolicy', function () {
     app(PermissionRegistrar::class)->setPermissionsTeamId($this->customer->id);
 
     $item = FileItem::factory()->ownedBy($this->asset)->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $admin->id,
     ]);
 

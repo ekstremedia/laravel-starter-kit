@@ -108,15 +108,15 @@ class AppServiceProvider extends ServiceProvider
         // customer-scoped dashboards that filter activity by "members of
         // this customer" would leak rows from other customers the same
         // users belong to (a user who's Admin on A and User on B would see
-        // B's actions on A's dashboard). Null tenant_id is preserved for
+        // B's actions on A's dashboard). Null workspace_id is preserved for
         // genuine central-only events (password reset, profile edit from
         // the picker page, etc.).
         //
         // Escape hatch: callers that fire a deliberately platform-level
         // event while tenancy happens to be initialized can opt out with
         // `activity()->withProperties(['central' => true])->log(...)` — we
-        // skip the stamp and leave `tenant_id` null so the row remains in
-        // "all central activity" (tenant_id IS NULL) queries.
+        // skip the stamp and leave `workspace_id` null so the row remains in
+        // "all central activity" (workspace_id IS NULL) queries.
         Activity::creating(function (Activity $activity): void {
             // `properties` is a Collection cast by Spatie Activitylog (can be
             // null when no properties were set).
@@ -125,8 +125,8 @@ class AppServiceProvider extends ServiceProvider
             }
 
             $tenancy = app(Tenancy::class);
-            if ($activity->tenant_id === null && $tenancy->check()) {
-                $activity->tenant_id = $tenancy->id();
+            if ($activity->workspace_id === null && $tenancy->check()) {
+                $activity->workspace_id = $tenancy->id();
             }
         });
 

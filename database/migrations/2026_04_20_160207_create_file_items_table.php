@@ -13,7 +13,7 @@ return new class extends Migration
         Schema::create('file_items', function (Blueprint $table) {
             $table->id();
             $table->uuid()->unique();
-            $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
+            $table->foreignId('workspace_id')->constrained('tenants')->cascadeOnDelete();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('parent_id')->nullable()->constrained('file_items')->cascadeOnDelete();
             $table->string('type', 10);
@@ -22,8 +22,8 @@ return new class extends Migration
             $table->unsignedBigInteger('size')->default(0);
             $table->timestamps();
 
-            $table->index(['tenant_id', 'user_id', 'parent_id']);
-            $table->index(['tenant_id', 'user_id', 'name']);
+            $table->index(['workspace_id', 'user_id', 'parent_id']);
+            $table->index(['workspace_id', 'user_id', 'name']);
         });
     }
 

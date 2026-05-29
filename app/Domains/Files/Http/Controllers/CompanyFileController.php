@@ -110,14 +110,14 @@ class CompanyFileController extends Controller
     private function buildListingPayload(Request $request, Tenant $tenant, ?int $parentId, string $search): array
     {
         $native = FileItem::query()
-            ->where('tenant_id', $tenant->id)
+            ->where('workspace_id', $tenant->id)
             ->where('scope', FileItem::SCOPE_COMPANY)
             ->where('parent_id', $parentId)
             ->with(['media', 'user'])
             ->get();
 
         $linkRows = CompanyFileLink::query()
-            ->where('tenant_id', $tenant->id)
+            ->where('workspace_id', $tenant->id)
             ->where('company_parent_id', $parentId)
             ->with(['fileItem.media', 'fileItem.user', 'sharedBy'])
             ->get();
@@ -177,7 +177,7 @@ class CompanyFileController extends Controller
         }
 
         $folder = FileItem::create([
-            'tenant_id' => $tenant->id,
+            'workspace_id' => $tenant->id,
             'user_id' => $user->id,
             'owner_type' => $tenant->getMorphClass(),
             'owner_id' => $tenant->id,
@@ -221,7 +221,7 @@ class CompanyFileController extends Controller
                 $name = $this->uniqueNameCompany($tenant->id, $parentId, $file->getClientOriginalName());
                 $size = $file->getSize();
                 $item = FileItem::create([
-                    'tenant_id' => $tenant->id,
+                    'workspace_id' => $tenant->id,
                     'user_id' => $user->id,
                     'owner_type' => $tenant->getMorphClass(),
                     'owner_id' => $tenant->id,
@@ -369,7 +369,7 @@ class CompanyFileController extends Controller
         $user = $request->user();
         $this->assertFeatureAvailable($tenant, $user);
 
-        if ($link->tenant_id !== $tenant->id) {
+        if ($link->workspace_id !== $tenant->id) {
             abort(404);
         }
 
@@ -425,11 +425,11 @@ class CompanyFileController extends Controller
         // Allow download from either a native company file in this tenant,
         // or a personal file linked into this tenant's company tree.
         $linked = CompanyFileLink::query()
-            ->where('tenant_id', $tenant->id)
+            ->where('workspace_id', $tenant->id)
             ->where('file_item_id', $file->id)
             ->exists();
 
-        $native = $file->scope === FileItem::SCOPE_COMPANY && $file->tenant_id === $tenant->id;
+        $native = $file->scope === FileItem::SCOPE_COMPANY && $file->workspace_id === $tenant->id;
 
         if (! $native && ! $linked) {
             abort(403, __('files.permission_denied'));
@@ -514,7 +514,7 @@ class CompanyFileController extends Controller
     private function assertCompanyFolder(FileItem $folder, Tenant $tenant): void
     {
         if (
-            $folder->tenant_id !== $tenant->id
+            $folder->workspace_id !== $tenant->id
             || $folder->scope !== FileItem::SCOPE_COMPANY
             || ! $folder->isFolder()
         ) {
@@ -524,7 +524,7 @@ class CompanyFileController extends Controller
 
     private function assertCompanyItem(FileItem $item, Tenant $tenant): void
     {
-        if ($item->tenant_id !== $tenant->id || $item->scope !== FileItem::SCOPE_COMPANY) {
+        if ($item->workspace_id !== $tenant->id || $item->scope !== FileItem::SCOPE_COMPANY) {
             abort(404);
         }
     }
@@ -553,7 +553,7 @@ class CompanyFileController extends Controller
         $base = $name;
         $i = 1;
         while (FileItem::query()
-            ->where('tenant_id', $tenantId)
+            ->where('workspace_id', $tenantId)
             ->where('scope', FileItem::SCOPE_COMPANY)
             ->where('parent_id', $parentId)
             ->where('name', $name)

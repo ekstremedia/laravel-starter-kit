@@ -41,7 +41,7 @@ return new class extends Migration
             ->where('scope', 'company')
             ->update([
                 'owner_type' => Tenant::class,
-                'owner_id' => DB::raw('tenant_id'),
+                'owner_id' => DB::raw('workspace_id'),
             ]);
 
         // Defensive: any row missing scope falls back to user-owned so the
@@ -55,7 +55,7 @@ return new class extends Migration
             ]);
 
         // Last line of defence: refuse to tighten NOT NULL while any row
-        // would violate it. user_id and tenant_id were already NOT NULL on
+        // would violate it. user_id and workspace_id were already NOT NULL on
         // the existing schema so this should never fire — but corrupt /
         // legacy data shouldn't crash with an opaque DB error mid-migrate.
         $orphaned = DB::connection((string) config('tenancy.database.central_connection'))
@@ -76,8 +76,8 @@ return new class extends Migration
             $table->string('owner_type')->nullable(false)->change();
             $table->unsignedBigInteger('owner_id')->nullable(false)->change();
 
-            $table->index(['tenant_id', 'owner_type', 'owner_id', 'parent_id'], 'file_items_owner_listing_idx');
-            $table->index(['tenant_id', 'owner_type', 'owner_id', 'name'], 'file_items_owner_name_idx');
+            $table->index(['workspace_id', 'owner_type', 'owner_id', 'parent_id'], 'file_items_owner_listing_idx');
+            $table->index(['workspace_id', 'owner_type', 'owner_id', 'name'], 'file_items_owner_name_idx');
         });
     }
 

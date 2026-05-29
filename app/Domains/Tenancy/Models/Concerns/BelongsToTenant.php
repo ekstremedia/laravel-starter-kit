@@ -9,11 +9,11 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Row-level workspace isolation for any model carrying a `tenant_id`.
+ * Row-level workspace isolation for any model carrying a `workspace_id`.
  *
  * Adds a global scope that filters every query to the active workspace and
- * auto-stamps `tenant_id` on create — so a developer can never accidentally
- * leak rows across workspaces by forgetting a `where('tenant_id', …)`.
+ * auto-stamps `workspace_id` on create — so a developer can never accidentally
+ * leak rows across workspaces by forgetting a `where('workspace_id', …)`.
  *
  * The scope is **active only when a workspace context is set** (i.e. inside a
  * `/c/{workspace}/…` route, where InitializeTenancyByPath populated the
@@ -31,15 +31,15 @@ trait BelongsToTenant
 
             if ($tenancy->check()) {
                 // Qualify the column so the scope is join-safe.
-                $query->where($query->getModel()->getTable().'.tenant_id', $tenancy->id());
+                $query->where($query->getModel()->getTable().'.workspace_id', $tenancy->id());
             }
         });
 
         static::creating(function (Model $model): void {
             $tenancy = app(Tenancy::class);
 
-            if ($model->getAttribute('tenant_id') === null && $tenancy->check()) {
-                $model->setAttribute('tenant_id', $tenancy->id());
+            if ($model->getAttribute('workspace_id') === null && $tenancy->check()) {
+                $model->setAttribute('workspace_id', $tenancy->id());
             }
         });
     }

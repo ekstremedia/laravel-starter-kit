@@ -101,7 +101,7 @@ it('admins can upload a native company file', function () {
 
     $response->assertRedirect();
 
-    $file = FileItem::where('tenant_id', $this->customer->id)
+    $file = FileItem::where('workspace_id', $this->customer->id)
         ->where('scope', FileItem::SCOPE_COMPANY)
         ->first();
 
@@ -120,7 +120,7 @@ it('regular members cannot upload to company files (needs upload-to-company-file
 
 it('lets a member share a personal file into company files without duplicating', function () {
     $personal = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
         'scope' => FileItem::SCOPE_PERSONAL,
         'type' => FileItem::TYPE_FILE,
@@ -152,7 +152,7 @@ it('lets a member share a personal file into company files without duplicating',
 
 it('owner can unshare their own linked file', function () {
     $personal = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
         'scope' => FileItem::SCOPE_PERSONAL,
         'type' => FileItem::TYPE_FILE,
@@ -174,7 +174,7 @@ it('owner can unshare their own linked file', function () {
 
 it('non-owner non-admin cannot delete a native company file', function () {
     $file = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->admin->id,
         'scope' => FileItem::SCOPE_COMPANY,
         'type' => FileItem::TYPE_FILE,
@@ -194,7 +194,7 @@ it('customer admin can delete any company file and optionally notify owner', fun
     Notification::fake();
 
     $file = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
         'scope' => FileItem::SCOPE_COMPANY,
         'type' => FileItem::TYPE_FILE,
@@ -216,7 +216,7 @@ it('admin unlinking a shared file keeps the owner\'s personal copy intact', func
     Notification::fake();
 
     $personal = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
         'scope' => FileItem::SCOPE_PERSONAL,
         'type' => FileItem::TYPE_FILE,
@@ -254,7 +254,7 @@ it('queues ShareFolderToCompany when a personal folder is shared', function () {
     Bus::fake();
 
     $folder = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
         'scope' => FileItem::SCOPE_PERSONAL,
         'type' => FileItem::TYPE_FOLDER,
@@ -271,14 +271,14 @@ it('queues ShareFolderToCompany when a personal folder is shared', function () {
 
 it('recursively mirrors a shared folder into the company tree when the job runs', function () {
     $folder = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
         'scope' => FileItem::SCOPE_PERSONAL,
         'type' => FileItem::TYPE_FOLDER,
         'name' => 'Q4',
     ]);
     $child = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
         'scope' => FileItem::SCOPE_PERSONAL,
         'type' => FileItem::TYPE_FILE,
@@ -292,7 +292,7 @@ it('recursively mirrors a shared folder into the company tree when the job runs'
         ->handle(app(StorageUsageService::class));
 
     // A native company folder named "Q4" exists at company root.
-    $mirroredFolder = FileItem::where('tenant_id', $this->customer->id)
+    $mirroredFolder = FileItem::where('workspace_id', $this->customer->id)
         ->where('scope', FileItem::SCOPE_COMPANY)
         ->where('type', FileItem::TYPE_FOLDER)
         ->where('name', 'Q4')
@@ -306,7 +306,7 @@ it('recursively mirrors a shared folder into the company tree when the job runs'
 
 it('shows admin/owner trashed items and restores them', function () {
     $file = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
         'scope' => FileItem::SCOPE_COMPANY,
         'type' => FileItem::TYPE_FILE,
@@ -327,7 +327,7 @@ it('shows admin/owner trashed items and restores them', function () {
 
 it('owner cannot force-delete from company trash — admin only', function () {
     $file = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
         'scope' => FileItem::SCOPE_COMPANY,
         'type' => FileItem::TYPE_FILE,
@@ -347,7 +347,7 @@ it('owner cannot force-delete from company trash — admin only', function () {
 
 it('admin can create a public share link for a native company file', function () {
     $file = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->admin->id,
         'scope' => FileItem::SCOPE_COMPANY,
         'type' => FileItem::TYPE_FILE,
@@ -364,7 +364,7 @@ it('admin can create a public share link for a native company file', function ()
 
 it('non-owner non-admin cannot share a native company file publicly', function () {
     $file = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->admin->id,
         'scope' => FileItem::SCOPE_COMPANY,
         'type' => FileItem::TYPE_FILE,
@@ -384,7 +384,7 @@ it('tenant storage quota blocks a company upload once full', function () {
 
     // Pre-fill the bucket by creating a native company file with seeded media.
     $pre = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->admin->id,
         'scope' => FileItem::SCOPE_COMPANY,
         'type' => FileItem::TYPE_FILE,

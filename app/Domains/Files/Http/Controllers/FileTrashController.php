@@ -36,7 +36,7 @@ class FileTrashController extends Controller
         $this->authorizeOwnerAccess($user, $owner, $tenant, view: true);
 
         $items = FileItem::onlyTrashed()
-            ->where('tenant_id', $tenant->id)
+            ->where('workspace_id', $tenant->id)
             ->forOwner($owner)
             // companyLink + user are optional in FileItemResource but
             // must be eager-loaded to avoid N+1 when present. Trashed
@@ -140,7 +140,7 @@ class FileTrashController extends Controller
             ->transaction(function () use ($tenant, $owner): void {
                 // Chunk so huge trashes don't load everything into memory.
                 FileItem::onlyTrashed()
-                    ->where('tenant_id', $tenant->id)
+                    ->where('workspace_id', $tenant->id)
                     ->forOwner($owner)
                     ->chunkById(100, function ($items): void {
                         foreach ($items as $item) {

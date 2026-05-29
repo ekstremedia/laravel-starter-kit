@@ -23,7 +23,7 @@ use Illuminate\Support\Str;
  * inert), so it can still resolve an invitation by its unique token.
  *
  * @property int $id
- * @property int $tenant_id
+ * @property int $workspace_id
  * @property string $email
  * @property string $role
  * @property string $token
@@ -41,7 +41,7 @@ class WorkspaceInvitation extends Model
     use HasFactory;
 
     protected $fillable = [
-        'tenant_id', 'email', 'role', 'token', 'invited_by_user_id', 'expires_at', 'accepted_at',
+        'workspace_id', 'email', 'role', 'token', 'invited_by_user_id', 'expires_at', 'accepted_at',
     ];
 
     protected function casts(): array
@@ -57,7 +57,7 @@ class WorkspaceInvitation extends Model
      */
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsTo(Tenant::class, 'workspace_id');
     }
 
     /**

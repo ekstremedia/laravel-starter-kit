@@ -22,7 +22,7 @@ class AssetFactory extends Factory
     public function definition(): array
     {
         return [
-            'tenant_id' => Tenant::factory(),
+            'workspace_id' => Tenant::factory(),
             'name' => fake()->unique()->words(2, true),
             'category' => fake()->randomElement(['Vehicle', 'Equipment', 'Device', 'Tool', null]),
             'serial' => fake()->boolean(70) ? mb_strtoupper(fake()->bothify('??-#####')) : null,

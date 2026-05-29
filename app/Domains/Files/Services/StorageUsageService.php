@@ -213,7 +213,7 @@ class StorageUsageService
     /**
      * Billable usage per customer (tenant). Sums the `file` collection only.
      *
-     * @return array<int, array{tenant_id: int, name: string, slug: string, bytes: int, file_count: int}>
+     * @return array<int, array{workspace_id: int, name: string, slug: string, bytes: int, file_count: int}>
      */
     public function usageByTenant(?string $search = null, int $limit = 50): array
     {
@@ -226,10 +226,10 @@ class StorageUsageService
                     ->where('media.model_type', (new FileItem)->getMorphClass());
             })
             ->where('media.collection_name', self::BILLABLE_COLLECTION)
-            ->selectRaw('file_items.tenant_id as tenant_id, SUM(media.size) as bytes, COUNT(*) as file_count')
-            ->groupBy('file_items.tenant_id')
+            ->selectRaw('file_items.workspace_id as workspace_id, SUM(media.size) as bytes, COUNT(*) as file_count')
+            ->groupBy('file_items.workspace_id')
             ->get()
-            ->keyBy('tenant_id');
+            ->keyBy('workspace_id');
 
         $tenantsQuery = Tenant::query()->orderBy('name');
 
@@ -249,7 +249,7 @@ class StorageUsageService
                 $row = $usage->get($t->id);
 
                 return [
-                    'tenant_id' => (int) $t->id,
+                    'workspace_id' => (int) $t->id,
                     'name' => (string) $t->name,
                     'slug' => (string) $t->slug,
                     'bytes' => (int) ($row->bytes ?? 0),
@@ -441,7 +441,7 @@ class StorageUsageService
             ->where('media.collection_name', self::BILLABLE_COLLECTION)
             ->where('file_items.owner_type', $tenant->getMorphClass())
             ->where('file_items.owner_id', $tenant->id)
-            ->where('file_items.tenant_id', $tenant->id)
+            ->where('file_items.workspace_id', $tenant->id)
             ->sum('media.size');
 
         $linked = DB::connection($conn)
@@ -452,7 +452,7 @@ class StorageUsageService
             })
             ->join('company_file_links', 'company_file_links.file_item_id', '=', 'file_items.id')
             ->where('media.collection_name', self::BILLABLE_COLLECTION)
-            ->where('company_file_links.tenant_id', $tenant->id)
+            ->where('company_file_links.workspace_id', $tenant->id)
             ->sum('media.size');
 
         return (int) $native + (int) $linked;
@@ -570,7 +570,7 @@ class StorageUsageService
             ->where('media.collection_name', self::BILLABLE_COLLECTION)
             ->where('file_items.owner_type', $owner->getMorphClass())
             ->where('file_items.owner_id', $owner->getKey())
-            ->when($tenant !== null, fn ($q) => $q->where('file_items.tenant_id', $tenant->id));
+            ->when($tenant !== null, fn ($q) => $q->where('file_items.workspace_id', $tenant->id));
     }
 
     private function bucketFor(string $modelType, string $collection): string

@@ -290,7 +290,7 @@ class User extends Authenticatable implements FileOwner, HasLocalePreference, Ha
      */
     public function customers(): BelongsToMany
     {
-        return $this->belongsToMany(Tenant::class, 'tenant_user')
+        return $this->belongsToMany(Tenant::class, 'workspace_user', 'user_id', 'workspace_id')
             ->withTimestamps();
     }
 

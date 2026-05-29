@@ -54,7 +54,7 @@ class CompanyFilesChanged implements ShouldBroadcast
     public function broadcastWith(): array
     {
         return [
-            'tenant_id' => $this->tenantId,
+            'workspace_id' => $this->tenantId,
             'reason' => $this->reason,
             'version' => $this->version,
             'folder_id' => $this->folderId,

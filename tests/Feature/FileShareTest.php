@@ -21,7 +21,7 @@ beforeEach(function () {
     $this->user->settings()->merge(['files_enabled' => true]);
 
     $this->file = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
         'type' => 'file',
         'name' => 'doc.txt',
@@ -82,11 +82,11 @@ it('returns 410 Gone for expired shares', function () {
 
 it('refuses access to files outside the shared folder', function () {
     $folder = FileItem::factory()->folder()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
     ]);
     $outsider = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'user_id' => $this->user->id,
         'name' => 'outsider.jpg',
     ]);

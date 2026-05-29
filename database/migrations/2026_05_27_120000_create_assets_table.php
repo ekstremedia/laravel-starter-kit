@@ -16,7 +16,7 @@ return new class extends Migration
     {
         Schema::create('assets', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
+            $table->foreignId('workspace_id')->constrained('tenants')->cascadeOnDelete();
             $table->string('name');
             $table->string('category')->nullable();
             $table->string('serial')->nullable();
@@ -30,7 +30,7 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
-            $table->index(['tenant_id', 'name']);
+            $table->index(['workspace_id', 'name']);
         });
 
         Schema::table('app_settings', function (Blueprint $table): void {

@@ -27,7 +27,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 /**
  * @property int $id
  * @property string $uuid
- * @property int $tenant_id
+ * @property int $workspace_id
  * @property int $user_id
  * @property string $owner_type
  * @property int $owner_id
@@ -70,7 +70,7 @@ class FileItem extends Model implements HasMedia
     ];
 
     protected $fillable = [
-        'tenant_id',
+        'workspace_id',
         'user_id',
         'owner_type',
         'owner_id',
@@ -129,7 +129,7 @@ class FileItem extends Model implements HasMedia
 
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsTo(Tenant::class, 'workspace_id');
     }
 
     /**
@@ -329,7 +329,7 @@ class FileItem extends Model implements HasMedia
     {
         return [
             'size' => 'integer',
-            'tenant_id' => 'integer',
+            'workspace_id' => 'integer',
             'user_id' => 'integer',
             'owner_id' => 'integer',
             'parent_id' => 'integer',

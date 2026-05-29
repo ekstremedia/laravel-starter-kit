@@ -53,7 +53,7 @@ beforeEach(function () {
 
 it('billable total only counts the FileItem `file` collection', function () {
     $item = FileItem::factory()->create([
-        'tenant_id' => $this->tenant->id,
+        'workspace_id' => $this->tenant->id,
         'user_id' => $this->user->id,
     ]);
     // Billable: the user's original upload.
@@ -68,7 +68,7 @@ it('billable total only counts the FileItem `file` collection', function () {
 
 it('billable total excludes chat attachments and user avatars', function () {
     $item = FileItem::factory()->create([
-        'tenant_id' => $this->tenant->id,
+        'workspace_id' => $this->tenant->id,
         'user_id' => $this->user->id,
     ]);
     seedMediaRow(FileItem::class, $item->id, 1_000, 'image/jpeg', 'file');
@@ -99,11 +99,11 @@ it('scopes billable bytes per-tenant — files in one tenant do not count in ano
     $this->user->customers()->attach($other);
 
     $hereItem = FileItem::factory()->create([
-        'tenant_id' => $this->tenant->id,
+        'workspace_id' => $this->tenant->id,
         'user_id' => $this->user->id,
     ]);
     $thereItem = FileItem::factory()->create([
-        'tenant_id' => $other->id,
+        'workspace_id' => $other->id,
         'user_id' => $this->user->id,
     ]);
     seedMediaRow(FileItem::class, $hereItem->id, 1_234, 'image/jpeg', 'file');
@@ -116,7 +116,7 @@ it('scopes billable bytes per-tenant — files in one tenant do not count in ano
 
 it('categorizes billable bytes by mime type', function () {
     $item = FileItem::factory()->create([
-        'tenant_id' => $this->tenant->id,
+        'workspace_id' => $this->tenant->id,
         'user_id' => $this->user->id,
     ]);
     seedMediaRow(FileItem::class, $item->id, 1_000, 'image/jpeg', 'file');
@@ -133,7 +133,7 @@ it('categorizes billable bytes by mime type', function () {
 it('computes per-tenant remaining bytes under a quota', function () {
     $this->user->settings()->merge(['storage_quota_override' => 10_000]);
     $item = FileItem::factory()->create([
-        'tenant_id' => $this->tenant->id,
+        'workspace_id' => $this->tenant->id,
         'user_id' => $this->user->id,
     ]);
     seedMediaRow(FileItem::class, $item->id, 6_000, 'image/jpeg', 'file');
@@ -152,7 +152,7 @@ it('fires a notification when crossing the 80% threshold in a tenant', function 
     $this->user->settings()->merge(['storage_quota_override' => 10_000]);
 
     $item = FileItem::factory()->create([
-        'tenant_id' => $this->tenant->id,
+        'workspace_id' => $this->tenant->id,
         'user_id' => $this->user->id,
     ]);
     seedMediaRow(FileItem::class, $item->id, 8_100, 'image/jpeg', 'file');
@@ -169,7 +169,7 @@ it('does not re-fire the same threshold twice in the same tenant', function () {
     $this->user->settings()->merge(['storage_quota_override' => 10_000]);
 
     $item = FileItem::factory()->create([
-        'tenant_id' => $this->tenant->id,
+        'workspace_id' => $this->tenant->id,
         'user_id' => $this->user->id,
     ]);
     seedMediaRow(FileItem::class, $item->id, 8_100, 'image/jpeg', 'file');
@@ -187,8 +187,8 @@ it('fires independent threshold alerts per tenant', function () {
     $this->user->customers()->attach($other);
     $this->user->settings()->merge(['storage_quota_override' => 10_000]);
 
-    $a = FileItem::factory()->create(['tenant_id' => $this->tenant->id, 'user_id' => $this->user->id]);
-    $b = FileItem::factory()->create(['tenant_id' => $other->id, 'user_id' => $this->user->id]);
+    $a = FileItem::factory()->create(['workspace_id' => $this->tenant->id, 'user_id' => $this->user->id]);
+    $b = FileItem::factory()->create(['workspace_id' => $other->id, 'user_id' => $this->user->id]);
     seedMediaRow(FileItem::class, $a->id, 8_100, 'image/jpeg', 'file');
     seedMediaRow(FileItem::class, $b->id, 8_100, 'image/jpeg', 'file');
 
@@ -203,8 +203,8 @@ it('recomputes the denormalized storage_used_bytes as billable across all tenant
     $other = Tenant::factory()->create();
     $this->user->customers()->attach($other);
 
-    $a = FileItem::factory()->create(['tenant_id' => $this->tenant->id, 'user_id' => $this->user->id]);
-    $b = FileItem::factory()->create(['tenant_id' => $other->id, 'user_id' => $this->user->id]);
+    $a = FileItem::factory()->create(['workspace_id' => $this->tenant->id, 'user_id' => $this->user->id]);
+    $b = FileItem::factory()->create(['workspace_id' => $other->id, 'user_id' => $this->user->id]);
     seedMediaRow(FileItem::class, $a->id, 10_000, 'image/jpeg', 'file');
     seedMediaRow(FileItem::class, $b->id, 2_345, 'image/jpeg', 'file');
     // Previews on one of them — should NOT inflate the billable column.
@@ -218,7 +218,7 @@ it('recomputes the denormalized storage_used_bytes as billable across all tenant
 
 it('system totals still include every media row including previews and chat', function () {
     $item = FileItem::factory()->create([
-        'tenant_id' => $this->tenant->id,
+        'workspace_id' => $this->tenant->id,
         'user_id' => $this->user->id,
     ]);
     seedMediaRow(FileItem::class, $item->id, 1_000, 'image/jpeg', 'file');

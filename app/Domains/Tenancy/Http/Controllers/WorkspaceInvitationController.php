@@ -47,7 +47,7 @@ class WorkspaceInvitationController extends Controller
         WorkspaceInvitation::query()->where('email', $email)->whereNull('accepted_at')->delete();
 
         $invitation = WorkspaceInvitation::create([
-            'tenant_id' => $workspace->id,
+            'workspace_id' => $workspace->id,
             'email' => $email,
             'role' => $data['role'],
             'token' => WorkspaceInvitation::freshToken(),

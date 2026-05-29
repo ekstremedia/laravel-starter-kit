@@ -93,7 +93,7 @@ class GenerateVideoPreview implements ShouldQueue
         // (not FileItemUpdated), so a freshly generated poster/MP4 would never
         // surface on the shared grid without bumping the tenant's version here.
         if ($item->scope === FileItem::SCOPE_COMPANY) {
-            CompanyFilesCache::bump((int) $item->tenant_id, 'preview_ready', $item->parent_id);
+            CompanyFilesCache::bump((int) $item->workspace_id, 'preview_ready', $item->parent_id);
         }
     }
 

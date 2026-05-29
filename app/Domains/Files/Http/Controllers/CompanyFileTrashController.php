@@ -43,7 +43,7 @@ class CompanyFileTrashController extends Controller
         // Customer admins see every trashed company item in this tenant;
         // non-admins see only their own trashed contributions.
         $query = FileItem::onlyTrashed()
-            ->where('tenant_id', $tenant->id)
+            ->where('workspace_id', $tenant->id)
             ->where('scope', FileItem::SCOPE_COMPANY)
             ->with(['media', 'user'])
             ->orderByDesc('deleted_at');
@@ -189,7 +189,7 @@ class CompanyFileTrashController extends Controller
 
     private function authorizeCompanyTrash(FileItem $item, User $user, Tenant $tenant, bool $forManageOnly): void
     {
-        if ($item->tenant_id !== $tenant->id || $item->scope !== FileItem::SCOPE_COMPANY) {
+        if ($item->workspace_id !== $tenant->id || $item->scope !== FileItem::SCOPE_COMPANY) {
             throw new AccessDeniedHttpException;
         }
 

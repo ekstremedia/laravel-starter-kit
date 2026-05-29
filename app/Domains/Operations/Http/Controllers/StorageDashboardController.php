@@ -86,7 +86,7 @@ class StorageDashboardController extends Controller
 
         return DB::connection($conn)
             ->table('storage_snapshots')
-            ->whereNull('tenant_id')
+            ->whereNull('workspace_id')
             ->where('snapshot_date', '>=', now()->subDays(30)->toDateString())
             ->select('snapshot_date', DB::raw('SUM(bytes_used) as bytes'))
             ->groupBy('snapshot_date')

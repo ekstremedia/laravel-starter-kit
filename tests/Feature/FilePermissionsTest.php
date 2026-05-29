@@ -76,7 +76,7 @@ it('rejects folder create when user lacks the create-folders permission', functi
 it('rejects rename when user lacks the rename-files permission', function () {
     $file = FileItem::factory()->folder()->create([
         'user_id' => $this->user->id,
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
     ]);
     grantOnly($this->user, $this->customer, ['upload files', 'create folders', 'delete files', 'share files']);
 
@@ -88,7 +88,7 @@ it('rejects rename when user lacks the rename-files permission', function () {
 it('rejects delete when user lacks the delete-files permission', function () {
     $file = FileItem::factory()->folder()->create([
         'user_id' => $this->user->id,
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
     ]);
     grantOnly($this->user, $this->customer, ['upload files', 'create folders', 'rename files', 'share files']);
 
@@ -100,7 +100,7 @@ it('rejects delete when user lacks the delete-files permission', function () {
 it('rejects share when user lacks the share-files permission', function () {
     $file = FileItem::factory()->folder()->create([
         'user_id' => $this->user->id,
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
     ]);
     grantOnly($this->user, $this->customer, ['upload files', 'create folders', 'rename files', 'delete files']);
 
@@ -112,7 +112,7 @@ it('rejects share when user lacks the share-files permission', function () {
 it('rejects trash force-delete when user lacks the delete-files permission', function () {
     $file = FileItem::factory()->folder()->create([
         'user_id' => $this->user->id,
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
     ]);
     $file->delete();
     grantOnly($this->user, $this->customer, ['upload files', 'create folders', 'rename files', 'share files']);

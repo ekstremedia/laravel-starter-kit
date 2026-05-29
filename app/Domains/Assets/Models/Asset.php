@@ -28,7 +28,7 @@ use Spatie\Activitylog\Support\LogOptions;
  * AppServiceProvider, and add it to config('files.allowed_owner_types').
  *
  * @property int $id
- * @property int $tenant_id
+ * @property int $workspace_id
  * @property string $name
  * @property string|null $category
  * @property string|null $serial
@@ -47,7 +47,7 @@ class Asset extends Model implements FileOwner
     use SoftDeletes;
 
     protected $fillable = [
-        'tenant_id',
+        'workspace_id',
         'name',
         'category',
         'serial',
@@ -56,7 +56,7 @@ class Asset extends Model implements FileOwner
     ];
 
     protected $casts = [
-        'tenant_id' => 'integer',
+        'workspace_id' => 'integer',
         'file_quota_bytes' => 'integer',
         'storage_used_bytes' => 'integer',
     ];
@@ -96,7 +96,7 @@ class Asset extends Model implements FileOwner
      */
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsTo(Tenant::class, 'workspace_id');
     }
 
     /**

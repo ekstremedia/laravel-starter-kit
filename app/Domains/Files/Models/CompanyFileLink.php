@@ -16,7 +16,7 @@ use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * @property int $id
- * @property int $tenant_id
+ * @property int $workspace_id
  * @property int $file_item_id
  * @property int|null $company_parent_id
  * @property int|null $shared_by_user_id
@@ -33,7 +33,7 @@ class CompanyFileLink extends Model
     use HasFactory;
     use LogsActivity;
 
-    protected $fillable = ['tenant_id', 'file_item_id', 'company_parent_id', 'shared_by_user_id'];
+    protected $fillable = ['workspace_id', 'file_item_id', 'company_parent_id', 'shared_by_user_id'];
 
     /**
      * Share/unshare are auditable events on the company side — a Customer
@@ -44,7 +44,7 @@ class CompanyFileLink extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['tenant_id', 'file_item_id', 'company_parent_id', 'shared_by_user_id'])
+            ->logOnly(['workspace_id', 'file_item_id', 'company_parent_id', 'shared_by_user_id'])
             ->dontLogEmptyChanges()
             ->useLogName('company-files');
     }
@@ -61,7 +61,7 @@ class CompanyFileLink extends Model
 
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsTo(Tenant::class, 'workspace_id');
     }
 
     public function fileItem(): BelongsTo
@@ -82,7 +82,7 @@ class CompanyFileLink extends Model
     protected function casts(): array
     {
         return [
-            'tenant_id' => 'integer',
+            'workspace_id' => 'integer',
             'file_item_id' => 'integer',
             'company_parent_id' => 'integer',
             'shared_by_user_id' => 'integer',

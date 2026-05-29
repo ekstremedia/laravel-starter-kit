@@ -11,7 +11,7 @@ use Tests\TestCase;
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->beforeEach(function () {
-        // Multi-tenancy is row-level (a tenant_id column + the BelongsToTenant
+        // Multi-tenancy is row-level (a workspace_id column + the BelongsToTenant
         // global scope) — there are no per-tenant schemas/databases to create,
         // so creating a workspace is just a plain `workspaces`/`tenants` row in
         // the in-memory test DB. Nothing to strip here anymore.

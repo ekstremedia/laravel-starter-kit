@@ -25,12 +25,12 @@ class FileItemFactory extends Factory
      * "uploaded by X, owned by Y" data should set them explicitly via
      * ->ownedBy($model).
      *
-     * @return array{tenant_id: mixed, user_id: mixed, parent_id: int|null, type: string, scope: string, name: string, mime_type: string, size: int}
+     * @return array{workspace_id: mixed, user_id: mixed, parent_id: int|null, type: string, scope: string, name: string, mime_type: string, size: int}
      */
     public function definition(): array
     {
         return [
-            'tenant_id' => Tenant::factory(),
+            'workspace_id' => Tenant::factory(),
             'user_id' => User::factory(),
             'parent_id' => null,
             'type' => FileItem::TYPE_FILE,
@@ -92,7 +92,7 @@ class FileItemFactory extends Factory
     public function company(Tenant $tenant): static
     {
         return $this->state(fn () => [
-            'tenant_id' => $tenant->getKey(),
+            'workspace_id' => $tenant->getKey(),
             'owner_type' => $tenant->getMorphClass(),
             'owner_id' => $tenant->getKey(),
             'scope' => FileItem::SCOPE_COMPANY,

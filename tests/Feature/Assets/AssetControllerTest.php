@@ -39,11 +39,11 @@ it('lists and creates assets', function () {
         ])
         ->assertRedirect();
 
-    expect(Asset::where('tenant_id', $this->customer->id)->where('name', 'Forklift #3')->exists())->toBeTrue();
+    expect(Asset::where('workspace_id', $this->customer->id)->where('name', 'Forklift #3')->exists())->toBeTrue();
 });
 
 it('shows an asset with its document area', function () {
-    $asset = Asset::factory()->create(['tenant_id' => $this->customer->id]);
+    $asset = Asset::factory()->create(['workspace_id' => $this->customer->id]);
 
     $this->actingAs($this->admin)
         ->get(customerUrl($this->customer, "/assets/{$asset->id}"))
@@ -64,7 +64,7 @@ it('blocks non-members', function () {
 });
 
 it('uploads a document owned by the asset', function () {
-    $asset = Asset::factory()->create(['tenant_id' => $this->customer->id]);
+    $asset = Asset::factory()->create(['workspace_id' => $this->customer->id]);
 
     $this->actingAs($this->admin)
         ->post(customerUrl($this->customer, '/entity-files'), [
@@ -82,7 +82,7 @@ it('uploads a document owned by the asset', function () {
 });
 
 it('creates, renames and deletes a folder on the asset', function () {
-    $asset = Asset::factory()->create(['tenant_id' => $this->customer->id]);
+    $asset = Asset::factory()->create(['workspace_id' => $this->customer->id]);
 
     $this->actingAs($this->admin)
         ->post(customerUrl($this->customer, '/entity-files/folder'), [
@@ -107,7 +107,7 @@ it('creates, renames and deletes a folder on the asset', function () {
 
 it('enforces the asset storage quota on upload', function () {
     $asset = Asset::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->customer->id,
         'file_quota_bytes' => 10, // 10 bytes — anything real exceeds it.
     ]);
 
@@ -123,7 +123,7 @@ it('enforces the asset storage quota on upload', function () {
 });
 
 it('updates and deletes an asset', function () {
-    $asset = Asset::factory()->create(['tenant_id' => $this->customer->id]);
+    $asset = Asset::factory()->create(['workspace_id' => $this->customer->id]);
 
     $this->actingAs($this->admin)
         ->put(customerUrl($this->customer, "/assets/{$asset->id}"), [
