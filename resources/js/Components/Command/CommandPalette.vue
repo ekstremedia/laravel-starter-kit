@@ -60,11 +60,16 @@ const commands = computed<Cmd[]>(() => {
         ? [
             { id: 'go-admin', label: t('palette.go_admin_overview'), group: gNav, kbd: 'G D', fn: () => router.visit('/admin') },
             { id: 'go-users', label: t('palette.go_admin_users'), group: gNav, kbd: 'G U', fn: () => router.visit('/admin/users') },
+            ...(page.props.workspaces?.enabled
+                ? [{ id: 'go-workspaces', label: t('palette.go_admin_workspaces'), group: gNav, fn: () => router.visit('/admin/workspaces') } as Cmd]
+                : []),
+            { id: 'go-roles', label: t('palette.go_admin_roles'), group: gNav, fn: () => router.visit('/admin/roles') },
+            { id: 'go-permissions', label: t('palette.go_admin_permissions'), group: gNav, fn: () => router.visit('/admin/permissions') },
             { id: 'go-settings', label: t('palette.go_admin_settings'), group: gNav, kbd: 'G A', fn: () => router.visit('/admin/settings') },
             { id: 'go-mail', label: t('palette.go_admin_mail'), group: gNav, fn: () => router.visit('/admin/mail') },
-            { id: 'go-roles', label: t('palette.go_admin_roles'), group: gNav, fn: () => router.visit('/admin/roles') },
             { id: 'go-storage', label: t('palette.go_admin_storage'), group: gNav, fn: () => router.visit('/admin/storage') },
             { id: 'go-backups', label: t('palette.go_admin_backups'), group: gNav, fn: () => router.visit('/admin/backups') },
+            { id: 'go-server', label: t('palette.go_admin_server'), group: gNav, fn: () => router.visit('/admin/system') },
             { id: 'go-logs', label: t('palette.go_admin_logs'), group: gNav, fn: () => router.visit('/admin/monitoring') },
         ]
         : [];
