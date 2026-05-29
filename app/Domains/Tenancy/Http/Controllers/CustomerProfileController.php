@@ -6,6 +6,7 @@ namespace App\Domains\Tenancy\Http\Controllers;
 
 use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Tenancy\Policies\TenantProfilePolicy;
+use App\Domains\Tenancy\Support\Tenancy;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -118,7 +119,7 @@ class CustomerProfileController extends Controller
     private function customer(): Tenant
     {
         /** @var Tenant $tenant */
-        $tenant = tenancy()->tenant ?? abort(404);
+        $tenant = app(Tenancy::class)->current() ?? abort(404);
 
         return $tenant;
     }

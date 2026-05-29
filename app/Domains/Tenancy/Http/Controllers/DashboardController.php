@@ -6,6 +6,7 @@ namespace App\Domains\Tenancy\Http\Controllers;
 
 use App\Domains\Files\Models\FileItem;
 use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Tenancy\Support\Tenancy;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -18,7 +19,7 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         /** @var Tenant|null $customer */
-        $customer = $request->attributes->get('customer') ?? tenancy()->tenant;
+        $customer = $request->attributes->get('customer') ?? app(Tenancy::class)->current();
 
         $memberCount = $customer?->users()->count() ?? 0;
 

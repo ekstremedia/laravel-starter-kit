@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Domains\Settings\Models\AppSetting;
 use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Tenancy\Support\Tenancy;
 use App\Domains\Users\Models\User;
 use App\Domains\Users\Models\UserSetting;
 use Illuminate\Database\Eloquent\Builder;
@@ -143,12 +144,13 @@ class HandleInertiaRequests extends Middleware
      */
     private function currentCustomer(): ?array
     {
-        if (! tenancy()->initialized) {
+        $tenancy = app(Tenancy::class);
+        if (! $tenancy->check()) {
             return null;
         }
 
         /** @var Tenant $customer */
-        $customer = tenancy()->tenant;
+        $customer = $tenancy->current();
 
         return [
             'id' => $customer->id,
@@ -188,9 +190,10 @@ class HandleInertiaRequests extends Middleware
         // Inside a /c/{slug}/... route the active tenant *is* the workspace,
         // and the Spatie team id is already scoped to it by the tenancy
         // middleware — so read capabilities directly.
-        if (tenancy()->initialized) {
+        $tenancy = app(Tenancy::class);
+        if ($tenancy->check()) {
             /** @var Tenant $customer */
-            $customer = tenancy()->tenant;
+            $customer = $tenancy->current();
 
             return $this->workspacePayload($customer, $user, alreadyScoped: true);
         }

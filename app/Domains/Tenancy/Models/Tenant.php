@@ -11,12 +11,10 @@ use App\Domains\Files\Models\FileItem;
 use App\Domains\Users\Models\User;
 use Database\Factories\TenantFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Permission\PermissionRegistrar;
-use Stancl\Tenancy\Contracts\TenantWithDatabase;
-use Stancl\Tenancy\Database\Concerns\HasDatabase;
-use Stancl\Tenancy\Database\Models\Tenant as BaseTenant;
 
 /**
  * @property int $id
@@ -33,38 +31,12 @@ use Stancl\Tenancy\Database\Models\Tenant as BaseTenant;
  * @property int $storage_used_bytes
  * @property int|null $default_member_storage_bytes
  */
-class Tenant extends BaseTenant implements FileOwner, TenantWithDatabase
+class Tenant extends Model implements FileOwner
 {
     /** @use HasFactory<TenantFactory> */
-    use HasDatabase, HasFactory, HasFiles;
+    use HasFactory, HasFiles;
 
-    public $incrementing = true;
-
-    protected $keyType = 'int';
-
-    /**
-     * Columns stored as real DB columns (not inside the `data` JSON blob).
-     *
-     * @return array<int, string>
-     */
-    public static function getCustomColumns(): array
-    {
-        return [
-            'id',
-            'slug',
-            'name',
-            'headline',
-            'about',
-            'location',
-            'website',
-            'status',
-            'files_feature_enabled',
-            'company_files_enabled',
-            'storage_quota_bytes',
-            'storage_used_bytes',
-            'default_member_storage_bytes',
-        ];
-    }
+    protected $guarded = [];
 
     /**
      * @return array<string, string>

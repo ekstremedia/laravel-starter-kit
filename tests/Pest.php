@@ -5,25 +5,16 @@ use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Tenancy\Support\CustomerMembership;
 use App\Domains\Users\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Event;
 use Spatie\Permission\PermissionRegistrar;
-use Stancl\Tenancy\Events\TenantCreated;
-use Stancl\Tenancy\Events\TenantDeleted;
 use Tests\TestCase;
 
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->beforeEach(function () {
-        // The test DB is SQLite in-memory (see .env.testing). Stancl/tenancy's
-        // DatabaseTenancyBootstrapper would try to create a file-per-customer
-        // sqlite DB and swap the connection on every initialized customer,
-        // which is overkill for route-level tests. Strip bootstrappers and the
-        // schema-creation pipeline so customers are plain `tenants` rows in
-        // the central (in-memory) DB. Integration tests that *do* exercise the
-        // Postgres schema flow should run against the dev Postgres setup.
-        config()->set('tenancy.bootstrappers', []);
-        Event::forget(TenantCreated::class);
-        Event::forget(TenantDeleted::class);
+        // Multi-tenancy is row-level (a tenant_id column + the BelongsToTenant
+        // global scope) — there are no per-tenant schemas/databases to create,
+        // so creating a workspace is just a plain `workspaces`/`tenants` row in
+        // the in-memory test DB. Nothing to strip here anymore.
 
         // MJML compilation shells out to `npx mjml` which takes ~600 ms per
         // template. 16 templates × every RefreshDatabase seed = painful.

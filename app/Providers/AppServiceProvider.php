@@ -12,6 +12,7 @@ use App\Domains\Files\Models\FileItem;
 use App\Domains\Files\Models\FileShare;
 use App\Domains\Operations\Models\Activity;
 use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Tenancy\Support\Tenancy;
 use App\Domains\Users\Models\PersonalAccessToken;
 use App\Domains\Users\Models\User;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
@@ -38,6 +39,11 @@ class AppServiceProvider extends ServiceProvider
         // at our pinned subclass before any token query runs, or tenant-scoped
         // requests will try to read the table from the active tenant schema.
         Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
+
+        // Current-workspace context (replaces stancl's tenancy() helper). A
+        // singleton so the resolving middleware and the global tenant scope
+        // read the same active workspace for the request.
+        $this->app->singleton(Tenancy::class);
     }
 
     /**
@@ -118,8 +124,9 @@ class AppServiceProvider extends ServiceProvider
                 return;
             }
 
-            if ($activity->tenant_id === null && tenancy()->initialized) {
-                $activity->tenant_id = tenancy()->tenant?->getKey();
+            $tenancy = app(Tenancy::class);
+            if ($activity->tenant_id === null && $tenancy->check()) {
+                $activity->tenant_id = $tenancy->id();
             }
         });
 

@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Domains\Tenancy\Http\Middleware;
 
 use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Tenancy\Support\Tenancy;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Spatie\Permission\PermissionRegistrar;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -26,6 +26,8 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  */
 class InitializeTenancyByPath
 {
+    public function __construct(private readonly Tenancy $tenancy) {}
+
     public function handle(Request $request, Closure $next): Response
     {
         $route = $request->route();
@@ -57,20 +59,6 @@ class InitializeTenancyByPath
             throw new AccessDeniedHttpException("You are not a member of [{$slug}].");
         }
 
-        tenancy()->initialize($customer);
-
-        // Scope every downstream role/permission check to this customer.
-        // SuperAdmin assignments (team_id = null) still resolve globally via
-        // User::isSuperAdmin(); everything else is per-customer from here on.
-        // PermissionRegistrar is a container singleton and survives across
-        // requests in long-lived workers (Octane, queues, same-process
-        // tests), so we capture the previous team id and restore it after
-        // the request runs — otherwise customer A's team context leaks into
-        // the next request on the same worker.
-        $registrar = app(PermissionRegistrar::class);
-        $previousTeamId = $registrar->getPermissionsTeamId();
-        $registrar->setPermissionsTeamId($customer->id);
-
         $route->forgetParameter('customer');
 
         $request->attributes->set('customer', $customer);
@@ -83,10 +71,12 @@ class InitializeTenancyByPath
             $user->settings()->merge(['last_customer_slug' => $customer->slug]);
         }
 
-        try {
-            return $next($request);
-        } finally {
-            $registrar->setPermissionsTeamId($previousTeamId);
-        }
+        // Activate the workspace for this request: the resolver holds the
+        // current tenant and points Spatie's permission team scope at it, so
+        // every downstream role/permission check resolves per-workspace. The
+        // global `tenant_id` scope (BelongsToTenant) reads the same resolver.
+        // runFor() restores the prior context afterwards so a long-lived
+        // worker can't leak one workspace into the next request.
+        return $this->tenancy->runFor($customer, fn () => $next($request));
     }
 }
