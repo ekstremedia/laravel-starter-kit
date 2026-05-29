@@ -8,8 +8,8 @@
  * - 1 membership  → Link pill (always clickable even when already scoped)
  * - N memberships → button + dropdown with accent-soft highlight on current
  *
- * All navigation targets `/w/{slug}/dashboard`, which triggers
- * InitializeTenancyByPath server-side to swap the schema.
+ * All navigation targets `/w/{slug}/dashboard`, which the ResolveWorkspace
+ * middleware resolves to the active workspace server-side.
  */
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
