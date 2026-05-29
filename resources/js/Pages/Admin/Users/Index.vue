@@ -6,6 +6,7 @@ import { useConfirm } from 'primevue/useconfirm';
 import CommandLayout from '@/Layouts/CommandLayout.vue';
 import Icon from '@/Components/Command/Icon.vue';
 import Skeleton from '@/Components/Command/Skeleton.vue';
+import RoleBadge from '@/Components/Command/RoleBadge.vue';
 import { useCommandToasts } from '@/composables/useCommandToasts';
 
 defineOptions({ layout: CommandLayout });
@@ -73,27 +74,6 @@ function initials(u: UserRow): string {
 const AVATAR_PALETTE = ['#4c6fff', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899', '#14b8a6', '#a855f7', '#f97316'];
 function avatarColor(u: UserRow): string {
     return AVATAR_PALETTE[u.id % AVATAR_PALETTE.length];
-}
-
-function roleToneColor(r: string): string {
-    if (r === 'SuperAdmin') return '#ef4444';
-    if (r === 'Admin') return '#8b5cf6';
-    if (r === 'Editor') return 'var(--warning)';
-    return 'var(--accent)';
-}
-
-function roleToneBg(r: string): string {
-    if (r === 'SuperAdmin') return 'rgba(239,68,68,0.12)';
-    if (r === 'Admin') return 'rgba(139,92,246,0.12)';
-    if (r === 'Editor') return 'rgba(251,191,36,0.12)';
-    return 'var(--accent-soft)';
-}
-
-function roleToneBorder(r: string): string {
-    if (r === 'SuperAdmin') return 'rgba(239,68,68,0.33)';
-    if (r === 'Admin') return 'rgba(139,92,246,0.33)';
-    if (r === 'Editor') return 'rgba(251,191,36,0.33)';
-    return 'var(--accent-border)';
 }
 
 function formatBytes(n: number | null | undefined): string {
@@ -401,7 +381,7 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
                     :style="{ color: 'var(--accent)', transform: sortDir === 'asc' ? 'rotate(180deg)' : 'rotate(0deg)' }"
                 />
             </div>
-            <div>{{ t('admin.users.companies_col', 'Selskaper') }}</div>
+            <div>{{ t('admin.users.companies_col', 'Arbeidsområder') }}</div>
             <div
                 role="button"
                 tabindex="0"
@@ -484,19 +464,7 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
                     :style="{ color: 'var(--fg-dim)', fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }"
                 >{{ u.email }}</span>
                 <div :style="{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center' }">
-                    <span
-                        v-if="u.is_super_admin"
-                        class="cmd-mono"
-                        :style="{
-                            fontSize: '9.5px',
-                            padding: '2px 6px',
-                            borderRadius: '3px',
-                            color: roleToneColor('SuperAdmin'),
-                            background: roleToneBg('SuperAdmin'),
-                            border: `1px solid ${roleToneBorder('SuperAdmin')}`,
-                            letterSpacing: '0.02em',
-                        }"
-                    >SUPER</span>
+                    <RoleBadge v-if="u.is_super_admin" role="SuperAdmin">SUPER</RoleBadge>
                     <span
                         v-for="c in u.workspace_roles"
                         :key="c.id"
@@ -546,19 +514,7 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
                                 :style="{ fontSize: '9.5px', color: 'var(--fg-mute)', letterSpacing: '0.06em', marginBottom: '4px' }"
                             >{{ c.name }} · /w/{{ c.slug }}</div>
                             <div v-if="c.roles.length" :style="{ display: 'flex', flexWrap: 'wrap', gap: '4px' }">
-                                <span
-                                    v-for="r in c.roles"
-                                    :key="r"
-                                    class="cmd-mono"
-                                    :style="{
-                                        fontSize: '10px',
-                                        padding: '1px 6px',
-                                        borderRadius: '3px',
-                                        color: roleToneColor(r),
-                                        background: roleToneBg(r),
-                                        border: `1px solid ${roleToneBorder(r)}`,
-                                    }"
-                                >{{ r }}</span>
+                                <RoleBadge v-for="r in c.roles" :key="r" :role="r" />
                             </div>
                             <span
                                 v-else
@@ -678,13 +634,9 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
                 <span class="cmd-dt-value cmd-mono" :style="{ fontSize: '11px' }">{{ u.email }}</span>
             </div>
             <div class="cmd-dt-field">
-                <span class="cmd-dt-label">{{ t('admin.users.companies_col', 'Selskaper') }}</span>
+                <span class="cmd-dt-label">{{ t('admin.users.companies_col', 'Arbeidsområder') }}</span>
                 <span class="cmd-dt-value" :style="{ display: 'flex', flexWrap: 'wrap', gap: '4px', justifyContent: 'flex-end' }">
-                    <span
-                        v-if="u.is_super_admin"
-                        class="cmd-mono"
-                        :style="{ fontSize: '9.5px', padding: '2px 6px', borderRadius: '3px', color: roleToneColor('SuperAdmin'), background: roleToneBg('SuperAdmin'), border: `1px solid ${roleToneBorder('SuperAdmin')}` }"
-                    >SUPER</span>
+                    <RoleBadge v-if="u.is_super_admin" role="SuperAdmin">SUPER</RoleBadge>
                     <span
                         v-for="c in u.workspace_roles"
                         :key="c.id"
