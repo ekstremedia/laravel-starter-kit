@@ -11,6 +11,8 @@ import { useTweaks } from '@/composables/useTweaks';
 
 interface Props {
     onOpenPalette: () => void;
+    // Toggles the mobile nav drawer; only surfaced on narrow viewports.
+    onToggleNav?: () => void;
 }
 defineProps<Props>();
 
@@ -110,6 +112,15 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
         <div
             :style="{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap', flexShrink: 1 }"
         >
+            <button
+                v-if="onToggleNav"
+                type="button"
+                class="cmd-topbar-only-sm cmd-topbar-burger"
+                @click="onToggleNav"
+                :aria-label="t('topbar.open_nav')"
+            >
+                <Icon name="menu" :size="16" />
+            </button>
             <template v-for="(b, i) in breadcrumbs" :key="i">
                 <Icon v-if="i > 0" name="chevR" :size="10" :style="{ color: 'var(--fg-mute)', flexShrink: 0 }" />
                 <span
@@ -315,6 +326,32 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
 @media (max-width: 640px) {
     .cmd-topbar-hide-sm {
         display: none;
+    }
+}
+/* Hamburger: hidden on wide screens (rail is in-flow), shown when the rail
+ * collapses to an off-canvas drawer. */
+.cmd-topbar-burger {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    margin-right: 2px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--panel2);
+    color: var(--fg-dim);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.12s, color 0.12s;
+}
+.cmd-topbar-burger:hover {
+    color: var(--fg);
+}
+@media (max-width: 640px) {
+    .cmd-topbar-only-sm {
+        display: inline-flex;
     }
 }
 .cmd-menu-item {

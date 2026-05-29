@@ -253,6 +253,7 @@ export default {
     },
     topbar: {
         search_prompt: 'Søk eller kjør kommando',
+        open_nav: 'Åpne navigasjon',
         crumbs: {
             home: 'Min side',
             admin_overview: 'Admin|Oversikt',

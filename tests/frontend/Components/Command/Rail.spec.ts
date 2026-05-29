@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const m = vi.hoisted(() => ({ toggleRail: vi.fn(), url: { value: '/home' } }));
 
@@ -93,5 +93,51 @@ describe('Command/Rail — admin mode', () => {
         expect(text).toContain('rail.administration');
         expect(text).toContain('rail.back_to_app');
         expect(text).toContain('Users');
+    });
+});
+
+describe('Command/Rail — mobile drawer', () => {
+    const stubMatchMedia = (matches: boolean) => {
+        window.matchMedia = vi.fn().mockImplementation((media: string) => ({
+            matches,
+            media,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            dispatchEvent: vi.fn(),
+            onchange: null,
+        }));
+    };
+
+    beforeEach(() => {
+        m.url.value = '/home';
+        stubMatchMedia(true); // narrow viewport
+    });
+
+    afterEach(() => {
+        delete (window as unknown as { matchMedia?: unknown }).matchMedia;
+    });
+
+    it('hides the pin toggle and shows full labels in drawer mode', async () => {
+        const w = mount(Rail, { props: { mobileOpen: true } });
+        await w.vm.$nextTick(); // let the onMounted matchMedia sync flush
+        expect(w.find('button[aria-label="rail.collapse"]').exists()).toBe(false);
+        // Labels are always shown in the drawer regardless of the pinned setting.
+        expect(w.text()).toContain('Home');
+        expect(w.text()).toContain('Dashboard');
+    });
+
+    it('renders the backdrop only when open and emits close on tap', async () => {
+        const open = mount(Rail, { props: { mobileOpen: true } });
+        await open.vm.$nextTick();
+        const backdrop = open.find('.cmd-rail-backdrop');
+        expect(backdrop.exists()).toBe(true);
+        await backdrop.trigger('click');
+        expect(open.emitted('close')).toBeTruthy();
+
+        const closed = mount(Rail, { props: { mobileOpen: false } });
+        await closed.vm.$nextTick();
+        expect(closed.find('.cmd-rail-backdrop').exists()).toBe(false);
     });
 });

@@ -9,8 +9,13 @@
  * are owned by `useSidebarItems()` — edit that composable to add / remove /
  * reorder entries. This component only handles presentation: active-state,
  * hover tooltip, section labels, collapse toggle, logo/brand, profile tile.
+ *
+ * On narrow viewports (≤640px) the rail leaves the layout flow entirely so the
+ * page goes full-width, and instead becomes an off-canvas drawer toggled by the
+ * topbar hamburger (`mobileOpen` prop / `close` emit). In that mode it always
+ * shows full labels and the pin toggle is hidden.
  */
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import type { PageProps } from '@/types';
@@ -20,13 +25,30 @@ import { isSidebarItem } from '@/types/sidebar';
 import type { SidebarEntry } from '@/types/sidebar';
 import Icon from './Icon.vue';
 
+const props = defineProps<{ mobileOpen?: boolean }>();
+const emit = defineEmits<{ close: [] }>();
+
 const { t } = useI18n();
 const page = usePage<PageProps>();
 const currentPath = computed(() => page.url.split('?')[0]);
 const user = computed(() => page.props.auth?.user);
 const { state, toggleRail } = useTweaks();
-const expanded = computed(() => state.value.railExpanded);
 const { appVisible, adminVisible } = useSidebarItems();
+
+// Below 640px the rail is an off-canvas drawer rather than an in-flow column.
+const isNarrow = ref(false);
+let mql: MediaQueryList | null = null;
+const syncNarrow = () => { isNarrow.value = mql?.matches ?? false; };
+onMounted(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    mql = window.matchMedia('(max-width: 640px)');
+    syncNarrow();
+    mql.addEventListener('change', syncNarrow);
+});
+onBeforeUnmount(() => mql?.removeEventListener('change', syncNarrow));
+
+// In the drawer we always show labels; on desktop we honor the pinned setting.
+const expanded = computed(() => (isNarrow.value ? true : state.value.railExpanded));
 
 // On /admin/* the rail swaps to the admin item set; everywhere else it shows
 // the app nav. Entry into the admin area is via the topbar profile dropdown.
@@ -44,13 +66,25 @@ type Entry = SidebarEntry;
 </script>
 
 <template>
+    <!-- Mobile drawer backdrop. Tap to dismiss. -->
+    <Transition name="cmd-backdrop">
+        <div
+            v-if="isNarrow && mobileOpen"
+            class="cmd-rail-backdrop"
+            @click="emit('close')"
+            :style="{ position: 'fixed', inset: '0', background: 'rgba(0,0,0,0.5)', zIndex: 79 }"
+        />
+    </Transition>
+
     <aside
         class="cmd-rail"
-        :class="{ 'is-expanded': expanded }"
+        :class="{ 'is-expanded': expanded, 'is-drawer': isNarrow }"
         role="navigation"
         :aria-label="t('rail.aria_label')"
+        :aria-hidden="isNarrow && !mobileOpen"
         :style="{
-            width: expanded ? '180px' : '52px',
+            width: isNarrow ? '264px' : (expanded ? '180px' : '52px'),
+            maxWidth: isNarrow ? '82vw' : 'none',
             background: 'var(--bg2)',
             borderRight: '1px solid var(--border)',
             display: 'flex',
@@ -59,8 +93,18 @@ type Entry = SidebarEntry;
             padding: expanded ? '12px 10px' : '12px 0',
             flexShrink: 0,
             alignSelf: 'stretch',
-            transition: 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1), padding 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-            overflow: 'hidden',
+            position: isNarrow ? 'fixed' : 'static',
+            top: isNarrow ? '0' : 'auto',
+            left: isNarrow ? '0' : 'auto',
+            bottom: isNarrow ? '0' : 'auto',
+            zIndex: isNarrow ? 80 : 'auto',
+            transform: isNarrow ? (mobileOpen ? 'translateX(0)' : 'translateX(-102%)') : 'none',
+            boxShadow: isNarrow && mobileOpen ? '0 8px 40px rgba(0,0,0,0.5)' : 'none',
+            transition: isNarrow
+                ? 'transform 0.24s cubic-bezier(0.4, 0, 0.2, 1)'
+                : 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1), padding 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            overflowX: 'hidden',
+            overflowY: isNarrow ? 'auto' : 'hidden',
         }"
     >
         <Link
@@ -253,6 +297,7 @@ type Entry = SidebarEntry;
         <div style="flex: 1" />
 
         <button
+            v-if="!isNarrow"
             type="button"
             @click="toggleRail"
             :title="expanded ? t('rail.collapse') : t('rail.expand')"
@@ -353,10 +398,22 @@ type Entry = SidebarEntry;
     transform: translateX(-6px);
 }
 
+/* Mobile drawer backdrop fade. */
+.cmd-backdrop-enter-active,
+.cmd-backdrop-leave-active {
+    transition: opacity 0.24s ease;
+}
+.cmd-backdrop-enter-from,
+.cmd-backdrop-leave-to {
+    opacity: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .cmd-rail,
     .cmd-rail-text-enter-active,
-    .cmd-rail-text-leave-active {
+    .cmd-rail-text-leave-active,
+    .cmd-backdrop-enter-active,
+    .cmd-backdrop-leave-active {
         transition: none !important;
     }
 }

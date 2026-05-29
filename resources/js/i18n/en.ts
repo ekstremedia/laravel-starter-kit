@@ -253,6 +253,7 @@ export default {
     },
     topbar: {
         search_prompt: 'Search or run command',
+        open_nav: 'Open navigation',
         crumbs: {
             home: 'Home',
             admin_overview: 'Admin|Overview',

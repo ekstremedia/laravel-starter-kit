@@ -3,7 +3,7 @@ export type IconName =
     | 'home' | 'users' | 'user' | 'customer' | 'role' | 'key' | 'cog'
     | 'mail' | 'disk' | 'shield' | 'server' | 'log' | 'bell' | 'search' | 'box'
     | 'chevR' | 'chevD' | 'plus' | 'edit' | 'trash' | 'restore' | 'arrow'
-    | 'check' | 'x' | 'alert' | 'link';
+    | 'check' | 'x' | 'alert' | 'link' | 'menu';
 </script>
 
 <script setup lang="ts">
@@ -115,6 +115,9 @@ const side = computed(() => props.size);
         </template>
         <template v-else-if="name === 'alert'">
             <path d="M8 2l6.5 11h-13L8 2zM8 6v3M8 11.5v.01" stroke-linecap="round" stroke-linejoin="round" />
+        </template>
+        <template v-else-if="name === 'menu'">
+            <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11" stroke-linecap="round" />
         </template>
         <template v-else-if="name === 'link'">
             <path d="M6.5 9.5a2.5 2.5 0 010-3.5L9 4a2.5 2.5 0 013.5 3.5l-1.25 1.25M9.5 6.5a2.5 2.5 0 010 3.5L7 12.5A2.5 2.5 0 013.5 9l1.25-1.25" stroke-linecap="round" />

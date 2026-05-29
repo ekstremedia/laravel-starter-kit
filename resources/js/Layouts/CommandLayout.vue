@@ -7,7 +7,7 @@
  * Replaces the old AdminLayout. Also usable from non-admin authenticated
  * pages (e.g. /home) so the rail + palette stay consistent across the app.
  */
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { usePage, router } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import { useFlashToast } from '@/composables/useFlashToast';
@@ -56,6 +56,15 @@ useUserChannel((n) => {
 
 const paletteOpen = ref(false);
 const tweaksOpen = ref(false);
+
+// Off-canvas nav drawer for narrow viewports (the rail leaves the flow there).
+// Close it after any navigation so a tapped link doesn't leave it hanging open.
+const mobileNavOpen = ref(false);
+let stopNavigate: (() => void) | null = null;
+onMounted(() => {
+    stopNavigate = router.on('navigate', () => { mobileNavOpen.value = false; });
+});
+onBeforeUnmount(() => stopNavigate?.());
 
 useCommandKeyboard({
     onTogglePalette: () => { paletteOpen.value = !paletteOpen.value; },
@@ -135,10 +144,13 @@ useCommandKeyboard({
         </div>
 
         <div :style="{ display: 'flex', flex: 1, minHeight: 0 }">
-            <Rail />
+            <Rail :mobile-open="mobileNavOpen" @close="mobileNavOpen = false" />
 
         <div :style="{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }">
-            <Topbar :on-open-palette="() => (paletteOpen = true)" />
+            <Topbar
+                :on-open-palette="() => (paletteOpen = true)"
+                :on-toggle-nav="() => (mobileNavOpen = !mobileNavOpen)"
+            />
 
             <main
                 :style="{
@@ -156,6 +168,7 @@ useCommandKeyboard({
 
         <!-- Tweaks trigger pinned bottom-left so it's easy to rediscover. -->
         <button
+            v-show="!mobileNavOpen"
             type="button"
             class="cmd-tweaks-trigger"
             :class="{ 'is-open': tweaksOpen }"
@@ -197,5 +210,12 @@ useCommandKeyboard({
     background: var(--accent-soft);
     border-color: var(--accent-border);
     opacity: 1;
+}
+/* The rail is off-canvas on narrow screens, so pin the tweaks trigger to the
+ * viewport edge instead of offsetting by the (now absent) rail width. */
+@media (max-width: 640px) {
+    .cmd-tweaks-trigger {
+        left: 14px;
+    }
 }
 </style>
