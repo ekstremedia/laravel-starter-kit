@@ -10,7 +10,7 @@ import Icon from '@/Components/Command/Icon.vue';
 interface NotificationItem {
     id: string;
     type: string;
-    data: { title?: string; message?: string; icon?: string };
+    data: { title?: string; message?: string; icon?: string; action_url?: string };
     read_at: string | null;
     created_at: string;
 }
@@ -70,6 +70,16 @@ function markOneRead(n: NotificationItem) {
             decrementNotifications(1);
         },
     });
+}
+
+// Clicking a notification marks it read and, if it carries an action_url
+// (e.g. a chat message → its conversation), navigates there.
+function onNotificationClick(n: NotificationItem) {
+    markOneRead(n);
+    if (n.data.action_url) {
+        open.value = false;
+        router.visit(n.data.action_url);
+    }
 }
 
 function deleteOne(n: NotificationItem) {
@@ -246,14 +256,14 @@ function notificationTitle(n: NotificationItem): string {
                         :key="n.id"
                         @mouseenter="hoverId = n.id"
                         @mouseleave="hoverId = null"
-                        @click="markOneRead(n)"
+                        @click="onNotificationClick(n)"
                         :style="{
                             display: 'grid',
                             gridTemplateColumns: '10px 1fr 24px',
                             gap: '10px',
                             padding: '10px 14px',
                             borderBottom: '1px solid var(--border)',
-                            cursor: n.read_at ? 'default' : 'pointer',
+                            cursor: (n.read_at && !n.data.action_url) ? 'default' : 'pointer',
                             background: hoverId === n.id ? 'var(--row-hover)' : 'transparent',
                             transition: 'background 0.1s',
                             opacity: n.read_at ? 0.65 : 1,

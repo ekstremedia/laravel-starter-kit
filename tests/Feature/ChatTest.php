@@ -337,7 +337,7 @@ it('notifies other participants when a message is sent', function () {
     Notification::assertNotSentTo($this->alice, NewChatMessageNotification::class);
 });
 
-it('does not persist chat notifications to the database inbox', function () {
+it('persists a chat notification to the inbox with a link to the conversation', function () {
     Event::fake([MessageSent::class]);
 
     $convId = $this->actingAs($this->alice)
@@ -350,9 +350,32 @@ it('does not persist chat notifications to the database inbox', function () {
         ])
         ->assertCreated();
 
-    // Chat messages should only fan out to broadcast (and optionally mail),
-    // never to the database notification inbox.
-    expect($this->bob->fresh()->notifications()->count())->toBe(0);
+    // Recipient gets a bell notification whose action_url opens the conversation.
+    $note = $this->bob->fresh()->unreadNotifications()->first();
+    expect($note)->not->toBeNull();
+    expect($note->data['conversation_id'])->toBe($convId);
+    expect($note->data['action_url'])->toBe('/chat?conversation='.$convId);
+    // Sender is never notified of their own message.
+    expect($this->alice->fresh()->notifications()->count())->toBe(0);
+});
+
+it('clears chat notifications from the inbox when the conversation is read', function () {
+    Event::fake([MessageSent::class]);
+
+    $convId = $this->actingAs($this->alice)
+        ->postJson(chatUrl('/conversations'), ['user_ids' => [$this->bob->id]])
+        ->json('conversation.id');
+
+    $this->actingAs($this->alice)
+        ->postJson(chatUrl("/conversations/{$convId}/messages"), ['body' => 'Hi Bob!'])
+        ->assertCreated();
+
+    expect($this->bob->fresh()->unreadNotifications()->count())->toBe(1);
+
+    $this->actingAs($this->bob)
+        ->postJson(chatUrl("/conversations/{$convId}/read"))
+        ->assertOk();
+
     expect($this->bob->fresh()->unreadNotifications()->count())->toBe(0);
 });
 

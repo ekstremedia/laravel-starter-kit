@@ -50,8 +50,10 @@ function leaveImpersonation() {
 const { incrementMessages, incrementNotifications } = useUnreadCounts();
 useUserChannel((n) => {
     const isChat = typeof n.type === 'string' && n.type.endsWith('NewChatMessageNotification');
+    // Chat messages now land in the bell too, so always bump the notifications
+    // badge; keep the messages count in sync for chat.
+    incrementNotifications(1);
     if (isChat) incrementMessages(1);
-    else incrementNotifications(1);
 });
 
 const paletteOpen = ref(false);

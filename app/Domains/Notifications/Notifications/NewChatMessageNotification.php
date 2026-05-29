@@ -33,11 +33,11 @@ class NewChatMessageNotification extends Notification implements ShouldBroadcast
             return [];
         }
 
-        // Chat messages intentionally skip the `database` channel so they
-        // don't clutter the notification inbox / bell. The dedicated message
-        // icon is the sole in-app indicator; the broadcast channel only
-        // exists so that indicator can update live.
-        $channels = ['broadcast'];
+        // Chat messages land in the notification inbox/bell (database) and
+        // broadcast so the bell updates live. Clicking one opens the
+        // conversation (action_url); reading the conversation marks the
+        // matching notifications read (ChatController::markRead).
+        $channels = ['broadcast', 'database'];
 
         if ($settings['notification_email_immediate'] ?? false) {
             $channels[] = 'mail';
@@ -73,6 +73,9 @@ class NewChatMessageNotification extends Notification implements ShouldBroadcast
             'message' => $this->messagePreview(),
             'icon' => 'pi-comments',
             'conversation_id' => $this->message->conversation_id,
+            // Clicking the notification opens the conversation. Chat.vue reads
+            // ?conversation=<id> on mount and selects it.
+            'action_url' => '/chat?conversation='.$this->message->conversation_id,
         ];
     }
 
