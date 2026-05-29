@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import { ref } from 'vue';
+import { ref, onMounted, nextTick } from 'vue';
 import { useToast } from 'primevue/usetoast';
 
 const emit = defineEmits<{
@@ -50,7 +50,15 @@ function send() {
     if (fileInputRef.value) {
         fileInputRef.value.value = '';
     }
+    // Keep focus so the user can keep typing without re-clicking.
+    textareaRef.value?.focus();
 }
+
+// Focus the composer when the thread opens (Chat.vue keys this component by
+// conversation id, so this re-fires when switching conversations too).
+onMounted(() => {
+    nextTick(() => textareaRef.value?.focus());
+});
 
 function autoResize() {
     if (!textareaRef.value) return;

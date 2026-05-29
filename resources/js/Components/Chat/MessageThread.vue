@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import { ref, nextTick, watch, onMounted } from 'vue';
+import { ref, computed, nextTick, watch, onMounted } from 'vue';
 import type { ChatMessage } from '@/composables/useChat';
+import ImageLightbox from '@/Components/Files/ImageLightbox.vue';
+import type { LightboxItem } from '@/types/lightbox';
 
 const props = defineProps<{
     messages: ChatMessage[];
@@ -81,14 +83,40 @@ function dateLabel(iso: string): string {
     return d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
 }
 
-function timeLabel(iso: string): string {
-    return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+// Full date + time, shown only on hover (title) so the thread stays clean
+// instead of stamping a time under every single message.
+function fullDateTime(iso: string): string {
+    return new Date(iso).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
 }
 
 function initials(user: { first_name: string; last_name: string }): string {
     const first = (user.first_name?.trim() ?? '')[0] ?? '';
     const last = (user.last_name?.trim() ?? '')[0] ?? '';
     return (first + last).toUpperCase();
+}
+
+// Every image attachment in the thread, flattened in render order, mapped to the
+// shared Files lightbox's item shape so clicking a chat image opens the same
+// full-screen viewer (with zoom + arrow navigation between all images here).
+const imageItems = computed<LightboxItem[]>(() =>
+    props.messages.flatMap((m) =>
+        (m.attachments ?? [])
+            .filter((a) => a.is_image)
+            .map((a): LightboxItem => ({
+                id: a.id,
+                kind: 'image',
+                src: a.url,
+                alt: a.name,
+                canZoom: true,
+                downloadUrl: a.download_url,
+                mime: a.mime_type,
+            })),
+    ),
+);
+const lightboxIndex = ref<number | null>(null);
+function openLightbox(attachmentId: number) {
+    const idx = imageItems.value.findIndex((i) => i.id === attachmentId);
+    if (idx >= 0) lightboxIndex.value = idx;
 }
 
 defineExpose({ scrollToBottom });
@@ -134,6 +162,7 @@ defineExpose({ scrollToBottom });
 
                 <div
                     class="max-w-[75%] px-3 py-2 rounded-2xl text-sm"
+                    :title="fullDateTime(msg.created_at)"
                     :class="msg.user_id === currentUserId
                         ? 'bg-indigo-600 text-white rounded-br-md'
                         : 'bg-gray-100 dark:bg-dark-800 text-gray-900 dark:text-gray-100 rounded-bl-md'"
@@ -147,11 +176,11 @@ defineExpose({ scrollToBottom });
                     <div v-if="msg.attachments && msg.attachments.length > 0" class="mt-2 space-y-2">
                         <template v-for="att in msg.attachments" :key="att.id">
                             <div v-if="att.is_image" class="relative group/attachment">
-                                <a
-                                    :href="att.url"
-                                    target="_blank"
-                                    rel="noopener"
-                                    class="block"
+                                <button
+                                    type="button"
+                                    class="block cursor-zoom-in"
+                                    :aria-label="att.name"
+                                    @click="openLightbox(att.id)"
                                 >
                                     <img
                                         :src="att.thumb_url ?? att.url"
@@ -159,7 +188,7 @@ defineExpose({ scrollToBottom });
                                         class="max-w-full rounded-lg max-h-60 object-contain bg-white/10"
                                         @error="(e) => { const el = e.target as HTMLImageElement; if (att.url && el.src !== att.url) el.src = att.url; }"
                                     />
-                                </a>
+                                </button>
                                 <a
                                     :href="att.download_url"
                                     class="absolute top-1 right-1 p-1.5 rounded-md bg-black/60 text-white opacity-0 group-hover/attachment:opacity-100 focus:opacity-100 transition-opacity"
@@ -183,10 +212,6 @@ defineExpose({ scrollToBottom });
                         </template>
                     </div>
 
-                    <p class="text-[10px] mt-1"
-                       :class="msg.user_id === currentUserId ? 'text-indigo-200' : 'text-gray-400'">
-                        {{ timeLabel(msg.created_at) }}
-                    </p>
                 </div>
             </div>
         </template>
@@ -200,5 +225,8 @@ defineExpose({ scrollToBottom });
         <div v-if="messages.length === 0 && !loading" class="flex items-center justify-center h-full">
             <p class="text-sm text-gray-400">{{ t('chat.no_messages') }}</p>
         </div>
+
+        <!-- Shared Files lightbox for image attachments (teleports to body) -->
+        <ImageLightbox v-if="imageItems.length" v-model="lightboxIndex" :items="imageItems" />
     </div>
 </template>
