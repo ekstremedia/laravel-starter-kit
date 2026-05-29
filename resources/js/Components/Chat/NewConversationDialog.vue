@@ -158,6 +158,7 @@ function initials(user: ChatUser): string {
                 ref="searchInput"
                 v-model="query"
                 type="text"
+                name="user_search"
                 data-autofocus
                 :placeholder="t('chat.search_users')"
                 :style="{
