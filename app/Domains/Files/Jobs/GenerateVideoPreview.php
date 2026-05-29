@@ -6,6 +6,7 @@ namespace App\Domains\Files\Jobs;
 
 use App\Domains\Files\Events\FileItemUpdated;
 use App\Domains\Files\Models\FileItem;
+use App\Domains\Files\Support\CompanyFilesCache;
 use FFMpeg\Coordinate\TimeCode;
 use FFMpeg\FFMpeg;
 use FFMpeg\FFProbe;
@@ -86,6 +87,13 @@ class GenerateVideoPreview implements ShouldQueue
 
         if ($fresh = $item->fresh(['media'])) {
             event(new FileItemUpdated($fresh));
+        }
+
+        // Company listings are version-cached and refresh on CompanyFilesChanged
+        // (not FileItemUpdated), so a freshly generated poster/MP4 would never
+        // surface on the shared grid without bumping the tenant's version here.
+        if ($item->scope === FileItem::SCOPE_COMPANY) {
+            CompanyFilesCache::bump((int) $item->tenant_id, 'preview_ready', $item->parent_id);
         }
     }
 

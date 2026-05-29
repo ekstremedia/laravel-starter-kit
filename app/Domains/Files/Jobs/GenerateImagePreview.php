@@ -7,6 +7,7 @@ namespace App\Domains\Files\Jobs;
 use App\Domains\Files\Events\FileItemUpdated;
 use App\Domains\Files\Models\FileItem;
 use App\Domains\Files\Services\FileMetadataExtractor;
+use App\Domains\Files\Support\CompanyFilesCache;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -93,6 +94,13 @@ class GenerateImagePreview implements ShouldQueue
 
         if ($fresh = $item->fresh(['media'])) {
             event(new FileItemUpdated($fresh));
+        }
+
+        // Refresh the version-cached company listing so the shared grid swaps
+        // in the generated JPEG (it listens for CompanyFilesChanged, not
+        // FileItemUpdated).
+        if ($item->scope === FileItem::SCOPE_COMPANY) {
+            CompanyFilesCache::bump((int) $item->tenant_id, 'preview_ready', $item->parent_id);
         }
     }
 

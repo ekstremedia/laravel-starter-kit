@@ -6,6 +6,7 @@ namespace App\Domains\Files\Jobs;
 
 use App\Domains\Files\Events\FileItemUpdated;
 use App\Domains\Files\Models\FileItem;
+use App\Domains\Files\Support\CompanyFilesCache;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Http\Client\Factory as HttpFactory;
@@ -100,6 +101,13 @@ class GenerateDocumentPreview implements ShouldQueue
         // queue retry a best-effort preview.
         if ($fresh = $item->fresh(['media'])) {
             event(new FileItemUpdated($fresh));
+        }
+
+        // Refresh the version-cached company listing so the shared grid swaps
+        // in the doc preview (it listens for CompanyFilesChanged, not
+        // FileItemUpdated).
+        if ($item->scope === FileItem::SCOPE_COMPANY) {
+            CompanyFilesCache::bump((int) $item->tenant_id, 'preview_ready', $item->parent_id);
         }
     }
 
