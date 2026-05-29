@@ -64,7 +64,11 @@ Users self-manage profile, password, and 2FA at `/profile`.
 
 ## Optional features
 
-- **Multi-customer** — `stancl/tenancy` v3 is pre-wired but off. Set `TENANCY_ENABLED=true` and re-seed for `/c/{slug}/*` routes, a `default` customer, the `/admin/customers` UI, and a Postgres schema per customer. The user-facing name is "Customer"; the model stays `App\Domains\Tenancy\Models\Tenant`.
+- **Multi-tenancy (workspaces)** — optional, **single-database row-level** isolation (no schema/DB per tenant). Every workspace-scoped table carries a `tenant_id` and the `BelongsToTenant` global scope auto-filters queries to the current workspace, so you can't leak across workspaces by forgetting a `where`. The current workspace is held by the `App\Domains\Tenancy\Support\Tenancy` resolver (set per request by `InitializeTenancyByPath`).
+  - `TENANCY_ENABLED=true` → users can belong to many workspaces with per-workspace roles; routes live under `/c/{workspace}/*`; the `/admin/customers` UI + workspace switcher appear.
+  - `TENANCY_ENABLED=false` → behaves like a normal single-workspace Laravel app: workspace routes mount at the **root** (no `/c/` prefix), no switcher/picker.
+  - `TENANCY_REGISTRATION_MODE=create_own` makes each sign-up create its own workspace (becoming admin) and invite others; `join_default` (default) auto-joins the shared default workspace.
+  - Admins invite by email (`/members` → *Invite by email*); invitees accept via a tokenised link (`/invitations/{token}`), registering or logging in along the way. See **[docs/adding-a-workspace-entity.md](docs/adding-a-workspace-entity.md)** to add your own workspace-scoped entity (Car, Medicine, …). Model: `App\Domains\Tenancy\Models\Tenant` (UI term: "Workspace").
 - **Table prefix** — set `DB_TABLE_PREFIX=acme_` and re-migrate to namespace every core table. Only Eloquent / Query Builder / Schema queries inherit it; raw SQL must call `DB::getTablePrefix()`.
 
 ## Testing

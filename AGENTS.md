@@ -51,7 +51,7 @@ Backend code lives in domain modules, **not** flat `app/Http`/`app/Models`. Each
 | `Access` | `Role`, `Permission`, role/permission admin, super-admin & customer-admin middleware |
 | `Files` | `FileItem`/`FileShare`/`CompanyFileLink`, `FileOwner` contract, `HasFiles`/`HasFileQuota` concerns, `OwnerResolver`, policies, controllers, resources, jobs, events, `StorageUsageService` |
 | `Assets` | Demo file-owning entity (removable — see Files) |
-| `Tenancy` | `Tenant`, `InitializeTenancyByPath`, customer controllers, `CustomerMembership`, `TenancyServiceProvider` |
+| `Tenancy` | `Tenant`, `Support\Tenancy` (resolver), `Concerns\BelongsToTenant` (global scope), `InitializeTenancyByPath` + `BindDefaultWorkspace`, workspace controllers, `CreateWorkspace`, `WorkspaceInvitation(Controller)`, `CustomerMembership` |
 | `Notifications` | `EmailTemplate`, `MailSetting`, `MjmlCompiler`, mailables, notifications, mail/notification controllers |
 | `Chat` | `Conversation`, `Message`, `ChatController`, `MessageSent` |
 | `Settings` | `AppSetting`, settings controllers, `EnforceAppSettings` |
@@ -101,14 +101,13 @@ Global infra stays at the `App\` root: base `App\Http\Controllers\Controller`, g
 - Sharing: `/share/{token}` public pages (`file_shares`, optional password + expiry); quick links use signed URLs. Soft-delete + trash with cascade; `PurgeTrashedFileItems` hard-deletes after the retention window.
 - **Queue worker gotcha:** after `composer require`, run `php artisan horizon:terminate` so workers respawn with a fresh autoloader (else "Class X not found").
 
-**Multi-customer tenancy** (`stancl/tenancy` v3, **off by default**) — flip `TENANCY_ENABLED=true` + `migrate:fresh --seed`. "Customer" = user-facing (`/c/{slug}/...`, UI); "Tenant" = package model/tables/config. When off, routes still live under `/c/{slug}`, `tenants` holds the default row.
+**Multi-tenancy (workspaces)** — optional, **single-database row-level** (NO schema/DB per tenant; `stancl/tenancy` was removed). Every workspace-scoped table has a `tenant_id`; the `BelongsToTenant` trait (`app/Domains/Tenancy/Models/Concerns`) adds a global scope that filters to the current workspace and auto-stamps `tenant_id` on create — so you can't leak across workspaces by forgetting a `where`. Current workspace = the `App\Domains\Tenancy\Support\Tenancy` resolver (singleton), set per request by `InitializeTenancyByPath` (multi-tenant, `/c/{workspace}`) or `BindDefaultWorkspace` (single-tenant, root). The scope is **inert when no workspace is active** (central/admin routes) so admins query across workspaces; bypass explicitly with `Model::withoutGlobalScope('tenant')`. Per-workspace roles via Spatie teams (`team_id = workspace id`), synced through `CustomerMembership`. "Workspace" = UI term; `Tenant` = the (plain Eloquent) model.
+- `TENANCY_ENABLED` (`config('tenancy.enabled')`): true → `/c/{workspace}/*` routes + switcher/picker; false → workspace routes mount at the **root**, one default workspace, no chrome (a normal Laravel app).
+- `TENANCY_REGISTRATION_MODE`: `create_own` (sign-up creates its own workspace, becomes Admin — via the `CreateWorkspace` action) | `join_default` (auto-join default). Branch lives in `CreateNewUser`.
+- Invitations: `WorkspaceInvitation` + `WorkspaceInvitationController` — admins invite by email under `/members/invitations`; the public `/invitations/{token}` accept threads guests through register/login; `CustomerLandingController` finishes deferred accepts.
+- `exists:` validation runs on the default connection — validate users via a closure rule (see `FileItemController::existsFileItemRule`).
 
-*Central-vs-tenant connection gotchas* (the tenant DB connection swaps in after `InitializeTenancyByPath`):
-- Models whose tables are central (users, tenants, media, file_items, app_settings, conversations, …) pin `getConnectionName(): config('tenancy.database.central_connection')`.
-- `exists:` validation bypasses the model connection — use a closure rule through the model (see `FileItemController::existsFileItemRule`).
-- Raw `DB::table(...)` needs the central connection explicitly.
-
-**Layered feature flags** (global → per-customer → per-user): `AppSetting::current()->{x}_feature_enabled` → `tenants.{x}_feature_enabled` (+ `getCustomColumns()`) → `UserSetting::$defaults['{x}_enabled']`. Backends abort 404/403; nav links check all three via shared Inertia props.
+**Layered feature flags** (global → per-workspace → per-user): `AppSetting::current()->{x}_feature_enabled` → `tenants.{x}_feature_enabled` (a plain cast column on `Tenant`) → `UserSetting::$defaults['{x}_enabled']`. Backends abort 404/403; nav links check all three via shared Inertia props.
 
 **Chat** (off by default, `CHAT_ENABLED`) — 1:1 + group at `/chat`; `Conversation`/`Message` (optionally encrypted); broadcasts on `private:chat.conversation.{id}`; `NewChatMessageNotification` is broadcast-only (navbar badge, **not** the bell inbox) — don't "fix" it to `database`.
 
@@ -139,7 +138,7 @@ Project skills auto-activate by domain — use them: `fortify-development`, `lar
 
 - New UI string → both `en.ts` + `no.ts` (and `lang/{en,no}/*.php` for backend).
 - New user setting → `UserSetting::$defaults` + `UserSettingsShape` PHPDoc + TS interface.
-- New tenant column → `Tenant::getCustomColumns()` + cast + factory.
-- New central-DB model → pin `getConnectionName()`; if it's morphed, add a morph-map alias.
-- New file-owning entity → mirror `app/Domains/Assets` (FileOwner + HasFiles, morph alias, `allowed_owner_types`, route + `<EntityFiles>`).
+- New workspace column → migration + cast on `Tenant` + factory (`Tenant` is a plain Eloquent model — no `getCustomColumns()`).
+- New workspace-scoped entity → `use BelongsToTenant` (auto-scope + auto-stamp); migration with a `tenant_id` FK; morph-map alias if morphed. See **`docs/adding-a-workspace-entity.md`**.
+- New file-owning entity → mirror `app/Domains/Assets` (`BelongsToTenant` + `FileOwner` + `HasFiles`, morph alias, `allowed_owner_types`, route + `<EntityFiles>`).
 - Keep behavior generic (no domain-specific nouns/seed data); prefer env-driven config; run `make test-all` before finishing.
