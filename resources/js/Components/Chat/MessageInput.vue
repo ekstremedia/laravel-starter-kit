@@ -158,6 +158,7 @@ function formatSize(bytes: number): string {
             <input
                 ref="fileInputRef"
                 type="file"
+                name="attachments"
                 multiple
                 class="hidden"
                 @change="onFilesSelected"
@@ -166,6 +167,7 @@ function formatSize(bytes: number): string {
             <textarea
                 ref="textareaRef"
                 v-model="body"
+                name="message"
                 @input="handleInput"
                 @keydown="handleKeydown"
                 :placeholder="t('chat.type_message')"

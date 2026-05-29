@@ -305,6 +305,7 @@ const filters = ['all', 'unread', 'groups'] as const;
                     <input
                         v-model="searchQuery"
                         type="text"
+                        name="conversation_search"
                         :placeholder="t('chat.search_conversations')"
                         class="w-full text-xs rounded-lg border border-gray-200 dark:border-dark-600 bg-gray-50 dark:bg-dark-800 px-3 py-2 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-transparent"
                     />
@@ -407,6 +408,7 @@ const filters = ['all', 'unread', 'groups'] as const;
                 data-quick-reply-input
                 data-autofocus
                 v-model="quickReplyBody"
+                name="quick_reply"
                 rows="3"
                 :placeholder="t('chat.reply_placeholder')"
                 :style="{
