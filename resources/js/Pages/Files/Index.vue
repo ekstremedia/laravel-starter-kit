@@ -67,7 +67,7 @@ const browserPermissions = computed(() => ({
     shareLink: canShare.value,
 }));
 
-// Surface Share-to-Company only when the tenant enables company files and the
+// Surface Share-to-Company only when the workspace enables company files and the
 // user holds the permission.
 const canShareToCompany = computed<boolean>(() => {
     const workspace = page.props.workspace;

@@ -143,7 +143,7 @@ export default {
     dashboard: {
         welcome: 'Welcome, {name}',
         subtitle: 'Here\'s an overview of your account.',
-        tenant_subtitle: 'Workspace activity and usage at a glance.',
+        workspace_subtitle: 'Workspace activity and usage at a glance.',
         role: 'Role',
         email_status: 'Email',
         two_factor_status: 'Two-factor auth',
@@ -162,8 +162,8 @@ export default {
         chat: 'Chat',
         chat_unread_suffix: 'unread',
         open_chat: 'Open chat',
-        recent_tenant_activity: 'Recent tenant activity',
-        no_tenant_activity: 'No recent activity in this workspace.',
+        recent_workspace_activity: 'Recent workspace activity',
+        no_workspace_activity: 'No recent activity in this workspace.',
         go_personal_home: 'My account',
     },
     profile: {
@@ -861,7 +861,7 @@ export default {
         workspaces: {
             title: 'Workspaces',
             head_title: 'Workspaces · Admin',
-            desc: 'Each workspace is an isolated Postgres schema. Users must be members to enter one.',
+            desc: 'Each workspace is row-isolated by workspace_id. Users must be members to enter one.',
             new_workspace: 'New workspace',
             filter: 'Filter by name or slug',
             slug: 'Slug',
@@ -880,7 +880,7 @@ export default {
             member_role: 'Role',
             no_members: 'No members yet. Add an existing user by email above.',
             no_role: 'No role',
-            confirm_delete: 'Delete {name}? This will drop the tenant schema and all its data.',
+            confirm_delete: 'Delete {name}? This permanently deletes the workspace and all its data.',
             confirm_detach: 'Remove {email} from {name}?',
             detach: 'Remove',
             toast_updated: 'Workspace updated',

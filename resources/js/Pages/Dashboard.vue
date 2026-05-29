@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /*
  * Workspace-scoped dashboard. Differs from /home (personal account overview)
- * by showing tenant-level stats: workspace identity, member count, files
+ * by showing workspace-level stats: workspace identity, member count, files
  * usage (when the feature is on), chat backlog (when chat is on), and
  * cross-member recent activity. Non-admins only see cells relevant to
  * them — the Admin deep-link on the member tile is hidden when they lack
@@ -88,10 +88,10 @@ function formatDate(iso: string | null): string {
                 :style="{ margin: 0, fontSize: '32px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--fg)' }"
             >{{ workspace?.name ?? t('nav.dashboard') }}</h1>
             <p :style="{ fontSize: '13px', color: 'var(--fg-dim)', margin: '8px 0 0' }">
-                {{ t('dashboard.tenant_subtitle') }}
+                {{ t('dashboard.workspace_subtitle') }}
             </p>
 
-            <!-- Tenant stats grid -->
+            <!-- Workspace stats grid -->
             <div
                 :style="{
                     display: 'grid',
@@ -184,17 +184,17 @@ function formatDate(iso: string | null): string {
                 </div>
             </div>
 
-            <!-- Tenant activity -->
+            <!-- Workspace activity -->
             <div
                 class="cmd-mono cmd-uc"
                 :style="{ marginTop: '32px', fontSize: '10px', color: 'var(--fg-mute)', marginBottom: '10px', fontWeight: 500 }"
-            >{{ t('dashboard.recent_tenant_activity') }}</div>
+            >{{ t('dashboard.recent_workspace_activity') }}</div>
 
             <div class="cmd-card" :style="{ padding: '12px 16px', fontSize: '12px' }">
                 <div
                     v-if="activity.length === 0"
                     :style="{ padding: '6px 0', color: 'var(--fg-mute)', fontStyle: 'italic' }"
-                >{{ t('dashboard.no_tenant_activity') }}</div>
+                >{{ t('dashboard.no_workspace_activity') }}</div>
                 <div
                     v-for="(row, i) in activity"
                     :key="row.id"

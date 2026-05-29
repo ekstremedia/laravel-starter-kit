@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /*
  * Workspace profile editor — accessible to workspace Admins (via the
- * TenantProfilePolicy). Mirrors the editable fields of the user profile
+ * WorkspaceProfilePolicy). Mirrors the editable fields of the user profile
  * (headline / bio-equivalent / location / website) plus the company name.
  */
 import { Head, Link, useForm } from '@inertiajs/vue3';

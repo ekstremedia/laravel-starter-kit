@@ -68,7 +68,7 @@ const browserPermissions = computed(() => ({
 // ── Websocket live updates ───────────────────────────────────────────
 let lastVersion = 0;
 let channelName: string | null = null;
-function handleRealtime(payload: { tenant_id: number; reason: string; version: number; folder_id: number | null }) {
+function handleRealtime(payload: { workspace_id: number; reason: string; version: number; folder_id: number | null }) {
     if (payload.version <= lastVersion) return;
     lastVersion = payload.version;
     if (payload.folder_id !== null && payload.folder_id !== parentId.value) return;
@@ -76,10 +76,10 @@ function handleRealtime(payload: { tenant_id: number; reason: string; version: n
 }
 onMounted(() => {
     lastVersion = props.realtime_version ?? 0;
-    const tenantId = workspace.value?.id;
+    const workspaceId = workspace.value?.id;
     const echo = (window as { Echo?: { private: (name: string) => { listen: (e: string, cb: (p: unknown) => void) => void } } }).Echo;
-    if (!tenantId || !echo) return;
-    channelName = `workspace.${tenantId}.files`;
+    if (!workspaceId || !echo) return;
+    channelName = `workspace.${workspaceId}.files`;
     echo.private(channelName).listen('.CompanyFilesChanged', handleRealtime as unknown as (p: unknown) => void);
 });
 onUnmounted(() => {

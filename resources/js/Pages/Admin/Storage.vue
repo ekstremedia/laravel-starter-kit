@@ -9,7 +9,7 @@ import { useTweaks } from '@/composables/useTweaks';
 defineOptions({ layout: CommandLayout });
 
 interface TopUser { user_id: number; name: string; email: string; bytes: number }
-interface WorkspaceUsage { tenant_id: number; name: string; slug: string; bytes: number; file_count: number }
+interface WorkspaceUsage { workspace_id: number; name: string; slug: string; bytes: number; file_count: number }
 interface EntityTypeUsage { type: string; key: string; label: string; file_count: number; bytes: number }
 interface GrowthPoint { date: string; bytes: number }
 
@@ -291,7 +291,7 @@ const inputStyle = {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="c in props.by_workspace" :key="c.tenant_id" :style="{ borderBottom: '1px solid var(--border)' }">
+                        <tr v-for="c in props.by_workspace" :key="c.workspace_id" :style="{ borderBottom: '1px solid var(--border)' }">
                             <td :style="{ padding: '8px 10px', color: 'var(--fg)' }">{{ c.name }}</td>
                             <td class="cmd-mono" :style="{ padding: '8px 10px', color: 'var(--fg-dim)', fontSize: '11px' }">{{ c.slug }}</td>
                             <td class="cmd-mono" :style="{ padding: '8px 10px', textAlign: 'right', color: 'var(--fg-dim)', fontSize: '11px' }">{{ c.file_count.toLocaleString() }}</td>

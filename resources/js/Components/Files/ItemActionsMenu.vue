@@ -18,7 +18,7 @@ const props = withDefaults(defineProps<{
     convertedDownloadUrl?: string;
     variant?: 'overlay' | 'inline';
     // Feature flag: whether the surrounding page supports share-to-company.
-    // Enabled only when the tenant has company_files_enabled and the user
+    // Enabled only when the workspace has company_files_enabled and the user
     // has the `share files to company` permission — the parent resolves both.
     canShareToCompany?: boolean;
     // Per-item gates. Default on so existing (private) callers keep every
