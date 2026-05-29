@@ -7,6 +7,9 @@ import CommandLayout from '@/Layouts/CommandLayout.vue';
 import Icon from '@/Components/Command/Icon.vue';
 import Skeleton from '@/Components/Command/Skeleton.vue';
 import RoleBadge from '@/Components/Command/RoleBadge.vue';
+import CommandDialog from '@/Components/Command/Dialog.vue';
+import Field from '@/Components/Command/Field.vue';
+import CmdButton from '@/Components/Command/Button.vue';
 import { useCommandToasts } from '@/composables/useCommandToasts';
 
 defineOptions({ layout: CommandLayout });
@@ -65,6 +68,31 @@ const loading = ref(false);
 
 const rows = computed(() => props.users?.data ?? []);
 const selectedCount = computed(() => selected.value.size);
+
+// Bulk email — compose a subject + message and send it to the selected users.
+const emailDialog = ref(false);
+const emailSubject = ref('');
+const emailMessage = ref('');
+const emailSending = ref(false);
+
+function sendBulkEmail() {
+    if (!emailSubject.value.trim() || !emailMessage.value.trim()) return;
+    emailSending.value = true;
+    router.post('/admin/users/bulk-email', {
+        user_ids: [...selected.value],
+        subject: emailSubject.value,
+        message: emailMessage.value,
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            emailDialog.value = false;
+            emailSubject.value = '';
+            emailMessage.value = '';
+            selected.value = new Set();
+        },
+        onFinish: () => { emailSending.value = false; },
+    });
+}
 const allSelected = computed(() => rows.value.length > 0 && rows.value.every((u) => selected.value.has(u.id)));
 
 function initials(u: UserRow): string {
@@ -293,19 +321,12 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
         <span :style="{ color: 'var(--fg)' }">{{ t('admin.users.bulk.selected', { n: selectedCount }) }}</span>
         <button
             type="button"
-            @click="push(t('admin.users.bulk.change_role_soon'), 'info')"
-            :style="{ background: 'transparent', color: 'var(--fg-dim)', border: '1px solid var(--border)', padding: '3px 8px', borderRadius: '5px', fontSize: '11.5px', cursor: 'pointer', fontFamily: 'inherit' }"
-        >{{ t('admin.users.bulk.change_role') }}</button>
-        <button
-            type="button"
-            @click="push(t('admin.users.bulk.email_soon'), 'info')"
-            :style="{ background: 'transparent', color: 'var(--fg-dim)', border: '1px solid var(--border)', padding: '3px 8px', borderRadius: '5px', fontSize: '11.5px', cursor: 'pointer', fontFamily: 'inherit' }"
-        >{{ t('admin.users.bulk.email') }}</button>
-        <button
-            type="button"
-            @click="push(t('admin.users.bulk.delete_soon'), 'warning')"
-            :style="{ background: 'transparent', color: 'var(--danger)', border: '1px solid #ff8a8a55', padding: '3px 8px', borderRadius: '5px', fontSize: '11.5px', cursor: 'pointer', fontFamily: 'inherit' }"
-        >{{ t('admin.users.bulk.delete') }}</button>
+            @click="emailDialog = true"
+            :style="{ background: 'transparent', color: 'var(--fg-dim)', border: '1px solid var(--border)', padding: '3px 8px', borderRadius: '5px', fontSize: '11.5px', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: '5px' }"
+        >
+            <Icon name="mail" :size="11" />
+            {{ t('admin.users.bulk.email') }}
+        </button>
         <div :style="{ flex: 1 }"></div>
         <button
             type="button"
@@ -736,4 +757,60 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
         </div>
     </div>
     </div>
+
+    <!-- Bulk email composer -->
+    <CommandDialog
+        :visible="emailDialog"
+        :title="t('admin.users.bulk.email_title', { n: selectedCount })"
+        width="520px"
+        @update:visible="emailDialog = $event"
+    >
+        <div :style="{ display: 'flex', flexDirection: 'column', gap: '14px' }">
+            <Field
+                v-model="emailSubject"
+                :label="t('admin.users.bulk.email_subject')"
+                :placeholder="t('admin.users.bulk.email_subject_placeholder')"
+            />
+            <div>
+                <label
+                    for="bulk-email-message"
+                    class="cmd-mono cmd-uc"
+                    :style="{ display: 'block', fontSize: '10px', color: 'var(--fg-mute)', marginBottom: '6px', letterSpacing: '0.06em', fontWeight: 500 }"
+                >{{ t('admin.users.bulk.email_message') }}</label>
+                <textarea
+                    id="bulk-email-message"
+                    v-model="emailMessage"
+                    rows="7"
+                    maxlength="5000"
+                    :placeholder="t('admin.users.bulk.email_message_placeholder')"
+                    :style="{
+                        width: '100%',
+                        background: 'var(--panel2)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '5px',
+                        padding: '8px 10px',
+                        color: 'var(--fg)',
+                        fontSize: '13px',
+                        fontFamily: 'inherit',
+                        lineHeight: 1.5,
+                        outline: 'none',
+                        resize: 'vertical',
+                    }"
+                />
+            </div>
+            <p :style="{ margin: 0, fontSize: '11.5px', color: 'var(--fg-mute)', lineHeight: 1.5 }">
+                {{ t('admin.users.bulk.email_hint') }}
+            </p>
+        </div>
+        <template #footer>
+            <CmdButton variant="ghost" size="sm" @click="emailDialog = false">{{ t('common.cancel') }}</CmdButton>
+            <CmdButton
+                variant="primary"
+                size="sm"
+                :loading="emailSending"
+                :disabled="!emailSubject.trim() || !emailMessage.trim()"
+                @click="sendBulkEmail"
+            >{{ t('admin.users.bulk.email_send') }}</CmdButton>
+        </template>
+    </CommandDialog>
 </template>

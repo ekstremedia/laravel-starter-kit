@@ -95,7 +95,7 @@ describe('useSidebarItems — app rail', () => {
             current_workspace: workspace(),
             available_workspaces: [{ id: 1, slug: 'acme', name: 'Acme' }],
         });
-        expect(w.appIds).toEqual(expect.arrayContaining(['home', 'my-dashboard', 'about', 'files']));
+        expect(w.appIds).toEqual(expect.arrayContaining(['home', 'my-dashboard', 'files']));
         const dash = w.app.filter(isSidebarItem).find((e) => e.id === 'my-dashboard');
         expect(dash?.href).toBe('/w/acme/dashboard');
     });

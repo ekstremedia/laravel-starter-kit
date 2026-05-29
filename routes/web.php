@@ -151,6 +151,7 @@ Route::middleware(['auth', 'verified', 'super.admin'])
         Route::get('overview/metrics', [OverviewController::class, 'metrics'])->name('overview.metrics');
 
         Route::resource('users', UserController::class);
+        Route::post('users/bulk-email', [UserController::class, 'bulkEmail'])->name('users.bulkEmail');
         Route::post('users/{user}/verify', [UserController::class, 'verify'])->name('users.verify');
         Route::post('users/{user}/unverify', [UserController::class, 'unverify'])->name('users.unverify');
         Route::post('users/{user}/ban', [UserController::class, 'ban'])->name('users.ban');

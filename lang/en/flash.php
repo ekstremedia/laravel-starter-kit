@@ -89,6 +89,7 @@ return [
         'verification_resent' => 'Verification email sent.',
         'twofa_reset' => '2FA has been reset for this user.',
         'test_notification_sent' => 'Test notification sent.',
+        'bulk_email_sent' => 'Email sent to :count user(s).',
         'role_updated' => 'Role updated to :role.',
         'workspace_attached' => 'Added :email to :name.',
         'workspaces_attached' => 'Added :email to :names.',

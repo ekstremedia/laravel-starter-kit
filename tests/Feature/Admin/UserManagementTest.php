@@ -1,7 +1,9 @@
 <?php
 
+use App\Domains\Notifications\Notifications\AdminUserMessageNotification;
 use App\Domains\Users\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
+use Illuminate\Support\Facades\Notification;
 
 beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
@@ -59,4 +61,59 @@ it('prevents deleting own account', function () {
         ->assertRedirect();
 
     expect(User::find($this->admin->id))->not->toBeNull();
+});
+
+it('emails the selected users a free-form message', function () {
+    Notification::fake();
+
+    $recipients = User::factory()->count(3)->create();
+    $bystander = User::factory()->create();
+
+    $this->actingAs($this->admin)
+        ->post('/admin/users/bulk-email', [
+            'user_ids' => $recipients->pluck('id')->all(),
+            'subject' => 'Scheduled maintenance',
+            'message' => "We will be down tonight.\nThanks for your patience.",
+        ])
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    foreach ($recipients as $recipient) {
+        Notification::assertSentTo(
+            $recipient,
+            AdminUserMessageNotification::class,
+            function (AdminUserMessageNotification $notification) {
+                return $notification->subjectLine === 'Scheduled maintenance';
+            },
+        );
+    }
+
+    Notification::assertNotSentTo($bystander, AdminUserMessageNotification::class);
+});
+
+it('validates the bulk email payload', function () {
+    $this->actingAs($this->admin)
+        ->post('/admin/users/bulk-email', [
+            'user_ids' => [],
+            'subject' => '',
+            'message' => '',
+        ])
+        ->assertSessionHasErrors(['user_ids', 'subject', 'message']);
+});
+
+it('forbids non-admins from sending bulk email', function () {
+    Notification::fake();
+
+    $user = User::factory()->create();
+    $target = User::factory()->create();
+
+    $this->actingAs($user)
+        ->post('/admin/users/bulk-email', [
+            'user_ids' => [$target->id],
+            'subject' => 'Hi',
+            'message' => 'There',
+        ])
+        ->assertForbidden();
+
+    Notification::assertNothingSent();
 });

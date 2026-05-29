@@ -4,6 +4,7 @@ namespace App\Domains\Users\Http\Controllers;
 
 use App\Domains\Notifications\Notifications\AccountBannedNotification;
 use App\Domains\Notifications\Notifications\AdminTestNotification;
+use App\Domains\Notifications\Notifications\AdminUserMessageNotification;
 use App\Domains\Notifications\Notifications\WorkspaceMemberAddedNotification;
 use App\Domains\Notifications\Notifications\WorkspaceMemberRemovedNotification;
 use App\Domains\Users\Models\User;
@@ -19,6 +20,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
@@ -593,6 +595,32 @@ class UserController extends Controller
             ->log("Sent test notification to {$user->email}");
 
         return back()->with('success', __('flash.users.test_notification_sent'));
+    }
+
+    /**
+     * Email a free-form message to the selected users (queued).
+     */
+    public function bulkEmail(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'user_ids' => ['required', 'array', 'min:1', 'max:1000'],
+            'user_ids.*' => ['integer'],
+            'subject' => ['required', 'string', 'max:255'],
+            'message' => ['required', 'string', 'max:5000'],
+        ]);
+
+        $recipients = User::query()->whereIn('id', $data['user_ids'])->get();
+
+        Notification::send(
+            $recipients,
+            new AdminUserMessageNotification($data['subject'], $data['message']),
+        );
+
+        activity('user')->event('bulk_email_sent')
+            ->withProperties(['recipient_count' => $recipients->count(), 'subject' => $data['subject']])
+            ->log("Sent a bulk email to {$recipients->count()} users");
+
+        return back()->with('success', __('flash.users.bulk_email_sent', ['count' => $recipients->count()]));
     }
 
     public function update(UpdateUserRequest $request, User $user): RedirectResponse
