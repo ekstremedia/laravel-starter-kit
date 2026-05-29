@@ -7,6 +7,8 @@ import CommandLayout from '@/Layouts/CommandLayout.vue';
 import CmdDataTable, { type Column } from '@/Components/Command/DataTable.vue';
 import Icon from '@/Components/Command/Icon.vue';
 import Dot from '@/Components/Command/Dot.vue';
+import PageTitle from '@/Components/Command/PageTitle.vue';
+import CmdButton from '@/Components/Command/Button.vue';
 
 defineOptions({ layout: CommandLayout });
 
@@ -65,36 +67,19 @@ function destroy(c: WorkspaceRow) {
     <div>
     <Head :title="t('admin.workspaces.head_title')" />
 
-    <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '14px' }">
-        <div>
-            <h1 :style="{ margin: 0, fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--fg)' }">
-                {{ t('admin.workspaces.title') }}
-            </h1>
-            <div
-                class="cmd-mono"
-                :style="{ marginTop: '3px', fontSize: '11.5px', color: 'var(--fg-mute)' }"
-            >{{ props.workspaces.total }} {{ t('admin.workspaces.title').toLowerCase() }}</div>
-        </div>
-        <Link
-            href="/admin/workspaces/create"
-            :style="{
-                background: 'var(--accent)',
-                color: '#fff',
-                border: 'none',
-                padding: '5px 11px',
-                borderRadius: '5px',
-                fontSize: '11.5px',
-                fontWeight: 500,
-                textDecoration: 'none',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-            }"
-        >
-            <Icon name="plus" :size="12" />
-            {{ t('admin.workspaces.new_workspace') }}
-        </Link>
-    </div>
+    <PageTitle
+        :title="t('admin.workspaces.title')"
+        :subtitle="`${props.workspaces.total} ${t('admin.workspaces.title').toLowerCase()}`"
+    >
+        <template #actions>
+            <Link href="/admin/workspaces/create" :style="{ textDecoration: 'none' }">
+                <CmdButton variant="primary" size="md">
+                    <template #icon><Icon name="plus" :size="12" /></template>
+                    {{ t('admin.workspaces.new_workspace') }}
+                </CmdButton>
+            </Link>
+        </template>
+    </PageTitle>
 
     <CmdDataTable
         :rows="workspaces"
