@@ -1017,6 +1017,8 @@ export default {
             files_feature_enabled_desc: 'Give users a private storage area.',
             max_upload: 'Max upload size per file',
             max_upload_desc: 'Largest single file a user may upload. Capped by the server limit ({max} MB).',
+            chat_max_upload: 'Max chat attachment size',
+            chat_max_upload_desc: 'Largest single file that can be attached to a chat message. Capped by the server limit ({max} MB).',
             max_share_days: 'Max deletion time (days)',
             default_personal_storage: 'Default personal storage (bytes)',
             storage_placeholder: 'empty = unlimited, -1 = unlimited, 0 = blocked',

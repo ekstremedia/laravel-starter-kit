@@ -1017,6 +1017,8 @@ export default {
             files_feature_enabled_desc: 'Gi brukere et privat lagringsområde.',
             max_upload: 'Maks opplastingsstørrelse per fil',
             max_upload_desc: 'Største enkeltfil en bruker kan laste opp. Begrenset av servergrensen ({max} MB).',
+            chat_max_upload: 'Maks vedleggsstørrelse i chat',
+            chat_max_upload_desc: 'Største enkeltfil som kan legges ved en chatmelding. Begrenset av servergrensen ({max} MB).',
             max_share_days: 'Maks slettetid (dager)',
             default_personal_storage: 'Standard personlig lagring (bytes)',
             storage_placeholder: 'tom = ubegrenset, -1 = ubegrenset, 0 = blokkert',

@@ -110,6 +110,7 @@ export interface PageProps extends InertiaPageProps {
         registration_open?: boolean;
         login_enabled?: boolean;
         files_feature_enabled?: boolean;
+        chat_max_upload_bytes?: number;
         announcement?: { text: string; severity: string } | null;
     };
     workspace: Workspace | null;

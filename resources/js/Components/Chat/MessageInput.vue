@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import { ref, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted, nextTick } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 import { useToast } from 'primevue/usetoast';
+import type { PageProps } from '@/types';
 
 const emit = defineEmits<{
     send: [payload: { body: string; files: File[] }];
@@ -10,6 +12,7 @@ const emit = defineEmits<{
 
 const { t, locale } = useI18n();
 const toast = useToast();
+const page = usePage<PageProps>();
 const body = ref('');
 const pendingFiles = ref<File[]>([]);
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
@@ -17,7 +20,8 @@ const fileInputRef = ref<HTMLInputElement | null>(null);
 
 let lastTypingEmit = 0;
 const MAX_FILES = 10;
-const MAX_SIZE_BYTES = 10 * 1024 * 1024;
+// Per-file cap, configured at /admin/settings and shared via app_settings.
+const maxSizeBytes = computed(() => page.props.app_settings?.chat_max_upload_bytes ?? 10 * 1024 * 1024);
 
 function handleInput() {
     autoResize();
@@ -73,7 +77,7 @@ function onFilesSelected(e: Event) {
     const valid: File[] = [];
 
     for (const f of selected) {
-        if (f.size > MAX_SIZE_BYTES) {
+        if (f.size > maxSizeBytes.value) {
             oversized.push(f.name);
             continue;
         }
@@ -91,7 +95,7 @@ function onFilesSelected(e: Event) {
             severity: 'warn',
             summary: t('chat.attachment_rejected_size', {
                 names: oversized.join(', '),
-                max: formatSize(MAX_SIZE_BYTES),
+                max: formatSize(maxSizeBytes.value),
             }),
             life: 5000,
         });

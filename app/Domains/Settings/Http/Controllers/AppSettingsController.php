@@ -23,7 +23,7 @@ class AppSettingsController extends Controller
                 'maintenance_message', 'announcement_banner', 'announcement_severity',
                 'files_feature_enabled', 'max_share_days',
                 'default_personal_storage_bytes', 'default_entity_storage_bytes',
-                'max_upload_bytes',
+                'max_upload_bytes', 'chat_max_upload_bytes',
             ]),
             // The hard ceiling the running PHP process accepts. Surfaced so the
             // settings UI can show the admin what they can't exceed (and why a
@@ -64,6 +64,8 @@ class AppSettingsController extends Controller
             // accepts. Floor of 1 KB so it can never be set to "nothing".
             // `sometimes` so partial settings updates that omit it still pass.
             'max_upload_bytes' => ['sometimes', 'integer', 'min:1024', 'max:'.UploadLimits::phpCeilingBytes()],
+            // Per-file ceiling for chat attachments — same clamping as above.
+            'chat_max_upload_bytes' => ['sometimes', 'integer', 'min:1024', 'max:'.UploadLimits::phpCeilingBytes()],
         ]);
 
         $settings = AppSetting::current();

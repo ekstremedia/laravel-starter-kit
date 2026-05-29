@@ -5,6 +5,7 @@ namespace App\Domains\Chat\Http\Controllers;
 use App\Domains\Chat\Events\MessageSent;
 use App\Domains\Chat\Models\Conversation;
 use App\Domains\Chat\Models\Message;
+use App\Domains\Files\Support\UploadLimits;
 use App\Domains\Notifications\Notifications\NewChatMessageNotification;
 use App\Domains\Users\Models\User;
 use App\Http\Controllers\Controller;
@@ -318,7 +319,8 @@ class ChatController extends Controller
             'attachments' => 'sometimes|array|max:10',
             'attachments.*' => [
                 'file',
-                'max:10240', // 10 MB per file
+                // Per-file cap from /admin/settings (clamped to the PHP ceiling).
+                'max:'.UploadLimits::chatMaxUploadKilobytes(),
                 // Denylist server-interpreted / executable extensions. Files
                 // still pass through the download route which forces
                 // Content-Disposition: attachment, so even HTML/SVG/JS can't

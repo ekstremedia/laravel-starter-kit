@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Domains\Files\Support\UploadLimits;
 use App\Domains\Settings\Models\AppSetting;
 use App\Domains\Users\Models\User;
 use App\Domains\Users\Models\UserSetting;
@@ -348,6 +349,9 @@ class HandleInertiaRequests extends Middleware
                     ? ['text' => $s->announcement_banner, 'severity' => $s->announcement_severity]
                     : null,
                 'files_feature_enabled' => (bool) $s->files_feature_enabled,
+                // Effective per-file chat attachment cap (bytes), so the chat
+                // composer can reject oversized files before upload.
+                'chat_max_upload_bytes' => UploadLimits::chatMaxUploadBytes(),
             ];
         } catch (Throwable) {
             return [
@@ -355,6 +359,7 @@ class HandleInertiaRequests extends Middleware
                 'login_enabled' => true,
                 'announcement' => null,
                 'files_feature_enabled' => false,
+                'chat_max_upload_bytes' => 10 * 1024 * 1024,
             ];
         }
     }

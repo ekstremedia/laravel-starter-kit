@@ -25,6 +25,7 @@ class AppSetting extends Model
         'default_personal_storage_bytes' => 'integer',
         'default_entity_storage_bytes' => 'integer',
         'max_upload_bytes' => 'integer',
+        'chat_max_upload_bytes' => 'integer',
     ];
 
     public static function current(): self
@@ -49,6 +50,8 @@ class AppSetting extends Model
             'default_personal_storage_bytes' => 5 * 1024 * 1024 * 1024,
             // 50 MB per-file upload ceiling out of the box.
             'max_upload_bytes' => 50 * 1024 * 1024,
+            // 10 MB per chat attachment out of the box.
+            'chat_max_upload_bytes' => 10 * 1024 * 1024,
         ]);
     }
 }
