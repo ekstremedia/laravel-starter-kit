@@ -13,6 +13,10 @@ export interface SidebarItem {
 export interface SidebarSeparator {
     separator: true;
     key: string;
+    // Optional group heading. When the rail is expanded this renders as an
+    // uppercase section label (e.g. "Workspace", "Access"); collapsed, it
+    // falls back to the plain hairline divider.
+    label?: string;
 }
 
 export type SidebarEntry = SidebarItem | SidebarSeparator;

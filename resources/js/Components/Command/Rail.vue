@@ -4,9 +4,11 @@
  * expanded via the chevron at the bottom. Expanded state persists to
  * starter_kit_settings → rail_expanded.
  *
- * The item list is owned by `useSidebarItems()` — edit that composable to
- * add / remove / reorder entries. This component only handles presentation:
- * active-state, hover tooltip, collapse toggle, logo, profile tile.
+ * Two modes, picked by route: the app rail everywhere, and a dedicated admin
+ * rail on /admin/* (reached from the topbar profile dropdown). The item lists
+ * are owned by `useSidebarItems()` — edit that composable to add / remove /
+ * reorder entries. This component only handles presentation: active-state,
+ * hover tooltip, section labels, collapse toggle, logo/brand, profile tile.
  */
 import { computed, ref } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
@@ -24,7 +26,12 @@ const currentPath = computed(() => page.url.split('?')[0]);
 const user = computed(() => page.props.auth?.user);
 const { state, toggleRail } = useTweaks();
 const expanded = computed(() => state.value.railExpanded);
-const { visible } = useSidebarItems();
+const { appVisible, adminVisible } = useSidebarItems();
+
+// On /admin/* the rail swaps to the admin item set; everywhere else it shows
+// the app nav. Entry into the admin area is via the topbar profile dropdown.
+const isAdminMode = computed(() => currentPath.value.startsWith('/admin'));
+const visible = computed(() => (isAdminMode.value ? adminVisible.value : appVisible.value));
 
 const initials = computed(() =>
     ((user.value?.first_name?.[0] ?? '') + (user.value?.last_name?.[0] ?? '')).toUpperCase() || '??',
@@ -56,8 +63,8 @@ type Entry = SidebarEntry;
         }"
     >
         <Link
-            href="/home"
-            :title="'Min side'"
+            :href="isAdminMode ? '/admin' : '/home'"
+            :title="isAdminMode ? t('rail.administration') : t('rail.brand')"
             :style="{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -71,7 +78,7 @@ type Entry = SidebarEntry;
                 color: '#fff',
                 fontWeight: 700,
                 fontSize: '12px',
-                marginBottom: '14px',
+                marginBottom: isAdminMode ? '8px' : '14px',
                 fontFamily: 'var(--font-mono)',
                 textDecoration: 'none',
                 alignSelf: expanded ? 'stretch' : 'center',
@@ -79,18 +86,55 @@ type Entry = SidebarEntry;
                 overflow: 'hidden',
             }"
         >
-            <span :style="{ flexShrink: 0 }">SK</span>
+            <span :style="{ flexShrink: 0 }">{{ isAdminMode ? 'AD' : 'SK' }}</span>
             <span
                 v-if="expanded"
                 :style="{ fontSize: '12px', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }"
-            >Starter Kit</span>
+            >{{ isAdminMode ? t('rail.administration') : t('rail.brand') }}</span>
+        </Link>
+
+        <!-- Admin mode: an escape hatch back to the app rail. -->
+        <Link
+            v-if="isAdminMode"
+            href="/home"
+            :title="t('rail.back_to_app')"
+            :style="{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                height: '30px',
+                minWidth: '30px',
+                padding: expanded ? '0 10px' : '0',
+                justifyContent: expanded ? 'flex-start' : 'center',
+                borderRadius: '6px',
+                marginBottom: '6px',
+                color: 'var(--fg-mute)',
+                background: 'transparent',
+                textDecoration: 'none',
+                width: expanded ? 'auto' : '34px',
+                alignSelf: expanded ? 'stretch' : 'center',
+            }"
+            class="cmd-rail-item"
+        >
+            <Icon name="arrow" :size="14" :style="{ transform: 'rotate(180deg)', flexShrink: 0 }" />
+            <span
+                v-if="expanded"
+                :style="{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }"
+            >{{ t('rail.back_to_app') }}</span>
         </Link>
 
         <template v-for="entry in (visible as Entry[])" :key="isItem(entry) ? entry.id : entry.key">
-            <div
-                v-if="!isItem(entry)"
-                :style="{ height: '1px', background: 'var(--border)', margin: '6px 0', width: expanded ? '100%' : '20px', alignSelf: expanded ? 'stretch' : 'center' }"
-            />
+            <template v-if="!isItem(entry)">
+                <div
+                    v-if="expanded && 'label' in entry && entry.label"
+                    class="cmd-mono cmd-uc"
+                    :style="{ fontSize: '9.5px', letterSpacing: '0.06em', color: 'var(--fg-mute)', fontWeight: 500, padding: '0 10px', margin: '10px 0 4px', alignSelf: 'stretch' }"
+                >{{ entry.label }}</div>
+                <div
+                    v-else
+                    :style="{ height: '1px', background: 'var(--border)', margin: '6px 0', width: expanded ? '100%' : '20px', alignSelf: expanded ? 'stretch' : 'center' }"
+                />
+            </template>
             <Link
                 v-else
                 :href="entry.href"

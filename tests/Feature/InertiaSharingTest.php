@@ -91,3 +91,62 @@ it('shares null customer on central routes', function () {
         ->get('/')
         ->assertInertia(fn ($page) => $page->where('customer', null));
 });
+
+it('resolves current_customer to the user membership on a central route', function () {
+    $user = User::factory()->create();
+    joinCustomer($user, $this->customer, 'User');
+
+    $this->actingAs($user)
+        ->get('/')
+        ->assertInertia(fn ($page) => $page
+            ->where('current_customer.slug', $this->customer->slug)
+            ->where('current_customer.is_admin', false)
+            // The 'User' role carries 'view company files'.
+            ->where('current_customer.can_view_company_files', true)
+        );
+});
+
+it('marks current_customer.is_admin true for a workspace admin on a central route', function () {
+    $user = User::factory()->create();
+    grantRoleOnCustomer($user, 'Admin', $this->customer);
+
+    $this->actingAs($user)
+        ->get('/')
+        ->assertInertia(fn ($page) => $page
+            ->where('current_customer.slug', $this->customer->slug)
+            ->where('current_customer.is_admin', true)
+            ->where('current_customer.can_view_company_files', true)
+        );
+});
+
+it('shares the active customer as current_customer inside /c/<slug>', function () {
+    $user = User::factory()->create();
+    joinCustomer($user, $this->customer, 'User');
+
+    $this->actingAs($user)
+        ->get($this->dashboardUrl)
+        ->assertInertia(fn ($page) => $page
+            ->where('current_customer.slug', $this->customer->slug)
+            ->where('current_customer.is_admin', false)
+        );
+});
+
+it('prefers the last-visited customer when the user has several', function () {
+    $other = createCustomer('globex', 'Globex');
+    $user = User::factory()->create();
+    joinCustomer($user, $this->customer, 'User');
+    joinCustomer($user, $other, 'User');
+    $user->settings()->merge(['last_customer_slug' => $other->slug]);
+
+    $this->actingAs($user)
+        ->get('/')
+        ->assertInertia(fn ($page) => $page->where('current_customer.slug', $other->slug));
+});
+
+it('shares null current_customer for a user with no membership', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get('/')
+        ->assertInertia(fn ($page) => $page->where('current_customer', null));
+});

@@ -4,10 +4,14 @@ namespace App\Http\Middleware;
 
 use App\Domains\Settings\Models\AppSetting;
 use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Users\Models\User;
 use App\Domains\Users\Models\UserSetting;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Middleware;
+use Spatie\Permission\PermissionRegistrar;
 use Throwable;
 
 class HandleInertiaRequests extends Middleware
@@ -115,6 +119,13 @@ class HandleInertiaRequests extends Middleware
                 'providers' => $this->enabledOauthProviders(),
             ],
             'customer' => fn () => $this->currentCustomer(),
+            // The workspace ("customer") the left rail should be scoped to,
+            // resolved even on central routes (/home, /admin, …) so the rail
+            // shows the same workspace section everywhere instead of only
+            // inside a /c/{slug}/... route. Carries the user's workspace-scoped
+            // capabilities so permission-gated entries render identically
+            // off-route. See currentWorkspace().
+            'current_customer' => fn () => $this->currentWorkspace($request),
             // The navbar customer switcher needs the user's memberships, so
             // share a compact list. Capped at 50 — past that, admins should
             // use the full picker or the /admin/customers UI.
@@ -153,6 +164,123 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
+     * The workspace the left rail should be scoped to. Inside a customer route
+     * this is the active tenant; on central routes it falls back to the user's
+     * last-visited customer, then their first membership. Null when tenancy is
+     * off, the user is a guest, or they belong to no active customer.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function currentWorkspace(Request $request): ?array
+    {
+        if (! config('tenancy.enabled')) {
+            return null;
+        }
+
+        $user = $request->user();
+
+        if (! $user) {
+            return null;
+        }
+
+        // Inside a /c/{slug}/... route the active tenant *is* the workspace,
+        // and the Spatie team id is already scoped to it by the tenancy
+        // middleware — so read capabilities directly.
+        if (tenancy()->initialized) {
+            /** @var Tenant $customer */
+            $customer = tenancy()->tenant;
+
+            return $this->workspacePayload($customer, $user, alreadyScoped: true);
+        }
+
+        /** @var Collection<int, Tenant> $accessible */
+        $accessible = $this->accessibleCustomersQuery($user)->orderBy('name')->get();
+
+        if ($accessible->isEmpty()) {
+            return null;
+        }
+
+        $remembered = $user->settings()->resolved()['last_customer_slug'] ?? null;
+        $current = (is_string($remembered) && $remembered !== '')
+            ? $accessible->firstWhere('slug', $remembered)
+            : null;
+        $current ??= $accessible->first();
+
+        return $this->workspacePayload($current, $user, alreadyScoped: false);
+    }
+
+    /**
+     * Compact workspace shape consumed by the rail, including the user's
+     * workspace-scoped capabilities (so Members / Shared files / Assets gate
+     * the same on /home as inside the workspace).
+     *
+     * @return array<string, mixed>
+     */
+    private function workspacePayload(Tenant $customer, User $user, bool $alreadyScoped): array
+    {
+        [$isAdmin, $canViewCompanyFiles] = $this->workspaceCapabilities($customer, $user, $alreadyScoped);
+
+        return [
+            'id' => $customer->id,
+            'slug' => $customer->slug,
+            'name' => $customer->name,
+            'files_feature_enabled' => (bool) $customer->files_feature_enabled,
+            'company_files_enabled' => (bool) $customer->company_files_enabled,
+            'is_admin' => $isAdmin,
+            'can_view_company_files' => $canViewCompanyFiles,
+        ];
+    }
+
+    /**
+     * Resolve [isAdmin, canViewCompanyFiles] for the user within $customer.
+     * SuperAdmins short-circuit to true (they bypass membership and pass the
+     * customer.admin gate). For everyone else the checks are Spatie
+     * team-scoped, so on central routes we temporarily set the permission team
+     * id to the workspace — mirroring InitializeTenancyByPath — and restore it
+     * afterwards, resetting the cached role/permission relations on both sides
+     * so neither the central nor the workspace scope leaks into the other.
+     *
+     * @return array{0: bool, 1: bool}
+     */
+    private function workspaceCapabilities(Tenant $customer, User $user, bool $alreadyScoped): array
+    {
+        if ($user->isSuperAdmin()) {
+            return [true, true];
+        }
+
+        if ($alreadyScoped) {
+            return [$user->hasRole('Admin'), $user->can('view company files')];
+        }
+
+        $registrar = app(PermissionRegistrar::class);
+        $previousTeamId = $registrar->getPermissionsTeamId();
+        $registrar->setPermissionsTeamId($customer->id);
+        $user->unsetRelation('roles')->unsetRelation('permissions');
+
+        try {
+            return [$user->hasRole('Admin'), $user->can('view company files')];
+        } finally {
+            $registrar->setPermissionsTeamId($previousTeamId);
+            $user->unsetRelation('roles')->unsetRelation('permissions');
+        }
+    }
+
+    /**
+     * Base query for the active customers a user may enter: every active one
+     * for SuperAdmins, only their memberships otherwise. Returns either an
+     * Eloquent\Builder or a BelongsToMany relation — both honour the
+     * orderBy()/limit()/get() calls the callers chain onto it.
+     *
+     * @return Builder<Tenant>|BelongsToMany<Tenant, User>
+     */
+    private function accessibleCustomersQuery(User $user)
+    {
+        return $user->isSuperAdmin()
+            ? Tenant::query()->where('status', 'active')
+            : $user->customers()->where('status', 'active');
+    }
+
+    /**
      * Customers the authenticated user can enter. Admins see every active one;
      * non-admins see only the customers they are a member of.
      *
@@ -170,12 +298,8 @@ class HandleInertiaRequests extends Middleware
             return [];
         }
 
-        $query = $user->isSuperAdmin()
-            ? Tenant::query()->where('status', 'active')
-            : $user->customers()->where('status', 'active');
-
         /** @var Collection<int, Tenant> $customers */
-        $customers = $query->orderBy('name')->limit(50)->get();
+        $customers = $this->accessibleCustomersQuery($user)->orderBy('name')->limit(50)->get();
 
         return $customers
             ->map(fn (Tenant $customer) => [

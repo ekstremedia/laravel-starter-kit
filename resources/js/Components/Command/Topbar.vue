@@ -17,6 +17,11 @@ defineProps<Props>();
 const { t } = useI18n();
 const page = usePage<PageProps>();
 const user = computed(() => page.props.auth?.user);
+const isSuperAdmin = computed(() => user.value?.is_super_admin === true);
+// Delegated email-template editors aren't super admins, but can still reach
+// the mail page — surface it for them when they don't get the full admin link.
+const canManageEmailTemplates = computed(() => page.props.auth?.can?.manage_email_templates === true);
+const isAdminMode = computed(() => page.url.split('?')[0].startsWith('/admin'));
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent || '');
 const shortcutKey = computed(() => (isMac ? '⌘K' : 'Ctrl K'));
@@ -148,7 +153,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                 >{{ shortcutKey }}</kbd>
             </button>
 
-            <CustomerSwitcher />
+            <CustomerSwitcher v-if="!isAdminMode" />
 
             <NotificationBell />
 
@@ -249,6 +254,29 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                         >
                             <Icon name="key" :size="12" />
                             <span>{{ t('topbar.menu.api_tokens') }}</span>
+                        </Link>
+                    </div>
+                    <div
+                        v-if="isSuperAdmin || canManageEmailTemplates"
+                        :style="{ padding: '4px', borderTop: '1px solid var(--border)' }"
+                    >
+                        <Link
+                            v-if="isSuperAdmin"
+                            href="/admin"
+                            @click="menuOpen = false"
+                            class="cmd-menu-item"
+                        >
+                            <Icon name="shield" :size="12" />
+                            <span>{{ t('topbar.menu.administration') }}</span>
+                        </Link>
+                        <Link
+                            v-else
+                            href="/admin/mail"
+                            @click="menuOpen = false"
+                            class="cmd-menu-item"
+                        >
+                            <Icon name="mail" :size="12" />
+                            <span>{{ t('topbar.menu.email_templates') }}</span>
                         </Link>
                     </div>
                     <div :style="{ padding: '4px', borderTop: '1px solid var(--border)' }">

@@ -61,6 +61,23 @@ export interface Customer {
     company_files_enabled?: boolean;
 }
 
+/**
+ * The workspace the left rail is scoped to. Resolved on every route (unlike
+ * `customer`, which is null on central routes), and carries the user's
+ * workspace-scoped capabilities so the rail's permission-gated entries render
+ * the same on /home as inside the workspace. Null when the user belongs to no
+ * active workspace (or tenancy is disabled).
+ */
+export interface CurrentCustomer {
+    id: number;
+    slug: string;
+    name: string;
+    files_feature_enabled?: boolean;
+    company_files_enabled?: boolean;
+    is_admin: boolean;
+    can_view_company_files: boolean;
+}
+
 export interface PageProps extends InertiaPageProps {
     request_id?: string;
     auth: {
@@ -96,5 +113,6 @@ export interface PageProps extends InertiaPageProps {
         announcement?: { text: string; severity: string } | null;
     };
     customer: Customer | null;
+    current_customer: CurrentCustomer | null;
     available_customers: Customer[];
 }

@@ -17,146 +17,243 @@ function renderWithProps(props: Record<string, unknown>) {
     pageState.value = props;
     const Host = defineComponent({
         setup() {
-            const { visible } = useSidebarItems();
-            return { visible };
+            const { appVisible, adminVisible } = useSidebarItems();
+            return { appVisible, adminVisible };
         },
         template: '<div />',
     });
-    return mount(Host);
+    const wrapper = mount(Host);
+    return {
+        get appIds() {
+            return wrapper.vm.appVisible.filter(isSidebarItem).map((e) => e.id);
+        },
+        get adminIds() {
+            return wrapper.vm.adminVisible.filter(isSidebarItem).map((e) => e.id);
+        },
+        get app() {
+            return wrapper.vm.appVisible;
+        },
+    };
+}
+
+// A typical workspace payload as shared by HandleInertiaRequests::currentWorkspace().
+function workspace(overrides: Record<string, unknown> = {}) {
+    return {
+        id: 1,
+        slug: 'acme',
+        name: 'Acme',
+        files_feature_enabled: true,
+        company_files_enabled: true,
+        is_admin: false,
+        can_view_company_files: false,
+        ...overrides,
+    };
 }
 
 afterEach(() => {
     pageState.value = {};
 });
 
-describe('useSidebarItems', () => {
-    it('shows only global items (no customer-scoped entries) when outside a customer context', () => {
+describe('useSidebarItems — app rail', () => {
+    it('shows only global items (no workspace entries) when the user has no workspace', () => {
         const w = renderWithProps({
-            auth: { user: { roles: [] } },
+            auth: { user: {} },
             chat: { enabled: false },
             tenancy: { enabled: false },
             app_settings: { files_feature_enabled: true },
             customer: null,
-            available_customers: [{ id: 1, slug: 'acme', name: 'Acme', files_feature_enabled: true }],
+            current_customer: null,
+            available_customers: [],
         });
-        const ids = w.vm.visible.filter(isSidebarItem).map((e) => e.id);
-        expect(ids).toContain('home');
-        expect(ids).not.toContain('chat');
-        expect(ids).not.toContain('my-dashboard');
-        expect(ids).not.toContain('files');
-        expect(ids).not.toContain('company-files');
+        expect(w.appIds).toContain('home');
+        expect(w.appIds).not.toContain('chat');
+        expect(w.appIds).not.toContain('my-dashboard');
+        expect(w.appIds).not.toContain('files');
     });
 
     it('shows chat only when enabled', () => {
         const w = renderWithProps({
-            auth: { user: { roles: [] } },
+            auth: { user: {} },
             chat: { enabled: true },
             tenancy: { enabled: false },
             app_settings: { files_feature_enabled: false },
             customer: null,
+            current_customer: null,
             available_customers: [],
         });
-        const ids = w.vm.visible.filter(isSidebarItem).map((e) => e.id);
-        expect(ids).toContain('chat');
+        expect(w.appIds).toContain('chat');
     });
 
-    it('hides files when global flag is off even when inside a files-enabled customer', () => {
+    it('renders the workspace section on a central route once current_customer is resolved', () => {
         const w = renderWithProps({
-            auth: { user: { roles: [] } },
-            chat: { enabled: false },
-            tenancy: { enabled: true },
-            app_settings: { files_feature_enabled: false },
-            customer: { id: 1, slug: 'acme', name: 'Acme', files_feature_enabled: true, company_files_enabled: true },
-            available_customers: [{ id: 1, slug: 'acme', name: 'Acme', files_feature_enabled: true }],
-        });
-        const ids = w.vm.visible.filter(isSidebarItem).map((e) => e.id);
-        expect(ids).not.toContain('files');
-        expect(ids).not.toContain('company-files');
-    });
-
-    it('shows Private files inside a customer scope when both global and per-customer flags are on', () => {
-        const w = renderWithProps({
-            auth: { user: { roles: [] } },
+            auth: { user: {} },
             chat: { enabled: false },
             tenancy: { enabled: true },
             app_settings: { files_feature_enabled: true },
-            customer: { id: 1, slug: 'acme', name: 'Acme', files_feature_enabled: true, company_files_enabled: false },
-            available_customers: [{ id: 1, slug: 'acme', name: 'Acme', files_feature_enabled: true }],
-        });
-        const files = w.vm.visible.filter(isSidebarItem).find((e) => e.id === 'files');
-        expect(files?.href).toBe('/c/acme/files');
-    });
-
-    it('shows Shared files only inside the customer scope and only when the user has the permission', () => {
-        const inScopeWithPerm = renderWithProps({
-            auth: { user: { roles: [], permissions: ['view company files'] } },
-            chat: { enabled: false },
-            tenancy: { enabled: true },
-            app_settings: { files_feature_enabled: true },
-            customer: { id: 1, slug: 'acme', name: 'Acme', files_feature_enabled: false, company_files_enabled: true },
-            available_customers: [{ id: 1, slug: 'acme', name: 'Acme', files_feature_enabled: false }],
-        });
-        const shared = inScopeWithPerm.vm.visible.filter(isSidebarItem).find((e) => e.id === 'company-files');
-        expect(shared?.href).toBe('/c/acme/files/company');
-
-        const outOfScope = renderWithProps({
-            auth: { user: { roles: [], permissions: ['view company files'] } },
-            chat: { enabled: false },
-            tenancy: { enabled: true },
-            app_settings: { files_feature_enabled: true },
+            // central route: tenancy not initialised, but a workspace is resolved
             customer: null,
-            available_customers: [{ id: 1, slug: 'acme', name: 'Acme', files_feature_enabled: false }],
-        });
-        expect(outOfScope.vm.visible.filter(isSidebarItem).map((e) => e.id)).not.toContain('company-files');
-
-        const inScopeNoPerm = renderWithProps({
-            auth: { user: { roles: [], permissions: [] } },
-            chat: { enabled: false },
-            tenancy: { enabled: true },
-            app_settings: { files_feature_enabled: true },
-            customer: { id: 1, slug: 'acme', name: 'Acme', files_feature_enabled: false, company_files_enabled: true },
-            available_customers: [{ id: 1, slug: 'acme', name: 'Acme', files_feature_enabled: false }],
-        });
-        expect(inScopeNoPerm.vm.visible.filter(isSidebarItem).map((e) => e.id)).not.toContain('company-files');
-    });
-
-    it('includes the platform admin group only for SuperAdmin users', () => {
-        const noAdmin = renderWithProps({
-            auth: { user: { roles: [], is_super_admin: false } },
-            chat: { enabled: false },
-            tenancy: { enabled: true },
-            app_settings: { files_feature_enabled: false },
-            customer: null,
-            available_customers: [],
-        });
-        expect(noAdmin.vm.visible.filter(isSidebarItem).map((e) => e.id)).not.toContain('users');
-
-        const admin = renderWithProps({
-            auth: { user: { roles: [], is_super_admin: true } },
-            chat: { enabled: false },
-            tenancy: { enabled: true },
-            app_settings: { files_feature_enabled: false },
-            customer: null,
-            available_customers: [],
-        });
-        const adminIds = admin.vm.visible.filter(isSidebarItem).map((e) => e.id);
-        expect(adminIds).toContain('users');
-        expect(adminIds).toContain('customers');
-        expect(adminIds).toContain('settings');
-    });
-
-    it('shows a customer Members link for a customer-Admin when inside a customer', () => {
-        const w = renderWithProps({
-            auth: { user: { roles: ['Admin'], is_super_admin: false } },
-            chat: { enabled: false },
-            tenancy: { enabled: true },
-            app_settings: { files_feature_enabled: false },
-            customer: { id: 1, slug: 'acme', name: 'Acme' },
+            current_customer: workspace(),
             available_customers: [{ id: 1, slug: 'acme', name: 'Acme' }],
         });
-        const ids = w.vm.visible.filter(isSidebarItem).map((e) => e.id);
-        expect(ids).toContain('members');
-        // Customer-Admin without the SuperAdmin flag doesn't see the platform group.
-        expect(ids).not.toContain('users');
+        expect(w.appIds).toEqual(expect.arrayContaining(['home', 'my-dashboard', 'about', 'files']));
+        const dash = w.app.filter(isSidebarItem).find((e) => e.id === 'my-dashboard');
+        expect(dash?.href).toBe('/c/acme/dashboard');
+    });
+
+    it('renders an identical app rail on /home and inside the workspace', () => {
+        const onHome = renderWithProps({
+            auth: { user: {} },
+            chat: { enabled: false },
+            tenancy: { enabled: true },
+            app_settings: { files_feature_enabled: true },
+            assetsEnabled: true,
+            customer: null, // /home → no tenancy-scoped customer
+            current_customer: workspace({ is_admin: true, can_view_company_files: true }),
+            available_customers: [{ id: 1, slug: 'acme', name: 'Acme' }],
+        });
+        const inWorkspace = renderWithProps({
+            auth: { user: {} },
+            chat: { enabled: false },
+            tenancy: { enabled: true },
+            app_settings: { files_feature_enabled: true },
+            assetsEnabled: true,
+            customer: workspace({ is_admin: true, can_view_company_files: true }), // /c/acme/... → set
+            current_customer: workspace({ is_admin: true, can_view_company_files: true }),
+            available_customers: [{ id: 1, slug: 'acme', name: 'Acme' }],
+        });
+        expect(onHome.appIds).toEqual(inWorkspace.appIds);
+        expect(onHome.appIds).toEqual(expect.arrayContaining(['home', 'my-dashboard', 'files', 'company-files', 'assets', 'members']));
+    });
+
+    it('hides files when the global flag is off even when the workspace has them on', () => {
+        const w = renderWithProps({
+            auth: { user: {} },
+            chat: { enabled: false },
+            tenancy: { enabled: true },
+            app_settings: { files_feature_enabled: false },
+            customer: null,
+            current_customer: workspace({ company_files_enabled: true, can_view_company_files: true }),
+            available_customers: [{ id: 1, slug: 'acme', name: 'Acme' }],
+        });
+        expect(w.appIds).not.toContain('files');
+        expect(w.appIds).not.toContain('company-files');
+    });
+
+    it('gates Shared files on the workspace-scoped can_view_company_files flag', () => {
+        const withPerm = renderWithProps({
+            auth: { user: {} },
+            chat: { enabled: false },
+            tenancy: { enabled: true },
+            app_settings: { files_feature_enabled: true },
+            customer: null,
+            current_customer: workspace({ files_feature_enabled: false, company_files_enabled: true, can_view_company_files: true }),
+            available_customers: [{ id: 1, slug: 'acme', name: 'Acme' }],
+        });
+        const shared = withPerm.app.filter(isSidebarItem).find((e) => e.id === 'company-files');
+        expect(shared?.href).toBe('/c/acme/files/company');
+
+        const withoutPerm = renderWithProps({
+            auth: { user: {} },
+            chat: { enabled: false },
+            tenancy: { enabled: true },
+            app_settings: { files_feature_enabled: true },
+            customer: null,
+            current_customer: workspace({ files_feature_enabled: false, company_files_enabled: true, can_view_company_files: false }),
+            available_customers: [{ id: 1, slug: 'acme', name: 'Acme' }],
+        });
+        expect(withoutPerm.appIds).not.toContain('company-files');
+    });
+
+    it('shows the Members link only for a workspace admin', () => {
+        const asAdmin = renderWithProps({
+            auth: { user: {} },
+            chat: { enabled: false },
+            tenancy: { enabled: true },
+            app_settings: { files_feature_enabled: false },
+            customer: null,
+            current_customer: workspace({ is_admin: true }),
+            available_customers: [{ id: 1, slug: 'acme', name: 'Acme' }],
+        });
+        expect(asAdmin.appIds).toContain('members');
+
+        const asMember = renderWithProps({
+            auth: { user: {} },
+            chat: { enabled: false },
+            tenancy: { enabled: true },
+            app_settings: { files_feature_enabled: false },
+            customer: null,
+            current_customer: workspace({ is_admin: false }),
+            available_customers: [{ id: 1, slug: 'acme', name: 'Acme' }],
+        });
+        expect(asMember.appIds).not.toContain('members');
+    });
+
+    it('never includes admin entries in the app rail, even for super admins', () => {
+        const w = renderWithProps({
+            auth: { user: { is_super_admin: true } },
+            chat: { enabled: false },
+            tenancy: { enabled: true },
+            app_settings: { files_feature_enabled: false },
+            customer: null,
+            current_customer: workspace({ is_admin: true, can_view_company_files: true }),
+            available_customers: [{ id: 1, slug: 'acme', name: 'Acme' }],
+        });
+        expect(w.appIds).not.toContain('users');
+        expect(w.appIds).not.toContain('settings');
+    });
+});
+
+describe('useSidebarItems — admin rail', () => {
+    it('exposes the full admin groups only for super admins', () => {
+        const superAdmin = renderWithProps({
+            auth: { user: { is_super_admin: true } },
+            chat: { enabled: false },
+            tenancy: { enabled: true },
+            app_settings: { files_feature_enabled: false },
+            customer: null,
+            current_customer: null,
+            available_customers: [],
+        });
+        expect(superAdmin.adminIds).toEqual(
+            expect.arrayContaining(['dashboard', 'users', 'customers', 'roles', 'perms', 'settings', 'mail', 'storage', 'server', 'logs']),
+        );
+
+        const plain = renderWithProps({
+            auth: { user: { is_super_admin: false } },
+            chat: { enabled: false },
+            tenancy: { enabled: true },
+            app_settings: { files_feature_enabled: false },
+            customer: null,
+            current_customer: null,
+            available_customers: [],
+        });
+        expect(plain.adminIds).toEqual([]);
+    });
+
+    it('hides the Customers admin entry when tenancy is disabled', () => {
+        const w = renderWithProps({
+            auth: { user: { is_super_admin: true } },
+            chat: { enabled: false },
+            tenancy: { enabled: false },
+            app_settings: { files_feature_enabled: false },
+            customer: null,
+            current_customer: null,
+            available_customers: [],
+        });
+        expect(w.adminIds).not.toContain('customers');
+    });
+
+    it('gives a delegated email-template editor an admin rail with just Mail', () => {
+        const w = renderWithProps({
+            auth: { user: { is_super_admin: false }, can: { manage_email_templates: true } },
+            chat: { enabled: false },
+            tenancy: { enabled: true },
+            app_settings: { files_feature_enabled: false },
+            customer: null,
+            current_customer: null,
+            available_customers: [],
+        });
+        expect(w.adminIds).toEqual(['mail']);
+        expect(w.appIds).not.toContain('mail');
     });
 });
