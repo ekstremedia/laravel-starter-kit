@@ -56,10 +56,17 @@ class Message extends Model implements HasMedia
             return;
         }
 
+        // Queued (not nonQueued): generate the thumbnail off the request thread.
+        // A synchronous conversion that throws — e.g. Imagick choking on a
+        // corrupt/undecodable upload — would otherwise 500 the send and lose
+        // the message even though the original file stored fine. Queued, the
+        // original is always saved and the message delivered; a failed
+        // conversion just means no thumb (the UI falls back to the original
+        // image). Requires a queue worker, which the kit ships with (Horizon).
         $this->addMediaConversion('thumb')
             ->fit(Fit::Contain, 320, 320)
             ->format('webp')
-            ->nonQueued()
+            ->queued()
             ->performOnCollections('attachments');
     }
 
