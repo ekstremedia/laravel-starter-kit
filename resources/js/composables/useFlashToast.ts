@@ -11,7 +11,6 @@ export function useFlashToast() {
         () => ({
             success: page.props.flash?.success,
             error: page.props.flash?.error,
-            status: page.props.flash?.status,
         }),
         (flash) => {
             if (flash.success) {
@@ -20,9 +19,11 @@ export function useFlashToast() {
             if (flash.error) {
                 toast.add({ severity: 'error', summary: 'Error', detail: flash.error, life: 6000 });
             }
-            if (flash.status) {
-                toast.add({ severity: 'info', summary: 'Info', detail: flash.status, life: 4000 });
-            }
+            // NOTE: `flash.status` is intentionally NOT toasted. Fortify sets it to internal
+            // keys (e.g. 'profile-information-updated', 'password-updated', 'verification-link-sent')
+            // that are not user-facing copy; pages render their own localized feedback
+            // (Profile.vue success toast; ForgotPassword/VerifyEmail show it inline). Toasting it
+            // raw produced a duplicate "info" toast alongside the page's own success toast.
         },
         { immediate: true },
     );
