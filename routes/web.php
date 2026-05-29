@@ -227,3 +227,9 @@ Route::middleware(['auth', 'verified', 'can:manage email templates'])
 Route::middleware('auth')->group(function () {
     Route::post('/impersonate/leave', [ImpersonateController::class, 'leave'])->name('impersonate.leave');
 });
+
+// Catch-all for unmatched URLs (always matched last). Living inside the `web`
+// group means even a 404 runs through the session + Inertia shared props, so
+// the error page renders the full app chrome (rail + topbar) for a logged-in
+// user instead of the bare guest shell.
+Route::fallback(fn () => abort(404));
