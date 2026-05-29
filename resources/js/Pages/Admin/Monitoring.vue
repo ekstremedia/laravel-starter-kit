@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n';
 import CommandLayout from '@/Layouts/CommandLayout.vue';
 import CmdDataTable, { type Column as CmdColumn } from '@/Components/Command/DataTable.vue';
 import Icon from '@/Components/Command/Icon.vue';
+import PageTitle from '@/Components/Command/PageTitle.vue';
 import { formatDateTime } from '@/composables/useDateTime';
 
 defineOptions({ layout: CommandLayout });
@@ -138,17 +139,7 @@ const inputStyle = {
     <div>
         <Head :title="t('admin.monitoring.head_title')" />
 
-        <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '14px' }">
-        <div>
-            <h1 :style="{ margin: 0, fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--fg)' }">
-                {{ t('admin.monitoring.title') }}
-            </h1>
-            <div
-                class="cmd-mono"
-                :style="{ marginTop: '3px', fontSize: '11.5px', color: 'var(--fg-mute)' }"
-            >{{ t('admin.monitoring.description') }}</div>
-        </div>
-    </div>
+        <PageTitle :title="t('admin.monitoring.title')" :subtitle="t('admin.monitoring.description')" />
 
     <!-- Tabs -->
     <div

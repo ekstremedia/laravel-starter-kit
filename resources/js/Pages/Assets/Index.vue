@@ -8,6 +8,7 @@ import CommandDialog from '@/Components/Command/Dialog.vue';
 import CmdButton from '@/Components/Command/Button.vue';
 import Field from '@/Components/Command/Field.vue';
 import Icon from '@/Components/Command/Icon.vue';
+import PageTitle from '@/Components/Command/PageTitle.vue';
 import { useWorkspace } from '@/composables/useWorkspace';
 
 defineOptions({ layout: CommandLayout });
@@ -85,25 +86,19 @@ function submitCreate() {
     <div>
         <Head :title="t('assets.head_title')" />
 
-        <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '14px' }">
-            <div>
-                <h1 :style="{ margin: 0, fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--fg)' }">
-                    {{ t('assets.title') }}
-                </h1>
-                <div class="cmd-mono" :style="{ marginTop: '3px', fontSize: '11.5px', color: 'var(--fg-mute)' }">
-                    {{ t('assets.count', props.assets.total) }}
-                </div>
-            </div>
-            <button
-                v-if="can_manage"
-                type="button"
-                :style="{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '5px 11px', borderRadius: '5px', fontSize: '11.5px', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontFamily: 'inherit' }"
-                @click="openCreate"
-            >
-                <Icon name="plus" :size="12" />
-                {{ t('assets.new_asset') }}
-            </button>
-        </div>
+        <PageTitle :title="t('assets.title')" :subtitle="t('assets.count', props.assets.total)">
+            <template #actions>
+                <button
+                    v-if="can_manage"
+                    type="button"
+                    :style="{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '5px 11px', borderRadius: '5px', fontSize: '11.5px', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontFamily: 'inherit' }"
+                    @click="openCreate"
+                >
+                    <Icon name="plus" :size="12" />
+                    {{ t('assets.new_asset') }}
+                </button>
+            </template>
+        </PageTitle>
 
         <CmdDataTable
             :rows="assets"

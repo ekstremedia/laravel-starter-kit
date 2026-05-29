@@ -6,6 +6,7 @@ import { useConfirm } from 'primevue/useconfirm';
 import CommandLayout from '@/Layouts/CommandLayout.vue';
 import CmdDataTable, { type Column } from '@/Components/Command/DataTable.vue';
 import Icon from '@/Components/Command/Icon.vue';
+import PageTitle from '@/Components/Command/PageTitle.vue';
 import { useCommandToasts } from '@/composables/useCommandToasts';
 
 defineOptions({ layout: CommandLayout });
@@ -54,36 +55,30 @@ function destroy(r: Role) {
     <div>
     <Head :title="t('admin.roles.head_title')" />
 
-    <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '14px' }">
-        <div>
-            <h1 :style="{ margin: 0, fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--fg)' }">
-                {{ t('admin.roles.title') }}
-            </h1>
-            <div
-                class="cmd-mono"
-                :style="{ marginTop: '3px', fontSize: '11.5px', color: 'var(--fg-mute)' }"
-            >{{ roles.length }} {{ t('admin.roles.title').toLowerCase() }}</div>
-        </div>
-        <Link
-            href="/admin/roles/create"
-            :style="{
-                background: 'var(--accent)',
-                color: '#fff',
-                border: 'none',
-                padding: '5px 11px',
-                borderRadius: '5px',
-                fontSize: '11.5px',
-                fontWeight: 500,
-                textDecoration: 'none',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-            }"
-        >
-            <Icon name="plus" :size="12" />
-            {{ t('admin.roles.new_role') }}
-        </Link>
-    </div>
+    <PageTitle :title="t('admin.roles.title')">
+        <template #subtitle>{{ roles.length }} {{ t('admin.roles.title').toLowerCase() }}</template>
+        <template #actions>
+            <Link
+                href="/admin/roles/create"
+                :style="{
+                    background: 'var(--accent)',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '5px 11px',
+                    borderRadius: '5px',
+                    fontSize: '11.5px',
+                    fontWeight: 500,
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                }"
+            >
+                <Icon name="plus" :size="12" />
+                {{ t('admin.roles.new_role') }}
+            </Link>
+        </template>
+    </PageTitle>
 
     <CmdDataTable
         :rows="roles"

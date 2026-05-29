@@ -7,6 +7,7 @@ import type { ApexOptions } from 'apexcharts';
 import CommandLayout from '@/Layouts/CommandLayout.vue';
 import Counter from '@/Components/Command/Counter.vue';
 import Dot from '@/Components/Command/Dot.vue';
+import PageTitle from '@/Components/Command/PageTitle.vue';
 import Skeleton from '@/Components/Command/Skeleton.vue';
 import { useCommandToasts } from '@/composables/useCommandToasts';
 import { useTweaks } from '@/composables/useTweaks';
@@ -240,15 +241,8 @@ function handleRefresh() {
 
     <!-- Header -->
     <div :style="{ marginBottom: 'var(--pad-page)' }">
-        <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '14px' }">
-            <div>
-                <h1 :style="{ margin: 0, fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--fg)' }">{{ t('admin.overview.dashboard') }}</h1>
-                <div
-                    class="cmd-mono"
-                    :style="{ marginTop: '3px', fontSize: '11.5px', color: 'var(--fg-mute)' }"
-                >{{ t('admin.overview.updated_realtime', { when: lastUpdated }) }}</div>
-            </div>
-            <div :style="{ display: 'flex', gap: '6px' }">
+        <PageTitle :title="t('admin.overview.dashboard')" :subtitle="t('admin.overview.updated_realtime', { when: lastUpdated })">
+            <template #actions>
                 <button
                     type="button"
                     @click="push(t('admin.overview.toast_export_soon'), 'info')"
@@ -259,8 +253,8 @@ function handleRefresh() {
                     @click="handleRefresh"
                     :style="{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '5px 11px', borderRadius: '5px', fontSize: '11.5px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }"
                 >{{ t('admin.overview.refresh') }}</button>
-            </div>
-        </div>
+            </template>
+        </PageTitle>
     </div>
 
     <!-- KPI grid -->

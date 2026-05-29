@@ -9,6 +9,7 @@ import CmdSelect from '@/Components/Command/Select.vue';
 import CmdButton from '@/Components/Command/Button.vue';
 import Toggle from '@/Components/Command/Toggle.vue';
 import Icon from '@/Components/Command/Icon.vue';
+import PageTitle from '@/Components/Command/PageTitle.vue';
 import type { PageProps } from '@/types';
 import { useI18n } from 'vue-i18n';
 
@@ -434,11 +435,7 @@ const slugChipStyle = {
             </div>
         </CommandDialog>
 
-        <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '18px' }">
-            <h1 :style="{ margin: 0, fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--fg)' }">
-                {{ t('admin.mail.title') }}
-            </h1>
-        </div>
+        <PageTitle :title="t('admin.mail.title')" />
 
         <!-- Tabs -->
         <div

@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n';
 import CommandLayout from '@/Layouts/CommandLayout.vue';
 import Icon, { type IconName } from '@/Components/Command/Icon.vue';
 import Dot from '@/Components/Command/Dot.vue';
+import PageTitle from '@/Components/Command/PageTitle.vue';
 import { formatDateTime } from '@/composables/useDateTime';
 
 defineOptions({ layout: CommandLayout });
@@ -104,17 +105,7 @@ function chipStyle(tone: 'success' | 'warning' | 'danger' | 'info' | 'muted') {
     <div>
     <Head :title="t('admin.system.head_title')" />
 
-    <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '18px' }">
-        <div>
-            <h1 :style="{ margin: 0, fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--fg)' }">
-                {{ t('admin.system.title') }}
-            </h1>
-            <div
-                class="cmd-mono"
-                :style="{ marginTop: '3px', fontSize: '11.5px', color: 'var(--fg-mute)' }"
-            >{{ t('admin.system.desc') }}</div>
-        </div>
-    </div>
+    <PageTitle :title="t('admin.system.title')" :subtitle="t('admin.system.desc')" />
 
     <!-- Health cards: queue / broadcast / redis -->
     <section :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', marginBottom: '20px' }">
