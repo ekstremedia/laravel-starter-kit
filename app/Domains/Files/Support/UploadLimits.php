@@ -52,6 +52,25 @@ final class UploadLimits
     }
 
     /**
+     * Admin-configured per-file ceiling for chat attachments, in bytes,
+     * clamped to the PHP ceiling and floored at 1 KB. Falls back to 10 MB.
+     */
+    public static function chatMaxUploadBytes(): int
+    {
+        $configured = (int) (AppSetting::current()->chat_max_upload_bytes ?: 10 * 1024 * 1024);
+
+        return max(1024, min($configured, self::phpCeilingBytes()));
+    }
+
+    /**
+     * Chat attachment ceiling in kilobytes, for the `max:` validation rule.
+     */
+    public static function chatMaxUploadKilobytes(): int
+    {
+        return (int) ceil(self::chatMaxUploadBytes() / 1024);
+    }
+
+    /**
      * Parse a PHP ini shorthand size ("500M", "2G", "51200K", "1048576") into
      * bytes. `ini_get` returns these strings, never raw byte counts — parsing
      * is mandatory. `0`/empty means unlimited → PHP_INT_MAX.

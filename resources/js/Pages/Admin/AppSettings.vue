@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import CommandLayout from '@/Layouts/CommandLayout.vue';
@@ -7,6 +7,7 @@ import Icon from '@/Components/Command/Icon.vue';
 import PageTitle from '@/Components/Command/PageTitle.vue';
 import Skeleton from '@/Components/Command/Skeleton.vue';
 import Toggle from '@/Components/Command/Toggle.vue';
+import type { PageProps } from '@/types';
 
 defineOptions({ layout: CommandLayout });
 
@@ -31,6 +32,7 @@ interface Settings {
     default_personal_storage_bytes: number | null;
     default_entity_storage_bytes: number | null;
     max_upload_bytes: number;
+    chat_max_upload_bytes: number;
 }
 
 interface Props {
@@ -41,6 +43,8 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const page = usePage<PageProps>();
+const chatEnabled = computed(() => page.props.chat?.enabled ?? false);
 
 const form = useForm({
     site_up: props.settings.site_up,
@@ -58,6 +62,7 @@ const form = useForm({
     default_personal_storage_bytes: props.settings.default_personal_storage_bytes,
     default_entity_storage_bytes: props.settings.default_entity_storage_bytes,
     max_upload_bytes: props.settings.max_upload_bytes,
+    chat_max_upload_bytes: props.settings.chat_max_upload_bytes,
 });
 
 // `v-model.number` gives us '' when the user clears the field, but the
@@ -85,6 +90,13 @@ const maxUploadMb = computed<number>({
     set: (v) => {
         const mb = Number.isNaN(v as unknown as number) || (v as unknown as string) === '' ? 1 : Math.max(1, Number(v));
         form.max_upload_bytes = Math.min(mb * 1024 * 1024, props.php_upload_ceiling_bytes);
+    },
+});
+const chatMaxUploadMb = computed<number>({
+    get: () => Math.round(form.chat_max_upload_bytes / (1024 * 1024)),
+    set: (v) => {
+        const mb = Number.isNaN(v as unknown as number) || (v as unknown as string) === '' ? 1 : Math.max(1, Number(v));
+        form.chat_max_upload_bytes = Math.min(mb * 1024 * 1024, props.php_upload_ceiling_bytes);
     },
 });
 const phpCeilingMb = computed(() => Math.floor(props.php_upload_ceiling_bytes / (1024 * 1024)));
@@ -473,6 +485,40 @@ const roleOpen = ref(false);
                                 </p>
                                 <p v-if="form.errors.max_upload_bytes" :style="{ fontSize: '11px', color: 'var(--danger)', marginTop: '4px' }">
                                     {{ form.errors.max_upload_bytes }}
+                                </p>
+                            </div>
+
+                            <!-- Chat attachment cap — only relevant when chat is enabled. -->
+                            <div v-if="chatEnabled">
+                                <div
+                                    class="cmd-mono cmd-uc"
+                                    :style="{ fontSize: '10px', color: 'var(--fg-mute)', marginBottom: '6px', letterSpacing: '0.06em' }"
+                                >{{ t('admin.app_settings.chat_max_upload') }}</div>
+                                <div :style="{ display: 'flex', alignItems: 'center', gap: '8px' }">
+                                    <input
+                                        v-model.number="chatMaxUploadMb"
+                                        type="number"
+                                        min="1"
+                                        :max="phpCeilingMb"
+                                        class="cmd-mono"
+                                        :style="{
+                                            width: '110px',
+                                            background: 'var(--panel2)',
+                                            border: '1px solid var(--border)',
+                                            borderRadius: '5px',
+                                            padding: '7px 10px',
+                                            color: 'var(--fg)',
+                                            fontSize: '12px',
+                                            outline: 'none',
+                                        }"
+                                    />
+                                    <span :style="{ fontSize: '12px', color: 'var(--fg-dim)' }">MB</span>
+                                </div>
+                                <p :style="{ fontSize: '11px', color: 'var(--fg-mute)', marginTop: '4px' }">
+                                    {{ t('admin.app_settings.chat_max_upload_desc', { max: phpCeilingMb }) }}
+                                </p>
+                                <p v-if="form.errors.chat_max_upload_bytes" :style="{ fontSize: '11px', color: 'var(--danger)', marginTop: '4px' }">
+                                    {{ form.errors.chat_max_upload_bytes }}
                                 </p>
                             </div>
 
