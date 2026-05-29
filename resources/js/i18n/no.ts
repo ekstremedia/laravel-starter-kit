@@ -1194,7 +1194,7 @@ export default {
         filesUploaded: '{count} av {total} lastet opp',
         fileTooLarge: '{name} er for stor',
         failed: 'Opplasting mislyktes',
-        maxSize: 'Maks størrelse: {size}',
+        maxSize: 'Maks størrelse: {size} MB',
         onlyOneFile: 'Kun én fil kan lastes opp her',
         or: 'eller',
         uploadingFiles: 'Laster opp…',

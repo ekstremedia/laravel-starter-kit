@@ -31,7 +31,9 @@ vi.mock('@inertiajs/vue3', async () => {
     return {
         ...actual,
         usePage: () => ({ props: { auth: { user: null }, user_settings: { locale: 'en', dark_mode: true }, flash: {}, debug: { easy_login_enabled: false }, locale: 'en' } }),
-        router: { post: vi.fn(), delete: vi.fn(), get: vi.fn(), patch: vi.fn(), put: vi.fn(), visit: vi.fn() },
+        // `on` returns an unsubscribe fn in Inertia v3 — mirror that so
+        // composables that register navigation listeners can clean up.
+        router: { post: vi.fn(), delete: vi.fn(), get: vi.fn(), patch: vi.fn(), put: vi.fn(), visit: vi.fn(), on: vi.fn(() => vi.fn()) },
     };
 });
 

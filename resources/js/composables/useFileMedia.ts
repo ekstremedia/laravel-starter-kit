@@ -1,4 +1,5 @@
-import { computed, ref, type Ref } from 'vue';
+import { computed, onUnmounted, ref, type Ref } from 'vue';
+import { router } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
 import { useCustomer } from '@/composables/useCustomer';
@@ -179,6 +180,12 @@ export function useFileMedia<T extends MediaFileRow>(opts: UseFileMediaOptions<T
         detailsItem.value = null;
         textItem.value = null;
     }
+
+    // Close every overlay before an Inertia visit so a teleported lightbox/
+    // dialog is never torn down mid-patch during the page swap (the Vue
+    // "Cannot set properties of null (setting '__vnode')" teleport race).
+    const stopNavListener = router.on('before', () => closeAll());
+    onUnmounted(() => stopNavListener());
 
     return {
         lightboxIndex,

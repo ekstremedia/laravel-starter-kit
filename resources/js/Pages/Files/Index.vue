@@ -564,9 +564,13 @@ function onKey(e: KeyboardEvent) {
 }
 
 onMounted(() => window.addEventListener('keydown', onKey));
+// Close the doc-preview modal before an Inertia visit (the composable handles
+// the lightbox/details/text overlays); avoids a teleport teardown race.
+const stopDocNavListener = router.on('before', () => { docPreviewItem.value = null; });
 onUnmounted(() => {
     window.removeEventListener('keydown', onKey);
     leaveFilesChannel();
+    stopDocNavListener();
 });
 
 // Live patches from the server — dispatched when a queued preview conversion

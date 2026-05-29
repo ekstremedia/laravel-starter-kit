@@ -1196,7 +1196,7 @@ export default {
         filesUploaded: '{count} of {total} uploaded',
         fileTooLarge: '{name} is too large',
         failed: 'Upload failed',
-        maxSize: 'Max size: {size}',
+        maxSize: 'Max size: {size} MB',
         onlyOneFile: 'Only one file can be uploaded here',
         or: 'or',
         uploadingFiles: 'Uploading…',
