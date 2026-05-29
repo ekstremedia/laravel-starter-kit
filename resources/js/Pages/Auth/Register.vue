@@ -14,10 +14,17 @@ const { t } = useI18n();
 const page = usePage<PageProps>();
 const oauthProviders = computed(() => page.props.oauth?.providers ?? []);
 
+// When arriving from a workspace invitation link the email is passed as a
+// query param so the invitee registers with the invited address (the invite is
+// matched on email, then auto-accepted at the landing page).
+const invitedEmail = typeof window !== 'undefined'
+    ? (new URLSearchParams(window.location.search).get('email') ?? '')
+    : '';
+
 const form = useForm({
     first_name: '',
     last_name: '',
-    email: '',
+    email: invitedEmail,
     password: '',
     password_confirmation: '',
 });

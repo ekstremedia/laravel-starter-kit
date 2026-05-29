@@ -29,8 +29,17 @@ interface Member {
     roles: string[];
 }
 
+interface Invitation {
+    id: number;
+    email: string;
+    role: string;
+    expired: boolean;
+    expires_at: string | null;
+}
+
 interface Props {
     members: Member[];
+    invitations: Invitation[];
     assignable_roles: string[];
 }
 
@@ -41,6 +50,8 @@ const { t } = useI18n();
 const confirmer = useConfirm();
 
 const inviteForm = useForm<{ email: string; roles: string[] }>({ email: '', roles: ['User'] });
+// Email invitation (works for people without an account yet — they get a link).
+const emailInviteForm = useForm<{ email: string; role: string }>({ email: '', role: 'User' });
 const pendingId = ref<number | null>(null);
 
 // Local per-row editable copy so opening the dropdown doesn't race the PATCH.
@@ -70,6 +81,20 @@ function invite() {
             inviteForm.roles = ['User'];
         },
     });
+}
+
+function inviteByEmail() {
+    emailInviteForm.post(customerUrl('/members/invitations'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            emailInviteForm.reset('email');
+            emailInviteForm.role = 'User';
+        },
+    });
+}
+
+function revokeInvitation(invitation: Invitation) {
+    router.delete(customerUrl(`/members/invitations/${invitation.id}`), { preserveScroll: true });
 }
 
 function syncRoles(member: Member) {
@@ -190,6 +215,58 @@ function remove(member: Member) {
             </div>
             <div v-if="props.members.length === 0" class="empty">{{ t('customer.members.empty') }}</div>
         </section>
+
+        <section class="invite">
+            <div class="section-head">
+                <h2>{{ t('customer.members.invite_title') }}</h2>
+                <p class="muted">{{ t('customer.members.invite_subtitle') }}</p>
+            </div>
+            <form @submit.prevent="inviteByEmail" class="invite__form">
+                <label class="field">
+                    <span>{{ t('customer.members.email') }}</span>
+                    <input
+                        v-model="emailInviteForm.email"
+                        type="email"
+                        required
+                        autocomplete="off"
+                        :placeholder="t('customer.members.email_placeholder')"
+                    />
+                </label>
+                <label class="field">
+                    <span>{{ t('customer.members.invite_role') }}</span>
+                    <select v-model="emailInviteForm.role">
+                        <option v-for="r in roleOptions" :key="r" :value="r">{{ r }}</option>
+                    </select>
+                </label>
+                <CmdButton type="submit" variant="primary" size="md" :loading="emailInviteForm.processing">
+                    <template #icon><Icon name="mail" :size="12" /></template>
+                    {{ t('customer.members.invite_send') }}
+                </CmdButton>
+            </form>
+            <p v-if="emailInviteForm.errors.email" class="error">{{ emailInviteForm.errors.email }}</p>
+        </section>
+
+        <section class="table">
+            <div class="table__row table__row--head table__row--invites">
+                <span>{{ t('customer.members.pending_title') }}</span>
+                <span>{{ t('customer.members.header_roles') }}</span>
+                <span></span>
+            </div>
+            <div v-for="inv in props.invitations" :key="inv.id" class="table__row table__row--invites">
+                <span>
+                    {{ inv.email }}
+                    <span v-if="inv.expired" class="badge badge--warn">{{ t('customer.members.pending_expired') }}</span>
+                </span>
+                <span class="muted">{{ inv.role }}</span>
+                <span class="table__actions">
+                    <CmdButton variant="ghost" size="sm" :aria-label="t('customer.members.revoke_aria')" @click="revokeInvitation(inv)">
+                        <template #icon><Icon name="x" :size="12" /></template>
+                        {{ t('customer.members.revoke') }}
+                    </CmdButton>
+                </span>
+            </div>
+            <div v-if="props.invitations.length === 0" class="empty">{{ t('customer.members.pending_empty') }}</div>
+        </section>
     </div>
 </template>
 
@@ -304,5 +381,40 @@ button.danger {
     text-align: center;
     color: var(--color-text-subtle);
     font-size: 13px;
+}
+.section-head {
+    margin-bottom: 12px;
+}
+.section-head h2 {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0;
+}
+.section-head .muted {
+    font-size: 12px;
+    margin-top: 2px;
+}
+.table__row--invites {
+    grid-template-columns: 1.4fr 200px auto;
+}
+.field select {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 6px 8px;
+    color: var(--color-text);
+    font-size: 13px;
+}
+.badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+}
+.badge--warn {
+    background: rgba(255, 138, 138, 0.15);
+    color: var(--color-danger);
 }
 </style>

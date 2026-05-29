@@ -1,0 +1,127 @@
+<?php
+
+use App\Domains\Notifications\Notifications\WorkspaceInvitationNotification;
+use App\Domains\Tenancy\Models\WorkspaceInvitation;
+use App\Domains\Tenancy\Support\CustomerMembership;
+use App\Domains\Users\Models\User;
+use Database\Seeders\RoleAndPermissionSeeder;
+use Illuminate\Support\Facades\Notification;
+
+beforeEach(function () {
+    $this->seed(RoleAndPermissionSeeder::class);
+    $this->customer = createCustomer();
+});
+
+function makeInvitation($customer, string $email, array $overrides = []): WorkspaceInvitation
+{
+    return WorkspaceInvitation::create(array_merge([
+        'tenant_id' => $customer->id,
+        'email' => $email,
+        'role' => 'User',
+        'token' => WorkspaceInvitation::freshToken(),
+        'expires_at' => now()->addDays(7),
+    ], $overrides));
+}
+
+it('lets a workspace admin invite by email and emails the invitee', function () {
+    Notification::fake();
+    $admin = User::factory()->create();
+    grantRoleOnCustomer($admin, 'Admin', $this->customer);
+
+    $this->actingAs($admin)
+        ->post(customerUrl($this->customer, '/members/invitations'), ['email' => 'New@Example.com', 'role' => 'Editor'])
+        ->assertRedirect();
+
+    $invitation = WorkspaceInvitation::query()->where('email', 'new@example.com')->first();
+    expect($invitation)->not->toBeNull();
+    expect($invitation->tenant_id)->toBe($this->customer->id);
+    expect($invitation->role)->toBe('Editor');
+
+    Notification::assertSentOnDemand(WorkspaceInvitationNotification::class);
+});
+
+it('forbids a non-admin from inviting', function () {
+    $member = User::factory()->create();
+    joinCustomer($member, $this->customer, 'User');
+
+    $this->actingAs($member)
+        ->post(customerUrl($this->customer, '/members/invitations'), ['email' => 'x@example.com', 'role' => 'User'])
+        ->assertForbidden();
+});
+
+it('rejects inviting someone who is already a member', function () {
+    $admin = User::factory()->create();
+    grantRoleOnCustomer($admin, 'Admin', $this->customer);
+    $member = User::factory()->create(['email' => 'member@example.com']);
+    joinCustomer($member, $this->customer, 'User');
+
+    $this->actingAs($admin)
+        ->post(customerUrl($this->customer, '/members/invitations'), ['email' => 'member@example.com', 'role' => 'User'])
+        ->assertSessionHas('error');
+
+    expect(WorkspaceInvitation::query()->where('email', 'member@example.com')->exists())->toBeFalse();
+});
+
+it('lets a logged-in invitee accept and join with the invited role', function () {
+    $invitee = User::factory()->create(['email' => 'invitee@example.com']);
+    $invitation = makeInvitation($this->customer, 'invitee@example.com', ['role' => 'Editor']);
+
+    $this->actingAs($invitee)->get('/invitations/'.$invitation->token)->assertRedirect();
+
+    expect($invitee->fresh()->belongsToCustomer($this->customer))->toBeTrue();
+    expect($invitation->fresh()->accepted_at)->not->toBeNull();
+    expect(CustomerMembership::rolesOn($invitee, $this->customer))->toContain('Editor');
+});
+
+it('sends a guest to register and remembers the invitation', function () {
+    $invitation = makeInvitation($this->customer, 'guest@example.com');
+
+    $this->get('/invitations/'.$invitation->token)
+        ->assertRedirect(route('register', ['email' => 'guest@example.com']));
+
+    expect(session('workspace_invitation_token'))->toBe($invitation->token);
+});
+
+it('finishes a pending invitation at the landing page after auth', function () {
+    $invitee = User::factory()->create(['email' => 'invitee@example.com']);
+    $invitation = makeInvitation($this->customer, 'invitee@example.com');
+
+    $this->actingAs($invitee)
+        ->withSession(['workspace_invitation_token' => $invitation->token])
+        ->get('/app')
+        ->assertRedirect();
+
+    expect($invitee->fresh()->belongsToCustomer($this->customer))->toBeTrue();
+    expect($invitation->fresh()->accepted_at)->not->toBeNull();
+});
+
+it('rejects accepting with a mismatched account', function () {
+    $other = User::factory()->create(['email' => 'other@example.com']);
+    $invitation = makeInvitation($this->customer, 'invited@example.com');
+
+    $this->actingAs($other)->get('/invitations/'.$invitation->token)->assertRedirect(route('app.landing'));
+
+    expect($other->fresh()->belongsToCustomer($this->customer))->toBeFalse();
+    expect($invitation->fresh()->accepted_at)->toBeNull();
+});
+
+it('rejects an expired invitation', function () {
+    $invitee = User::factory()->create(['email' => 'invitee@example.com']);
+    $invitation = makeInvitation($this->customer, 'invitee@example.com', ['expires_at' => now()->subDay()]);
+
+    $this->actingAs($invitee)->get('/invitations/'.$invitation->token)->assertRedirect(route('app.landing'));
+
+    expect($invitee->fresh()->belongsToCustomer($this->customer))->toBeFalse();
+});
+
+it('lets an admin revoke a pending invitation', function () {
+    $admin = User::factory()->create();
+    grantRoleOnCustomer($admin, 'Admin', $this->customer);
+    $invitation = makeInvitation($this->customer, 'revoke@example.com');
+
+    $this->actingAs($admin)
+        ->delete(customerUrl($this->customer, '/members/invitations/'.$invitation->id))
+        ->assertRedirect();
+
+    expect(WorkspaceInvitation::query()->find($invitation->id))->toBeNull();
+});

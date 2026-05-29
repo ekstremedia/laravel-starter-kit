@@ -23,6 +23,7 @@ use App\Domains\Settings\Http\Controllers\AppSettingsController;
 use App\Domains\Settings\Http\Controllers\SettingsController;
 use App\Domains\Tenancy\Http\Controllers\CustomerController;
 use App\Domains\Tenancy\Http\Controllers\CustomerLandingController;
+use App\Domains\Tenancy\Http\Controllers\WorkspaceInvitationController;
 use App\Domains\Users\Http\Controllers\AvatarController;
 use App\Domains\Users\Http\Controllers\PersonalAccessTokenController;
 use App\Domains\Users\Http\Controllers\UserController;
@@ -50,6 +51,12 @@ Route::get('/share/signed/file/{file}', [PublicShareController::class, 'signedDo
     ->whereNumber('file')
     ->middleware('signed')
     ->name('public.share.signed');
+
+// Accept a workspace invitation. Public so a brand-new invitee reaches it
+// before they have an account — the controller threads guests through
+// registration/login and finishes the join via CustomerLandingController.
+Route::get('/invitations/{token}', [WorkspaceInvitationController::class, 'accept'])
+    ->name('workspace.invitations.accept');
 
 // Dev easy-login (local/test only)
 if (app()->isLocal() || app()->runningUnitTests()) {

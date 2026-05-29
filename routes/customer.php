@@ -13,6 +13,7 @@ use App\Domains\Notifications\Http\Controllers\NotificationController;
 use App\Domains\Tenancy\Http\Controllers\CustomerMembersController;
 use App\Domains\Tenancy\Http\Controllers\CustomerProfileController;
 use App\Domains\Tenancy\Http\Controllers\DashboardController;
+use App\Domains\Tenancy\Http\Controllers\WorkspaceInvitationController;
 use App\Domains\Users\Http\Controllers\AvatarController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -177,4 +178,9 @@ Route::middleware('customer.admin')->prefix('members')->name('members.')->group(
     Route::post('/', [CustomerMembersController::class, 'store'])->name('store');
     Route::patch('/{user}/role', [CustomerMembersController::class, 'setRole'])->name('setRole');
     Route::delete('/{user}', [CustomerMembersController::class, 'destroy'])->name('destroy');
+
+    // Email invitations: invite an address (existing user or not) to join.
+    Route::post('/invitations', [WorkspaceInvitationController::class, 'store'])->name('invitations.store');
+    Route::delete('/invitations/{invitation}', [WorkspaceInvitationController::class, 'destroy'])
+        ->whereNumber('invitation')->name('invitations.destroy');
 });

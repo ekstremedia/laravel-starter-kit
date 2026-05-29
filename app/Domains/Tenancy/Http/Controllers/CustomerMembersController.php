@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Tenancy\Http\Controllers;
 
 use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Tenancy\Models\WorkspaceInvitation;
 use App\Domains\Tenancy\Support\CustomerMembership;
 use App\Domains\Users\Models\User;
 use App\Http\Controllers\Controller;
@@ -52,8 +53,23 @@ class CustomerMembersController extends Controller
             ])
             ->values();
 
+        // Pending invitations (auto-scoped to this workspace by BelongsToTenant).
+        $invitations = WorkspaceInvitation::query()
+            ->whereNull('accepted_at')
+            ->orderByDesc('id')
+            ->get(['id', 'email', 'role', 'expires_at'])
+            ->map(fn (WorkspaceInvitation $i) => [
+                'id' => $i->id,
+                'email' => $i->email,
+                'role' => $i->role,
+                'expired' => $i->isExpired(),
+                'expires_at' => $i->expires_at?->toIso8601String(),
+            ])
+            ->values();
+
         return Inertia::render('Customer/Members/Index', [
             'members' => $members,
+            'invitations' => $invitations,
             'assignable_roles' => CustomerMembership::assignableRoles(),
         ]);
     }
