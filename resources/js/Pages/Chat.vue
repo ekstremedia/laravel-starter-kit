@@ -378,6 +378,7 @@ function getCsrfToken(): string {
                         />
 
                         <MessageInput
+                            :key="activeConversation.id"
                             @send="sendMessage"
                             @typing="handleTyping"
                         />
