@@ -59,7 +59,7 @@ type Entry = SidebarEntry;
             padding: expanded ? '12px 10px' : '12px 0',
             flexShrink: 0,
             alignSelf: 'stretch',
-            transition: 'width 0.14s ease-out, padding 0.14s ease-out',
+            transition: 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1), padding 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
             overflow: 'hidden',
         }"
     >
@@ -88,10 +88,12 @@ type Entry = SidebarEntry;
             }"
         >
             <span :style="{ flexShrink: 0 }">{{ isAdminMode ? t('rail.admin_mark') : t('rail.brand_mark') }}</span>
-            <span
-                v-if="expanded"
-                :style="{ fontSize: '12px', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }"
-            >{{ isAdminMode ? t('rail.administration') : t('rail.brand') }}</span>
+            <Transition name="cmd-rail-text">
+                <span
+                    v-if="expanded"
+                    :style="{ fontSize: '12px', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }"
+                >{{ isAdminMode ? t('rail.administration') : t('rail.brand') }}</span>
+            </Transition>
         </Link>
 
         <!-- Admin mode: an escape hatch back to the app rail. -->
@@ -118,21 +120,25 @@ type Entry = SidebarEntry;
             class="cmd-rail-item"
         >
             <Icon name="arrow" :size="14" :style="{ transform: 'rotate(180deg)', flexShrink: 0 }" />
-            <span
-                v-if="expanded"
-                :style="{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }"
-            >{{ t('rail.back_to_app') }}</span>
+            <Transition name="cmd-rail-text">
+                <span
+                    v-if="expanded"
+                    :style="{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }"
+                >{{ t('rail.back_to_app') }}</span>
+            </Transition>
         </Link>
 
         <template v-for="entry in (visible as Entry[])" :key="isItem(entry) ? entry.id : entry.key">
             <template v-if="!isItem(entry)">
+                <Transition name="cmd-rail-text">
+                    <div
+                        v-if="expanded && entry.label"
+                        class="cmd-mono cmd-uc"
+                        :style="{ fontSize: '9.5px', letterSpacing: '0.06em', color: 'var(--fg-mute)', fontWeight: 500, padding: '0 10px', margin: '10px 0 4px', alignSelf: 'stretch' }"
+                    >{{ entry.label }}</div>
+                </Transition>
                 <div
-                    v-if="expanded && 'label' in entry && entry.label"
-                    class="cmd-mono cmd-uc"
-                    :style="{ fontSize: '9.5px', letterSpacing: '0.06em', color: 'var(--fg-mute)', fontWeight: 500, padding: '0 10px', margin: '10px 0 4px', alignSelf: 'stretch' }"
-                >{{ entry.label }}</div>
-                <div
-                    v-else
+                    v-if="!(expanded && entry.label)"
                     :style="{ height: '1px', background: 'var(--border)', margin: '6px 0', width: expanded ? '100%' : '20px', alignSelf: expanded ? 'stretch' : 'center' }"
                 />
             </template>
@@ -176,30 +182,34 @@ type Entry = SidebarEntry;
                     }"
                 />
 
-                <span
-                    v-if="expanded"
-                    :style="{
-                        fontSize: '12px',
-                        fontWeight: entry.match(currentPath) ? 500 : 400,
-                        flex: 1,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                    }"
-                >{{ entry.label }}</span>
-                <kbd
-                    v-if="expanded && state.showKbdHints && entry.kb"
-                    class="cmd-mono"
-                    :style="{
-                        fontSize: '9.5px',
-                        padding: '1px 5px',
-                        border: '1px solid var(--border)',
-                        borderRadius: '3px',
-                        color: 'var(--fg-dim)',
-                        background: 'var(--bg)',
-                        flexShrink: 0,
-                    }"
-                >G {{ entry.kb }}</kbd>
+                <Transition name="cmd-rail-text">
+                    <span
+                        v-if="expanded"
+                        :style="{
+                            fontSize: '12px',
+                            fontWeight: entry.match(currentPath) ? 500 : 400,
+                            flex: 1,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                        }"
+                    >{{ entry.label }}</span>
+                </Transition>
+                <Transition name="cmd-rail-text">
+                    <kbd
+                        v-if="expanded && state.showKbdHints && entry.kb"
+                        class="cmd-mono"
+                        :style="{
+                            fontSize: '9.5px',
+                            padding: '1px 5px',
+                            border: '1px solid var(--border)',
+                            borderRadius: '3px',
+                            color: 'var(--fg-dim)',
+                            background: 'var(--bg)',
+                            flexShrink: 0,
+                        }"
+                    >G {{ entry.kb }}</kbd>
+                </Transition>
 
                 <span
                     v-if="!expanded && hoverId === entry.id"
@@ -268,14 +278,16 @@ type Entry = SidebarEntry;
             }"
             class="cmd-rail-toggle"
         >
-            <span :style="{ display: 'flex', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.14s' }">
+            <span :style="{ display: 'flex', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }">
                 <Icon name="chevR" :size="11" />
             </span>
-            <span
-                v-if="expanded"
-                class="cmd-mono cmd-uc"
-                :style="{ fontSize: '10px', letterSpacing: '0.06em' }"
-            >{{ t('rail.collapse_label') }}</span>
+            <Transition name="cmd-rail-text">
+                <span
+                    v-if="expanded"
+                    class="cmd-mono cmd-uc"
+                    :style="{ fontSize: '10px', letterSpacing: '0.06em' }"
+                >{{ t('rail.collapse_label') }}</span>
+            </Transition>
         </button>
 
         <Link
@@ -300,13 +312,16 @@ type Entry = SidebarEntry;
                 minWidth: '28px',
                 alignSelf: expanded ? 'stretch' : 'center',
                 overflow: 'hidden',
+                transition: 'border-radius 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
             }"
         >
             <span :style="{ flexShrink: 0 }">{{ initials }}</span>
-            <span
-                v-if="expanded"
-                :style="{ fontSize: '11.5px', color: 'var(--fg)', fontFamily: 'var(--font-ui)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }"
-            >{{ user?.full_name ?? '' }}</span>
+            <Transition name="cmd-rail-text">
+                <span
+                    v-if="expanded"
+                    :style="{ fontSize: '11.5px', color: 'var(--fg)', fontFamily: 'var(--font-ui)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }"
+                >{{ user?.full_name ?? '' }}</span>
+            </Transition>
         </Link>
     </aside>
 </template>
@@ -318,5 +333,31 @@ type Entry = SidebarEntry;
 .cmd-rail-toggle:hover {
     color: var(--fg) !important;
     background: var(--panel2) !important;
+}
+
+/*
+ * Label reveal that rides along with the width morph. On expand, labels fade +
+ * slide in just after the rail starts widening (small delay); on collapse they
+ * fade out quickly while the rail clips them away. Keeps the icons-only ↔
+ * labelled transition feeling continuous rather than popping.
+ */
+.cmd-rail-text-enter-active {
+    transition: opacity 0.18s ease 0.05s, transform 0.18s ease 0.05s;
+}
+.cmd-rail-text-leave-active {
+    transition: opacity 0.1s ease, transform 0.1s ease;
+}
+.cmd-rail-text-enter-from,
+.cmd-rail-text-leave-to {
+    opacity: 0;
+    transform: translateX(-6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cmd-rail,
+    .cmd-rail-text-enter-active,
+    .cmd-rail-text-leave-active {
+        transition: none !important;
+    }
 }
 </style>
