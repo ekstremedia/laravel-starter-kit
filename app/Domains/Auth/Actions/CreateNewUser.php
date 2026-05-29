@@ -6,6 +6,7 @@ use App\Domains\Notifications\Notifications\WelcomeNotification;
 use App\Domains\Settings\Models\AppSetting;
 use App\Domains\Users\Models\User;
 use App\Domains\Workspaces\Models\Workspace;
+use App\Domains\Workspaces\Support\InvitationEmailVerification;
 use App\Domains\Workspaces\Support\WorkspaceMembership;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -43,6 +44,19 @@ class CreateNewUser implements CreatesNewUsers
 
         if ($settings->send_welcome_notification) {
             $user->notify(new WelcomeNotification);
+        }
+
+        // If they reached registration via a workspace invitation matching this
+        // email, the tokenised invite link already proved inbox control — mark
+        // the email verified so they aren't asked to re-prove it. Strictly gated
+        // (see InvitationEmailVerification). Done before Fortify fires the
+        // Registered event so its verification-email listener (which guards on
+        // ! hasVerifiedEmail()) won't send a now-pointless verification mail.
+        // Guarded for non-HTTP callers (this is a Fortify singleton) where there
+        // is no request session to read the invitation token from.
+        $request = request();
+        if ($request->hasSession()) {
+            InvitationEmailVerification::attempt($user, $request->session());
         }
 
         // How the new user gets a workspace. In single-tenant mode (tenancy
