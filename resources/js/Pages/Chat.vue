@@ -320,14 +320,11 @@ function getCsrfToken(): string {
                     height: 'calc(100vh - 10rem)',
                 }"
             >
-                <!-- Conversation list (hidden on mobile when thread is open) -->
+                <!-- Conversation list. Full-width on mobile (so it fills the
+                     screen when no thread is open); fixed 320px from sm up. -->
                 <div
-                    :style="{
-                        borderRight: '1px solid var(--border)',
-                        flexShrink: 0,
-                        width: '320px',
-                    }"
-                    :class="mobileShowThread ? 'hidden sm:flex sm:flex-col' : 'flex flex-col'"
+                    :style="{ borderRight: '1px solid var(--border)' }"
+                    :class="[mobileShowThread ? 'hidden sm:flex' : 'flex', 'flex-col w-full sm:w-80 sm:shrink-0']"
                 >
                     <ConversationList
                         :conversations="conversationList"
