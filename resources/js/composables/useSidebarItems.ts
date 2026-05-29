@@ -64,7 +64,7 @@ export function useSidebarItems() {
                 { id: 'my-dashboard', href: `/c/${slug}/dashboard`, label: t('rail.dashboard'), icon: 'home', match: (p) => p.startsWith('/c/') && p.includes('/dashboard') },
                 { id: 'about', href: `/c/${slug}/about`, label: t('rail.about'), icon: 'customer', match: (p) => p.startsWith(`/c/${slug}/about`) },
                 { id: 'files', href: `/c/${slug}/files`, label: t('rail.files'), icon: 'disk', match: filesActive, hideWhen: () => !globalFilesEnabled.value || !ws?.files_feature_enabled },
-                { id: 'company-files', href: `/c/${slug}/files/company`, label: t('rail.company_files'), icon: 'customer', match: companyFilesActive, hideWhen: () => !globalFilesEnabled.value || !ws?.company_files_enabled || !canViewCompanyFiles.value },
+                { id: 'company-files', href: `/c/${slug}/files/company`, label: t('rail.company_files'), icon: 'customer', match: companyFilesActive, hideWhen: () => !tenancyEnabled.value || !globalFilesEnabled.value || !ws?.company_files_enabled || !canViewCompanyFiles.value },
                 // Demo entity documents. Remove this entry (and the Assets
                 // module) to drop the demo — it's the template for real
                 // file-owning entities (Vehicle, Medicine, …).

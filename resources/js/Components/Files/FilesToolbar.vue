@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import CmdButton from '@/Components/Command/Button.vue';
 import Icon from '@/Components/Command/Icon.vue';
 import ScopeSwitcher from '@/Components/Files/ScopeSwitcher.vue';
 import { useCustomer } from '@/composables/useCustomer';
+import type { PageProps } from '@/types';
 
 /**
  * Shared header for every Files surface (Private + Shared). Owns the
@@ -49,7 +50,18 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const { customerUrl } = useCustomer();
+const { customerUrl, customer } = useCustomer();
+const page = usePage<PageProps>();
+
+// The scope pill only earns its place when a Shared tab actually exists:
+// tenancy on, the feature enabled for this customer, and the viewer permitted.
+// Otherwise the whole row is dropped (no lone "Private" chip).
+const showScopeSwitcher = computed<boolean>(() =>
+    (page.props.tenancy?.enabled ?? false)
+    && !!customer.value?.files_feature_enabled
+    && !!customer.value?.company_files_enabled
+    && (props.permissions.canViewShared ?? false),
+);
 
 const searchModel = computed({
     get: () => props.search,
@@ -68,8 +80,9 @@ const newFolderText = computed(() => props.newFolderLabel ?? t('files.new_folder
 <template>
     <header :style="{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }">
         <!-- Scope pill lives with the breadcrumbs so toggling scope is
-             always one click from anywhere in the tree. -->
-        <div :style="{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }">
+             always one click from anywhere in the tree. Dropped entirely when
+             there's no Shared surface to switch to (single-tenant / no perm). -->
+        <div v-if="showScopeSwitcher" :style="{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }">
             <ScopeSwitcher :active="scope" :permissions="{ canViewShared: permissions.canViewShared }" />
         </div>
 

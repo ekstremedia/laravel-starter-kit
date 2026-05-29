@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import Icon from '@/Components/Command/Icon.vue';
 import { useCustomer } from '@/composables/useCustomer';
+import type { PageProps } from '@/types';
 
 /**
  * Segmented pill switching between Private Files (`/files`) and Shared
@@ -22,8 +23,12 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const { customerUrl, customer } = useCustomer();
+const page = usePage<PageProps>();
 
 const showShared = computed<boolean>(() => {
+    // Shared files are a multi-tenant concept — without tenancy there's no
+    // "company" to share into, so the tab (and the whole switcher) drops.
+    if (!page.props.tenancy?.enabled) return false;
     if (!customer.value?.files_feature_enabled) return false;
     if (!customer.value?.company_files_enabled) return false;
     return props.permissions?.canViewShared ?? false;
@@ -31,7 +36,10 @@ const showShared = computed<boolean>(() => {
 </script>
 
 <template>
+    <!-- With no Shared tab there's nothing to switch between, so the pill
+         disappears entirely rather than showing a lone "Private" chip. -->
     <div
+        v-if="showShared"
         role="tablist"
         :aria-label="t('files.scope_switcher')"
         :style="{

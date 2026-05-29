@@ -4,6 +4,12 @@ import { describe, it, expect, vi } from 'vitest';
 const customerState = vi.hoisted(() => ({
     value: { files_feature_enabled: true, company_files_enabled: true } as Record<string, boolean>,
 }));
+const tenancyState = vi.hoisted(() => ({ enabled: true }));
+
+vi.mock('@inertiajs/vue3', () => ({
+    usePage: () => ({ props: { tenancy: { enabled: tenancyState.enabled } } }),
+    Link: { name: 'Link', props: ['href'], template: '<a :href="href"><slot /></a>' },
+}));
 
 vi.mock('@/composables/useCustomer', () => ({
     useCustomer: () => ({
@@ -16,6 +22,7 @@ import ScopeSwitcher from '@/Components/Files/ScopeSwitcher.vue';
 
 describe('Files/ScopeSwitcher', () => {
     it('shows both tabs when shared is enabled and viewable', () => {
+        tenancyState.enabled = true;
         customerState.value = { files_feature_enabled: true, company_files_enabled: true };
         const w = mount(ScopeSwitcher, { props: { active: 'private', permissions: { canViewShared: true } } });
         const tabs = w.findAll('[role="tab"]');
@@ -23,19 +30,29 @@ describe('Files/ScopeSwitcher', () => {
         expect(tabs[0].attributes('aria-selected')).toBe('true');
     });
 
-    it('hides the shared tab without view permission', () => {
+    it('drops the entire switcher without view permission', () => {
+        tenancyState.enabled = true;
         customerState.value = { files_feature_enabled: true, company_files_enabled: true };
         const w = mount(ScopeSwitcher, { props: { active: 'private', permissions: { canViewShared: false } } });
-        expect(w.findAll('[role="tab"]').length).toBe(1);
+        expect(w.findAll('[role="tab"]').length).toBe(0);
     });
 
-    it('hides the shared tab when company files are disabled', () => {
+    it('drops the entire switcher when company files are disabled', () => {
+        tenancyState.enabled = true;
         customerState.value = { files_feature_enabled: true, company_files_enabled: false };
         const w = mount(ScopeSwitcher, { props: { active: 'private', permissions: { canViewShared: true } } });
-        expect(w.findAll('[role="tab"]').length).toBe(1);
+        expect(w.findAll('[role="tab"]').length).toBe(0);
+    });
+
+    it('drops the entire switcher when tenancy is disabled', () => {
+        tenancyState.enabled = false;
+        customerState.value = { files_feature_enabled: true, company_files_enabled: true };
+        const w = mount(ScopeSwitcher, { props: { active: 'private', permissions: { canViewShared: true } } });
+        expect(w.findAll('[role="tab"]').length).toBe(0);
     });
 
     it('marks the shared tab active when scope is shared', () => {
+        tenancyState.enabled = true;
         customerState.value = { files_feature_enabled: true, company_files_enabled: true };
         const w = mount(ScopeSwitcher, { props: { active: 'shared', permissions: { canViewShared: true } } });
         expect(w.findAll('[role="tab"]')[1].attributes('aria-selected')).toBe('true');
