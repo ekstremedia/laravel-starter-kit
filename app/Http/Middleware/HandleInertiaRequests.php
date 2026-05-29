@@ -166,17 +166,19 @@ class HandleInertiaRequests extends Middleware
     /**
      * The workspace the left rail should be scoped to. Inside a customer route
      * this is the active tenant; on central routes it falls back to the user's
-     * last-visited customer, then their first membership. Null when tenancy is
-     * off, the user is a guest, or they belong to no active customer.
+     * last-visited customer, then their first membership. Null for guests or
+     * users who belong to no active customer.
+     *
+     * Resolved regardless of `tenancy.enabled` — the app is always
+     * customer-scoped, so the rail's Private files / dashboard must work even
+     * in single-workspace mode. The `tenancy.enabled` flag only governs the
+     * multi-tenant *chrome* (Shared files, scope pill, workspace switcher),
+     * which is gated in the components that render it.
      *
      * @return array<string, mixed>|null
      */
     private function currentWorkspace(Request $request): ?array
     {
-        if (! config('tenancy.enabled')) {
-            return null;
-        }
-
         $user = $request->user();
 
         if (! $user) {

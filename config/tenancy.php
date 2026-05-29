@@ -12,15 +12,18 @@ use Stancl\Tenancy\TenantDatabaseManagers\SQLiteDatabaseManager;
 
 return [
     /**
-     * Multi-tenancy is always on. The app is customer-scoped end-to-end:
-     * routes live under `/c/{customer}/...`, `/app` is the post-login picker,
-     * and `CustomerSeeder` provisions a `default` workspace on `migrate --seed`.
-     * At least one customer must exist for users to reach anything beyond `/app`.
+     * Controls the multi-tenant *UI surfaces*, not the routing: the app is
+     * always customer-scoped under `/c/{customer}/...` (that's how files and
+     * everything else are isolated), but when this is false the workspace
+     * chrome that only makes sense with several tenants is hidden — Shared
+     * (company) files, the Private/Shared scope pill, and the topbar workspace
+     * switcher. Private files / dashboard keep working under the single default
+     * workspace, giving a clean single-tenant feel.
      *
-     * Kept as a config key (rather than removed) so legacy callers that read
-     * it still resolve cleanly.
+     * Defaults to true to preserve existing installs; set TENANCY_ENABLED=false
+     * for a single-workspace deployment.
      */
-    'enabled' => true,
+    'enabled' => env('TENANCY_ENABLED', true),
 
     'tenant_model' => Tenant::class,
 
