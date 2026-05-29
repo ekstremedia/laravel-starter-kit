@@ -1,17 +1,24 @@
 <script setup lang="ts">
 /*
- * Shared error page (403 / 404 / 419 / 500 / 503). Uses the Command shell
- * directly — no Rail (guests hit 404 too), just PublicTopbar + a
- * centered code + message + CTAs. Registered via Inertia exception
- * renderer in bootstrap/app.php.
+ * Shared error page (403 / 404 / 500 / 503). Registered via the Inertia
+ * exception renderer in bootstrap/app.php.
+ *
+ *   - Authenticated  → full app chrome (CommandLayout: Rail + Topbar) with the
+ *                      error centered in the content area, so a logged-in user
+ *                      never loses their navigation.
+ *   - Guest          → minimal public shell (PublicTopbar) + centered error.
+ *
+ * The localized status title/description live in ErrorPanel; we deliberately
+ * don't surface the raw exception `message` (it's English in a localized UI and
+ * can leak internal paths). The prop is kept for the controller contract.
  */
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import { Head, usePage } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import { useTweaks } from '@/composables/useTweaks';
+import CommandLayout from '@/Layouts/CommandLayout.vue';
 import PublicTopbar from '@/Components/Command/PublicTopbar.vue';
-import Icon from '@/Components/Command/Icon.vue';
-import CmdButton from '@/Components/Command/Button.vue';
+import ErrorPanel from '@/Components/Command/ErrorPanel.vue';
 import type { PageProps } from '@/types';
 
 interface Props {
@@ -25,130 +32,39 @@ useTweaks();
 const { t } = useI18n();
 const page = usePage<PageProps>();
 const user = computed(() => page.props.auth?.user);
-const requestId = computed(() => page.props.request_id ?? '');
 
-const titleKey = computed(() => {
-    if (props.status === 403) return 'errors.403.title';
-    if (props.status === 404) return 'errors.404.title';
-    if (props.status === 419) return 'errors.419.title';
-    if (props.status === 503) return 'errors.503.title';
-    return 'errors.500.title';
-});
-
-const descriptionKey = computed(() => {
-    if (props.status === 403) return 'errors.403.description';
-    if (props.status === 404) return 'errors.404.description';
-    if (props.status === 419) return 'errors.419.description';
-    if (props.status === 503) return 'errors.503.description';
-    return 'errors.500.description';
-});
-
+const known = [403, 404, 419, 500, 503];
+const titleKey = computed(() => `errors.${known.includes(props.status) ? props.status : 500}.title`);
 const pageTitle = computed(() => `${props.status} · ${t(titleKey.value)}`);
 
-// Don't surface raw exception messages for server-side faults — they can leak
-// internal stack detail (DB host, file path, etc.). Client-error statuses
-// (403/404/419) use the message as-is so access-denied reasons like
-// "You are not a member of [slug]." still reach the user.
-const showRawMessage = computed(() => {
-    const s = props.status;
-    return s === 403 || s === 404 || s === 419;
-});
-const body = computed(() => (showRawMessage.value && props.message) ? props.message : t(descriptionKey.value));
-
-function goBack() {
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-        window.history.back();
-        return;
-    }
-    // Direct landings (opened in a new tab, deep link) have an empty history
-    // stack — point "go back" at a sensible destination so it's never a dead
-    // click. Authenticated users land on /home; guests land on /.
-    router.visit(user.value ? '/home' : '/');
-}
+const centered = {
+    minHeight: '62vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '24px',
+} as const;
 </script>
 
 <template>
+    <!-- Logged in: keep the full app chrome (rail + topbar). -->
+    <CommandLayout v-if="user">
+        <Head :title="pageTitle" />
+        <div :style="centered">
+            <ErrorPanel :status="status" />
+        </div>
+    </CommandLayout>
+
+    <!-- Guest: minimal public shell with a clear way back in. -->
     <div
+        v-else
         class="cmd-shell"
-        :style="{
-            minHeight: '100vh',
-            background: 'var(--bg)',
-            color: 'var(--fg)',
-            display: 'flex',
-            flexDirection: 'column',
-        }"
+        :style="{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--fg)', display: 'flex', flexDirection: 'column' }"
     >
         <Head :title="pageTitle" />
         <PublicTopbar />
-
-        <section :style="{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px' }">
-            <div :style="{ maxWidth: '520px', width: '100%', textAlign: 'center', padding: '40px 0 60px' }">
-                <div
-                    class="cmd-mono cmd-uc"
-                    :style="{ fontSize: '10px', color: 'var(--fg-mute)', marginBottom: '18px', letterSpacing: '0.08em', fontWeight: 500 }"
-                >{{ t('errors.eyebrow') }}</div>
-
-                <h1
-                    class="cmd-mono"
-                    :style="{
-                        margin: 0,
-                        fontSize: '92px',
-                        fontWeight: 700,
-                        lineHeight: 1,
-                        color: 'var(--fg)',
-                        letterSpacing: '-0.04em',
-                    }"
-                >{{ status }}</h1>
-
-                <h2
-                    :style="{
-                        margin: '14px 0 0',
-                        fontSize: '22px',
-                        fontWeight: 600,
-                        letterSpacing: '-0.02em',
-                        color: 'var(--fg)',
-                    }"
-                >{{ t(titleKey) }}</h2>
-
-                <p
-                    :style="{
-                        fontSize: '13.5px',
-                        color: 'var(--fg-dim)',
-                        margin: '10px auto 24px',
-                        maxWidth: '420px',
-                        lineHeight: 1.55,
-                    }"
-                >{{ body }}</p>
-
-                <div :style="{ display: 'inline-flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }">
-                    <CmdButton variant="ghost" size="md" @click="goBack">
-                        <template #icon>
-                            <Icon name="arrow" :size="12" :style="{ transform: 'rotate(180deg)' }" />
-                        </template>
-                        {{ t('errors.go_back') }}
-                    </CmdButton>
-                    <Link :href="user ? '/home' : '/'" :style="{ textDecoration: 'none' }">
-                        <CmdButton variant="primary" size="md">
-                            <template #icon><Icon name="home" :size="12" /></template>
-                            {{ user ? t('errors.go_home') : t('errors.go_welcome') }}
-                        </CmdButton>
-                    </Link>
-                    <Link v-if="!user" href="/login" :style="{ textDecoration: 'none' }">
-                        <CmdButton variant="ghost" size="md">
-                            <template #icon><Icon name="key" :size="12" /></template>
-                            {{ t('nav.login') }}
-                        </CmdButton>
-                    </Link>
-                </div>
-
-                <p
-                    v-if="requestId"
-                    class="cmd-mono"
-                    :style="{ marginTop: '32px', fontSize: '10.5px', color: 'var(--fg-mute)' }"
-                >
-                    {{ t('errors.request_id', { id: requestId }) }}
-                </p>
-            </div>
+        <section :style="{ flex: 1, ...centered }">
+            <ErrorPanel :status="status" />
         </section>
     </div>
 </template>
