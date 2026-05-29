@@ -10,6 +10,7 @@ import Field from '@/Components/Command/Field.vue';
 import CmdButton from '@/Components/Command/Button.vue';
 import Toggle from '@/Components/Command/Toggle.vue';
 import Icon from '@/Components/Command/Icon.vue';
+import RoleBadge from '@/Components/Command/RoleBadge.vue';
 
 defineOptions({ layout: AdminLayout });
 
@@ -35,25 +36,6 @@ const form = useForm({
 
 function submit() {
     form.put(`/admin/users/${props.user.id}`);
-}
-
-function roleToneColor(r: string): string {
-    if (r === 'SuperAdmin') return '#ef4444';
-    if (r === 'Admin') return '#8b5cf6';
-    if (r === 'Editor') return 'var(--warning)';
-    return 'var(--accent)';
-}
-function roleToneBg(r: string): string {
-    if (r === 'SuperAdmin') return 'rgba(239,68,68,0.12)';
-    if (r === 'Admin') return 'rgba(139,92,246,0.12)';
-    if (r === 'Editor') return 'rgba(251,191,36,0.12)';
-    return 'var(--accent-soft)';
-}
-function roleToneBorder(r: string): string {
-    if (r === 'SuperAdmin') return 'rgba(239,68,68,0.33)';
-    if (r === 'Admin') return 'rgba(139,92,246,0.33)';
-    if (r === 'Editor') return 'rgba(251,191,36,0.33)';
-    return 'var(--accent-border)';
 }
 
 const addWorkspaceDialog = ref(false);
@@ -330,19 +312,7 @@ function confirmRemove() {
                                 v-if="workspace.roles && workspace.roles.length"
                                 :style="{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px' }"
                             >
-                                <span
-                                    v-for="r in workspace.roles"
-                                    :key="r"
-                                    class="cmd-mono"
-                                    :style="{
-                                        fontSize: '10px',
-                                        padding: '1px 6px',
-                                        borderRadius: '3px',
-                                        color: roleToneColor(r),
-                                        background: roleToneBg(r),
-                                        border: `1px solid ${roleToneBorder(r)}`,
-                                    }"
-                                >{{ r }}</span>
+                                <RoleBadge v-for="r in workspace.roles" :key="r" :role="r" />
                             </div>
                             <span
                                 v-else
