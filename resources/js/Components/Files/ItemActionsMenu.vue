@@ -9,7 +9,7 @@ interface FileItemLite {
     shared_to_company?: boolean;
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
     item: FileItemLite;
     downloadUrl?: string;
     variant?: 'overlay' | 'inline';
@@ -17,7 +17,25 @@ const props = defineProps<{
     // Enabled only when the tenant has company_files_enabled and the user
     // has the `share files to company` permission — the parent resolves both.
     canShareToCompany?: boolean;
-}>();
+    // Per-item gates. Default on so existing (private) callers keep every
+    // entry; the shared FileBrowser passes explicit values per scope so the
+    // company surface can drop link-sharing and gate rename/delete on
+    // `can_manage`.
+    canRename?: boolean;
+    canShareLink?: boolean;
+    canDelete?: boolean;
+    // The details (EXIF) and copy-link entries call ownership-scoped
+    // `/files/{id}/…` endpoints, so the company surface turns them off for
+    // files it doesn't own. Default on for the private surface.
+    canDetails?: boolean;
+    canCopyLink?: boolean;
+}>(), {
+    canRename: true,
+    canShareLink: true,
+    canDelete: true,
+    canDetails: true,
+    canCopyLink: true,
+});
 
 const emit = defineEmits<{
     open: [];
@@ -38,9 +56,14 @@ const menuRef = ref<InstanceType<typeof Menu> | null>(null);
 const items = computed(() => {
     const out: Array<Record<string, unknown>> = [
         { label: t('files.open'), icon: 'pi pi-external-link', command: () => emit('open') },
-        { label: t('files.rename'), icon: 'pi pi-pencil', command: () => emit('rename') },
-        { label: t('files.share'), icon: 'pi pi-share-alt', command: () => emit('share') },
     ];
+
+    if (props.canRename) {
+        out.push({ label: t('files.rename'), icon: 'pi pi-pencil', command: () => emit('rename') });
+    }
+    if (props.canShareLink) {
+        out.push({ label: t('files.share'), icon: 'pi pi-share-alt', command: () => emit('share') });
+    }
 
     if (props.item.type === 'file') {
         out.push({
@@ -54,16 +77,20 @@ const items = computed(() => {
             icon: 'pi pi-external-link',
             command: () => emit('openNewTab'),
         });
-        out.push({
-            label: t('files.copy_link'),
-            icon: 'pi pi-link',
-            command: () => emit('copyLink'),
-        });
-        out.push({
-            label: t('files.details.title'),
-            icon: 'pi pi-info-circle',
-            command: () => emit('details'),
-        });
+        if (props.canCopyLink) {
+            out.push({
+                label: t('files.copy_link'),
+                icon: 'pi pi-link',
+                command: () => emit('copyLink'),
+            });
+        }
+        if (props.canDetails) {
+            out.push({
+                label: t('files.details.title'),
+                icon: 'pi pi-info-circle',
+                command: () => emit('details'),
+            });
+        }
     }
 
     // Share-to-company works on both files (one link) and folders
@@ -88,14 +115,16 @@ const items = computed(() => {
         }
     }
 
-    out.push({ separator: true });
-    out.push({
-        label: t('files.delete'),
-        icon: 'pi pi-trash',
-        // PrimeVue Menu styles items individually — inject a class to tint the row red.
-        class: 'file-action-danger',
-        command: () => emit('delete'),
-    });
+    if (props.canDelete) {
+        out.push({ separator: true });
+        out.push({
+            label: t('files.delete'),
+            icon: 'pi pi-trash',
+            // PrimeVue Menu styles items individually — inject a class to tint the row red.
+            class: 'file-action-danger',
+            command: () => emit('delete'),
+        });
+    }
 
     return out;
 });
