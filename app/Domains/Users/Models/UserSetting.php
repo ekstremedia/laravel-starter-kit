@@ -26,10 +26,10 @@ class UserSetting extends Model
     protected $fillable = ['user_id', 'settings'];
 
     /**
-     * Pin every read/write to the central tenancy connection. Without this,
-     * stancl/tenancy swaps the default connection to the active tenant on
-     * ResolveWorkspace requests, and merge()/save() would then write
-     * user_settings into the wrong schema.
+     * Pin every read/write to the central connection. The pin is vestigial —
+     * user_settings lives in the one shared database and this resolves to the
+     * single default connection, so there is no per-request connection swap
+     * to undo.
      */
     public function getConnectionName(): ?string
     {

@@ -14,15 +14,12 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * Resolves the {workspace} route parameter (a slug) into a Workspace (our Workspace),
- * verifies the authenticated user belongs to it, boots tenancy (PG
- * search_path → tenant<id>), and sets the Spatie permission team id to the
- * workspace so every downstream `hasRole`/`can` call auto-scopes.
- *
- * SuperAdmins bypass the membership check — they can enter any workspace.
- *
- * Class name mentions "WorkspaceContext" because stancl/tenancy is the underlying
- * mechanism; at the app layer we surface everything as "workspace".
+ * Resolves the {workspace} route parameter (a slug) into a Workspace, verifies
+ * the authenticated user is a member (super admins bypass the check and can
+ * enter any workspace), and activates it via WorkspaceContext — which sets the
+ * Spatie permission team id so every downstream `hasRole`/`can` call auto-scopes
+ * and the BelongsToWorkspace global scope filters to this workspace. The prior
+ * context is restored after the request (see runFor()).
  */
 class ResolveWorkspace
 {
@@ -72,7 +69,7 @@ class ResolveWorkspace
         }
 
         // Activate the workspace for this request: the resolver holds the
-        // current tenant and points Spatie's permission team scope at it, so
+        // current workspace and points Spatie's permission team scope at it, so
         // every downstream role/permission check resolves per-workspace. The
         // global `workspace_id` scope (BelongsToWorkspace) reads the same resolver.
         // runFor() restores the prior context afterwards so a long-lived

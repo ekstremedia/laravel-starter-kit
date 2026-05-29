@@ -8,14 +8,13 @@ use App\Domains\Workspaces\Models\Workspace;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Current-workspace (tenant) context for the request or job.
+ * Current-workspace context for the request or job.
  *
- * Replaces stancl/tenancy's global `tenancy()` helper. Isolation is now
- * row-level — a `workspace_id` column plus a global Eloquent scope (see
- * BelongsToWorkspace) — rather than a Postgres schema swap, so all this needs to
- * do is remember which workspace the request is acting in and keep Spatie's
- * permission "team id" pointed at it, so per-workspace role checks resolve
- * against the active workspace.
+ * Isolation is row-level — a `workspace_id` column plus a global Eloquent
+ * scope (see BelongsToWorkspace). All this needs to do is remember which
+ * workspace the request is acting in and keep Spatie's permission "team id"
+ * pointed at it, so per-workspace role checks resolve against the active
+ * workspace.
  *
  * Registered as a singleton in AppServiceProvider. The resolving middleware
  * (ResolveWorkspace) sets it for the request and restores the prior

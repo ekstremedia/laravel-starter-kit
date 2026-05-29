@@ -88,11 +88,9 @@ class UserController extends Controller
                 $rolesTable = config('permission.table_names.roles');
                 $teamKey = config('permission.column_names.team_foreign_key');
 
-                // `model_has_roles` / `roles` live on the central schema.
-                // Stancl swaps the default connection to the tenant mid-
-                // request, so pin raw queries explicitly — a bare DB::table
-                // here would silently hit the tenant schema when reached
-                // from inside `/w/{workspace}/...`.
+                // `model_has_roles` / `roles` live in the one shared database.
+                // The explicit central connection is vestigial and resolves to
+                // the default connection.
                 $central = (string) config('workspaces.database.central_connection');
                 $rows = DB::connection($central)->table($mhr)
                     ->join($rolesTable, "{$rolesTable}.id", '=', "{$mhr}.role_id")
@@ -174,12 +172,12 @@ class UserController extends Controller
         $before = $user->isSuperAdmin() ? ['SuperAdmin'] : [];
 
         // Transaction + row-level lock so two concurrent demotions can't
-        // both pass the last-super-admin guard. Force the central connection
-        // — this endpoint can be reached via an admin action inside a
-        // tenancy-initialized session. We also read the target user's
-        // `is_super_admin` through a locked SELECT inside the transaction
-        // so a concurrent flip between route-model binding and this block
-        // can't make us take the wrong branch.
+        // both pass the last-super-admin guard. The explicit central
+        // connection is vestigial and resolves to the default connection.
+        // We also read the target user's `is_super_admin` through a locked
+        // SELECT inside the transaction so a concurrent flip between
+        // route-model binding and this block can't make us take the wrong
+        // branch.
         $central = (string) config('workspaces.database.central_connection');
         $locked = DB::connection($central)->transaction(function () use ($user, $data, $central) {
             $current = (bool) DB::connection($central)->table('users')
@@ -387,8 +385,9 @@ class UserController extends Controller
             // `team_id` lives on both tables (roles.team_id for shared/global
             // role rows, model_has_roles.team_id for per-assignment scope), so
             // every reference has to be fully qualified — otherwise Postgres
-            // raises "column reference team_id is ambiguous". Pin to central
-            // since these tables live in the landlord schema.
+            // raises "column reference team_id is ambiguous". The explicit
+            // central connection is vestigial and resolves to the default
+            // connection.
             $central = (string) config('workspaces.database.central_connection');
             $rows = DB::connection($central)->table($mhr)
                 ->join($rolesTable, "{$rolesTable}.id", '=', "{$mhr}.role_id")

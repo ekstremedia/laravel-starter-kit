@@ -20,9 +20,8 @@ class MonitoringController extends Controller
     {
         $filters = $request->validate([
             // Closure rule rather than `exists:users,id` so the check goes
-            // through App\Domains\Users\Models\User (pinned to the central connection).
-            // The string rule would use the default connection, which can
-            // be the tenant connection in some contexts.
+            // through App\Domains\Users\Models\User (which pins its own
+            // connection) instead of a bare string rule.
             'user_id' => [
                 'nullable',
                 'integer',

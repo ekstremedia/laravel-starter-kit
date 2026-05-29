@@ -74,8 +74,9 @@ class Asset extends Model implements FileOwner
     }
 
     /**
-     * Pinned to the central connection — assets live alongside users/tenants
-     * in the central schema, not inside per-tenant schemas.
+     * Pinned to the central connection — assets live alongside users and
+     * workspaces in the one shared database. The pin is vestigial and resolves
+     * to the single default connection.
      */
     public function getConnectionName(): ?string
     {

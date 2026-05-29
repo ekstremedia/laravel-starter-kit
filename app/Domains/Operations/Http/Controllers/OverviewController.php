@@ -100,9 +100,9 @@ class OverviewController extends Controller
 
     private function queueMetrics(): array
     {
-        // Jobs / failed_jobs live on the central connection — pin the queries
-        // there so tenant-scoped requests don't read the wrong schema and
-        // report zero.
+        // Jobs / failed_jobs live in the one shared database. The explicit
+        // central connection is vestigial and resolves to the default
+        // connection.
         $connection = (string) config('workspaces.database.central_connection', config('database.default'));
         $schema = Schema::connection($connection);
         $db = DB::connection($connection);

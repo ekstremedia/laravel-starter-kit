@@ -24,10 +24,9 @@ class UserProfilePolicy
             return true;
         }
 
-        // workspace_user lives in the central schema. Pin the query to the
-        // central connection so the check still works if the policy is ever
-        // called from inside a tenant-scoped controller (where stancl/tenancy
-        // has swapped the default connection to the active tenant).
+        // workspace_user lives in the one shared database. The explicit
+        // central connection is vestigial and resolves to the default
+        // connection.
         return DB::connection(config('workspaces.database.central_connection'))
             ->table('workspace_user as a')
             ->join('workspace_user as b', 'a.workspace_id', '=', 'b.workspace_id')

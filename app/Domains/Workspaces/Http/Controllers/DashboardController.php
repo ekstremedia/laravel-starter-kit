@@ -55,9 +55,9 @@ class DashboardController extends Controller
         // A user who's Admin on A and plain User on B would otherwise
         // surface B's actions on A's dashboard — a causer-id IN (members)
         // filter can't separate them because the same user is in both
-        // member lists. `activity_log` lives on the landlord schema; pin
-        // to central since stancl swaps the default connection once
-        // tenancy initializes.
+        // member lists. `activity_log` lives in the one shared database; the
+        // explicit central connection is vestigial and resolves to the
+        // default connection.
         $activity = [];
         if ($workspace !== null) {
             $centralConnection = (string) config('workspaces.database.central_connection');

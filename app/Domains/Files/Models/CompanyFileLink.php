@@ -50,9 +50,9 @@ class CompanyFileLink extends Model
     }
 
     /**
-     * Live in the central DB alongside file_items and tenants — stancl/tenancy
-     * swaps the default connection to the tenant schema inside the request
-     * lifecycle, and links have no business following that swap.
+     * Live in the one shared database alongside file_items and workspaces. The
+     * pin is vestigial — it resolves to the single default connection; there
+     * is no per-request connection swap to undo.
      */
     public function getConnectionName(): ?string
     {

@@ -103,10 +103,9 @@ class UserExport extends Command
         $rolesTable = config('permission.table_names.roles');
         $teamKey = config('permission.column_names.team_foreign_key');
 
-        // Console has no implicit connection context — pin to central since
-        // `model_has_roles`, `roles`, and `tenants` all live on the landlord
-        // schema and the default connection can be anything in a worker that
-        // previously handled a tenant job.
+        // `model_has_roles`, `roles`, and `workspaces` all live in the one
+        // shared database. The explicit central connection is vestigial and
+        // resolves to the default connection.
         $central = (string) config('workspaces.database.central_connection');
         $rows = DB::connection($central)->table($mhr)
             ->join($rolesTable, "{$rolesTable}.id", '=', "{$mhr}.role_id")

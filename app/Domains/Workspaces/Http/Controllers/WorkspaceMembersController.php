@@ -79,11 +79,9 @@ class WorkspaceMembersController extends Controller
         $workspace = $this->workspace($request);
 
         $data = $request->validate([
-            // `exists:users,email` runs through the default DB connection,
-            // which is the *tenant* schema after ResolveWorkspace has
-            // booted tenancy. Users live on the central schema — resolve
-            // against it explicitly via a closure to avoid "relation users
-            // does not exist" when tenancy bootstrappers are on.
+            // Resolve the email against the User model explicitly via a
+            // closure so the lookup goes through User (which pins its own
+            // connection) rather than a bare `exists:users,email` rule.
             'email' => [
                 'required',
                 'email',

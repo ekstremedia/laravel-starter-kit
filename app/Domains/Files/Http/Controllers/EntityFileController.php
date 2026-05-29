@@ -207,9 +207,9 @@ class EntityFileController extends Controller
     }
 
     /**
-     * Validate parent_id exists as a folder owned by the same (tenant, owner)
-     * — pinned to the central connection (the `exists:` rule would otherwise
-     * hit the tenant schema once tenancy is initialised).
+     * Validate parent_id exists as a folder owned by the same (workspace, owner).
+     * The explicit central connection is vestigial and resolves to the default
+     * connection.
      */
     private function existsRule(Workspace $workspace, Model $owner): Exists
     {

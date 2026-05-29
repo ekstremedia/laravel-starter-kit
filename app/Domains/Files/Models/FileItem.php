@@ -100,9 +100,10 @@ class FileItem extends Model implements HasMedia
     }
 
     /**
-     * Pin to the central connection so queries don't follow the tenant schema
-     * switch performed by stancl/tenancy middleware — file_items lives in the
-     * central DB alongside users and tenants, not inside per-tenant schemas.
+     * Pin to the central connection. The pin is vestigial — file_items lives
+     * in the one shared database alongside users and workspaces, and this
+     * resolves to the single default connection; there is no per-request
+     * connection swap to undo.
      */
     public function getConnectionName(): ?string
     {

@@ -27,7 +27,7 @@ interface FileOwner
      * "manage all files" permission isn't present.
      *
      * The $workspace scopes the question to one workspace — relevant for
-     * tenant-owned trees and per-tenant role assignments.
+     * workspace-owned file trees and per-workspace role assignments.
      */
     public function canManageFiles(User $user, ?Workspace $workspace = null): bool;
 

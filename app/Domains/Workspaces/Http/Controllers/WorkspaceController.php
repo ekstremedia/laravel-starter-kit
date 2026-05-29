@@ -21,10 +21,9 @@ use Inertia\Response;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Landlord CRUD for workspaces.
+ * Platform-admin CRUD for workspaces.
  *
- * NOTE: the underlying model is `App\Domains\Workspaces\Models\Workspace` (extending stancl/tenancy's
- * base `Workspace` model). "Workspace" is our user-facing name for the same row.
+ * The underlying model is a plain Eloquent `App\Domains\Workspaces\Models\Workspace`.
  */
 class WorkspaceController extends Controller
 {
@@ -218,18 +217,15 @@ class WorkspaceController extends Controller
         $name = $workspace->name;
 
         // Workspace (team) scoped role/permission assignments live in the
-        // central model_has_* tables keyed by team_id. Dropping the tenant
-        // schema doesn't touch them, so clean them up here to avoid orphaned
-        // rows that would otherwise leak onto a future workspace reusing the id.
-        // Pin the central connection explicitly — this runs from /admin where
-        // tenancy isn't bootstrapped today, but a tenant-initialized caller
-        // would otherwise send these deletes to the wrong schema.
+        // model_has_* tables keyed by team_id. These aren't reached by the
+        // row's DB cascade, so clean them up here to avoid orphaned rows that
+        // would otherwise leak onto a future workspace reusing the id.
         $teamKey = config('permission.column_names.team_foreign_key', 'team_id');
         $central = config('workspaces.database.central_connection');
         DB::connection($central)->table(config('permission.table_names.model_has_roles'))->where($teamKey, $workspace->id)->delete();
         DB::connection($central)->table(config('permission.table_names.model_has_permissions'))->where($teamKey, $workspace->id)->delete();
 
-        // Triggers the TenantDeleted job pipeline → drops the tenant<id> schema.
+        // Plain row delete; DB `ON DELETE CASCADE` removes dependent rows.
         $workspace->delete();
 
         return redirect()

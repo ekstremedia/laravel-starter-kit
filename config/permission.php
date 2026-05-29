@@ -10,9 +10,9 @@ return [
 
         /*
          * Custom App\Domains\Access\Models\Permission / App\Domains\Access\Models\Role subclasses pin the
-         * models to the central DB connection — spatie's permission tables
-         * live in the central schema, but stancl/tenancy swaps the default
-         * connection to the tenant mid-request.
+         * models to the central DB connection. The pin is vestigial — spatie's
+         * permission tables live in the one shared database and it resolves to
+         * the single default connection.
          */
 
         'permission' => Permission::class,

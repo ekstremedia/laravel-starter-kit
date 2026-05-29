@@ -23,8 +23,8 @@ class SnapshotStorageUsage extends Command
         $count = 0;
         $conn = (string) config('workspaces.database.central_connection');
 
-        // `User::on($conn)` keeps the chunk query on the central connection
-        // even if something upstream swapped the default (tenancy bootstrap).
+        // `User::on($conn)` keeps the chunk query on the central connection,
+        // which is vestigial and resolves to the single default connection.
         User::on($conn)->chunkById(200, function ($users) use ($service, $today, $conn, &$count): void {
             foreach ($users as $user) {
                 $bytes = $service->recomputeForUser($user);

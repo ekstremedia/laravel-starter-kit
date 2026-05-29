@@ -106,8 +106,9 @@ class User extends Authenticatable implements FileOwner, HasLocalePreference, Ha
     }
 
     /**
-     * User rows live in the central schema — pin so queries don't follow the
-     * tenant schema swap performed by stancl/tenancy's DatabaseTenancyBootstrapper.
+     * User rows live in the one shared database. The pin is vestigial — it
+     * resolves to the single default connection; there is no per-request
+     * connection swap to undo.
      */
     public function getConnectionName(): ?string
     {
@@ -282,9 +283,8 @@ class User extends Authenticatable implements FileOwner, HasLocalePreference, Ha
     }
 
     /**
-     * Workspaces (a.k.a. tenants in package-speak) this user is a member of.
-     * The underlying model is `App\Domains\Workspaces\Models\Workspace` because stancl/tenancy's base
-     * contract names it that way; at the application layer we call them workspaces.
+     * Workspaces this user is a member of, via the `workspace_user` pivot.
+     * The underlying model is a plain Eloquent `App\Domains\Workspaces\Models\Workspace`.
      *
      * @return BelongsToMany<Workspace, $this>
      */

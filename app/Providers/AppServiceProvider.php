@@ -35,14 +35,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // personal_access_tokens lives on the central schema — point Sanctum
-        // at our pinned subclass before any token query runs, or tenant-scoped
-        // requests will try to read the table from the active tenant schema.
+        // Point Sanctum at our subclass so personal access tokens resolve via
+        // the model's pinned (vestigial) central connection.
         Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
 
-        // Current-workspace context (replaces stancl's tenancy() helper). A
-        // singleton so the resolving middleware and the global tenant scope
-        // read the same active workspace for the request.
+        // Current-workspace context. A singleton so the resolving middleware
+        // and the BelongsToWorkspace global scope read the same active
+        // workspace for the request.
         $this->app->singleton(WorkspaceContext::class);
     }
 
