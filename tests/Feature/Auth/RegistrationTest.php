@@ -42,6 +42,36 @@ it('registers a new user', function () {
     expect($user->hasVerifiedEmail())->toBeFalse();
 });
 
+it('creates the user their own workspace in create_own mode', function () {
+    config()->set('tenancy.registration_mode', 'create_own');
+
+    $this->post('/register', [
+        'first_name' => 'Ada',
+        'last_name' => 'Lovelace',
+        'email' => 'ada@example.com',
+        'password' => 'password123',
+        'password_confirmation' => 'password123',
+    ])->assertRedirect('/email/verify');
+
+    $user = User::where('email', 'ada@example.com')->first();
+    expect($user)->not->toBeNull();
+
+    // A brand-new workspace was created and the user is its admin — not the
+    // shared default workspace.
+    $workspace = Tenant::where('name', "Ada's space")->first();
+    expect($workspace)->not->toBeNull();
+    expect($workspace->slug)->not->toBe(config('tenancy.default_customer_slug', 'default'));
+    expect($user->customers()->whereKey($workspace->id)->exists())->toBeTrue();
+
+    app(PermissionRegistrar::class)->setPermissionsTeamId($workspace->id);
+    $user->unsetRelation('roles');
+    expect($user->hasRole('Admin'))->toBeTrue();
+
+    // They did NOT auto-join the shared default workspace in this mode.
+    $default = Tenant::where('slug', config('tenancy.default_customer_slug', 'default'))->first();
+    expect($user->customers()->whereKey($default->id)->exists())->toBeFalse();
+});
+
 it('requires first name to register', function () {
     $this->post('/register', [
         'first_name' => '',

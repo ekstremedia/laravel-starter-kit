@@ -28,6 +28,16 @@ return [
      */
     'default_customer_slug' => env('TENANCY_DEFAULT_CUSTOMER', 'default'),
 
+    /*
+     * How a new sign-up gets a workspace (only consulted when tenancy is on):
+     *   - 'create_own'   → the user creates their OWN workspace and becomes its
+     *                      admin (self-serve, e.g. the cars/medicines app).
+     *   - 'join_default' → the user auto-joins the default workspace with the
+     *                      app's default role (internal/team apps).
+     * When tenancy is OFF this is ignored — everyone shares the one workspace.
+     */
+    'registration_mode' => env('TENANCY_REGISTRATION_MODE', 'join_default'),
+
     'database' => [
         // The single connection everything runs on. Kept under this key so the
         // existing config('tenancy.database.central_connection') call sites

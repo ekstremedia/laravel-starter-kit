@@ -4,6 +4,7 @@ namespace App\Domains\Auth\Actions;
 
 use App\Domains\Notifications\Notifications\WelcomeNotification;
 use App\Domains\Settings\Models\AppSetting;
+use App\Domains\Tenancy\Actions\CreateWorkspace;
 use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Tenancy\Support\CustomerMembership;
 use App\Domains\Users\Models\User;
@@ -45,9 +46,27 @@ class CreateNewUser implements CreatesNewUsers
             $user->notify(new WelcomeNotification);
         }
 
-        $this->attachToDefaultCustomer($user, $settings->default_role ?? 'User');
+        // How the new user gets a workspace. In single-tenant mode (tenancy
+        // off) everyone shares the one default workspace, so create_own is
+        // ignored. In multi-tenant mode the configured registration_mode
+        // decides between self-serve space creation and auto-join.
+        if (config('tenancy.enabled') && config('tenancy.registration_mode') === 'create_own') {
+            app(CreateWorkspace::class)->forOwner($user, $this->defaultWorkspaceName($user));
+        } else {
+            $this->attachToDefaultCustomer($user, $settings->default_role ?? 'User');
+        }
 
         return $user;
+    }
+
+    /**
+     * Name for the workspace a self-serve sign-up creates, e.g. "Ada's space".
+     */
+    private function defaultWorkspaceName(User $user): string
+    {
+        $first = trim((string) $user->first_name);
+
+        return $first !== '' ? "{$first}'s space" : 'My space';
     }
 
     /**
