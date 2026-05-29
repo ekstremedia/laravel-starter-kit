@@ -23,7 +23,10 @@ export function useCustomer() {
     function customerUrl(path: string): string {
         const normalized = path.startsWith('/') ? path : `/${path}`;
 
-        if (customer.value) {
+        // Only prefix with /c/<slug> in multi-tenant mode. When tenancy is off
+        // the workspace routes are mounted at the root, so paths stay bare even
+        // though an (implicit) workspace is still set on the page props.
+        if (tenancyEnabled.value && customer.value) {
             return `/c/${customer.value.slug}${normalized}`;
         }
 

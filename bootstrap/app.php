@@ -6,6 +6,7 @@ use App\Domains\Chat\Http\Middleware\EnsureChatEnabled;
 use App\Domains\Files\Http\Middleware\EnsureCompanyStorageAvailable;
 use App\Domains\Files\Http\Middleware\EnsureStorageAvailable;
 use App\Domains\Settings\Http\Middleware\EnforceAppSettings;
+use App\Domains\Tenancy\Http\Middleware\BindDefaultWorkspace;
 use App\Domains\Tenancy\Http\Middleware\InitializeTenancyByPath;
 use App\Http\Middleware\EnsureUserIsNotBanned;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -32,10 +33,22 @@ return Application::configure(basePath: dirname(__DIR__))
         channels: __DIR__.'/../routes/channels.php',
         health: '/up',
         then: function (): void {
-            Route::prefix('c/{customer}')
-                ->middleware(['web', 'auth', 'verified', InitializeTenancyByPath::class])
-                ->name('customer.')
-                ->group(__DIR__.'/../routes/customer.php');
+            // Workspace routes. Multi-tenant: mounted under /c/{workspace} and
+            // resolved by slug. Single-tenant (tenancy disabled): mounted at the
+            // root with no prefix and bound to the one default workspace — so
+            // the app reads like a normal Laravel app. Paths that also exist
+            // centrally (/profile, /notifications in web.php, registered first)
+            // win the match; the workspace duplicates are harmless shadows.
+            if (config('tenancy.enabled')) {
+                Route::prefix('c/{customer}')
+                    ->middleware(['web', 'auth', 'verified', InitializeTenancyByPath::class])
+                    ->name('customer.')
+                    ->group(__DIR__.'/../routes/customer.php');
+            } else {
+                Route::middleware(['web', 'auth', 'verified', BindDefaultWorkspace::class])
+                    ->name('customer.')
+                    ->group(__DIR__.'/../routes/customer.php');
+            }
         },
     )
     // Auto-discover Artisan commands living inside domain modules

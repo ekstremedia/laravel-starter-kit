@@ -40,40 +40,41 @@ export function useSidebarItems() {
     const isWorkspaceAdmin = computed(() => isSuperAdmin.value || (workspace.value as { is_admin?: boolean } | null)?.is_admin === true);
     const canViewCompanyFiles = computed(() => isSuperAdmin.value || (workspace.value as { can_view_company_files?: boolean } | null)?.can_view_company_files === true);
 
+    // Workspace URL helper: prefix with /c/<slug> in multi-tenant mode, bare
+    // path in single-tenant mode (routes mounted at root). Matches are made
+    // prefix-agnostic by stripping any leading /c/<slug> before comparing, so
+    // the same entry highlights correctly in both modes.
+    const wsHref = (suffix: string) => (tenancyEnabled.value && workspaceSlug.value ? `/c/${workspaceSlug.value}` : '') + suffix;
+    const railMatch = (test: (suffix: string) => boolean) => (p: string) => test(p.replace(/^\/c\/[^/]+/, '') || '/');
+
     // ── App mode ────────────────────────────────────────────────────────────
     const appItems = computed<SidebarEntry[]>(() => {
-        // Match the personal files nav on /files but NOT /files/company so the
-        // two entries highlight independently as the user moves between them.
-        const filesActive = (p: string) => p.startsWith('/c/') && p.includes('/files') && !p.includes('/files/company');
-        const companyFilesActive = (p: string) => p.startsWith('/c/') && p.includes('/files/company');
-
         const entries: SidebarEntry[] = [
             { id: 'home', href: '/home', label: t('rail.home'), icon: 'user', kb: 'H', match: (p) => p === '/home' || p === '/' },
             { id: 'chat', href: '/chat', label: t('rail.chat'), icon: 'mail', match: (p) => p.startsWith('/chat'), hideWhen: () => !chatEnabled.value },
         ];
 
-        // Workspace group: the current customer's own dashboard, files, shared
+        // Workspace group: the current workspace's own dashboard, files, shared
         // files, assets, and (for workspace admins) members. Always present
         // when a workspace is resolvable, so the rail is identical on /home and
         // inside the workspace.
         if (workspaceSlug.value) {
-            const slug = workspaceSlug.value;
             const ws = workspace.value;
             entries.push(
                 { separator: true, key: 'workspace', label: t('rail.section_workspace') },
-                { id: 'my-dashboard', href: `/c/${slug}/dashboard`, label: t('rail.dashboard'), icon: 'home', match: (p) => p.startsWith('/c/') && p.includes('/dashboard') },
-                { id: 'about', href: `/c/${slug}/about`, label: t('rail.about'), icon: 'customer', match: (p) => p.startsWith(`/c/${slug}/about`) },
-                { id: 'files', href: `/c/${slug}/files`, label: t('rail.files'), icon: 'disk', match: filesActive, hideWhen: () => !globalFilesEnabled.value || !ws?.files_feature_enabled },
-                { id: 'company-files', href: `/c/${slug}/files/company`, label: t('rail.company_files'), icon: 'customer', match: companyFilesActive, hideWhen: () => !tenancyEnabled.value || !globalFilesEnabled.value || !ws?.company_files_enabled || !canViewCompanyFiles.value },
+                { id: 'my-dashboard', href: wsHref('/dashboard'), label: t('rail.dashboard'), icon: 'home', match: railMatch((s) => s.startsWith('/dashboard')) },
+                { id: 'about', href: wsHref('/about'), label: t('rail.about'), icon: 'customer', match: railMatch((s) => s.startsWith('/about')) },
+                { id: 'files', href: wsHref('/files'), label: t('rail.files'), icon: 'disk', match: railMatch((s) => s.startsWith('/files') && !s.startsWith('/files/company')), hideWhen: () => !globalFilesEnabled.value || !ws?.files_feature_enabled },
+                { id: 'company-files', href: wsHref('/files/company'), label: t('rail.company_files'), icon: 'customer', match: railMatch((s) => s.startsWith('/files/company')), hideWhen: () => !tenancyEnabled.value || !globalFilesEnabled.value || !ws?.company_files_enabled || !canViewCompanyFiles.value },
                 // Demo entity documents. Remove this entry (and the Assets
                 // module) to drop the demo — it's the template for real
                 // file-owning entities (Vehicle, Medicine, …).
-                { id: 'assets', href: `/c/${slug}/assets`, label: t('rail.assets'), icon: 'box', match: (p) => p.startsWith(`/c/${slug}/assets`), hideWhen: () => !assetsEnabled.value || !canViewCompanyFiles.value },
+                { id: 'assets', href: wsHref('/assets'), label: t('rail.assets'), icon: 'box', match: railMatch((s) => s.startsWith('/assets')), hideWhen: () => !assetsEnabled.value || !canViewCompanyFiles.value },
             );
 
             if (isWorkspaceAdmin.value) {
                 entries.push(
-                    { id: 'members', href: `/c/${slug}/members`, label: t('rail.members'), icon: 'users', match: (p) => p.startsWith(`/c/${slug}/members`) },
+                    { id: 'members', href: wsHref('/members'), label: t('rail.members'), icon: 'users', match: railMatch((s) => s.startsWith('/members')) },
                 );
             }
         }

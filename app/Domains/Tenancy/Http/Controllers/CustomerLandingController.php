@@ -26,6 +26,12 @@ class CustomerLandingController extends Controller
         // `/app` is behind `['auth','verified']`, so `user()` is guaranteed non-null.
         $user = $request->user();
 
+        // Single-workspace mode: there's no picker and no slug — go straight to
+        // the (root-mounted) dashboard.
+        if (! config('tenancy.enabled')) {
+            return redirect()->route('customer.dashboard');
+        }
+
         // SuperAdmins can enter any active customer; regular users only their memberships.
         /** @var Collection<int, Tenant> $customers */
         $customers = $user->isSuperAdmin()
