@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import CommandLayout from '@/Layouts/CommandLayout.vue';
-import Dot from '@/Components/Command/Dot.vue';
 import Icon from '@/Components/Command/Icon.vue';
 import PageTitle from '@/Components/Command/PageTitle.vue';
 import Skeleton from '@/Components/Command/Skeleton.vue';
 import Toggle from '@/Components/Command/Toggle.vue';
-import { useCommandToasts } from '@/composables/useCommandToasts';
 
 defineOptions({ layout: CommandLayout });
 
@@ -43,7 +41,6 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-const { push } = useCommandToasts();
 
 const form = useForm({
     site_up: props.settings.site_up,
@@ -92,7 +89,6 @@ const maxUploadMb = computed<number>({
 });
 const phpCeilingMb = computed(() => Math.floor(props.php_upload_ceiling_bytes / (1024 * 1024)));
 
-const dirty = computed(() => form.isDirty);
 const loading = ref(true);
 setTimeout(() => { loading.value = false; }, 700);
 
@@ -116,21 +112,38 @@ const severityOptions = computed<{ id: Severity; label: string }[]>(() => [
     { id: 'success', label: t('admin.app_settings.severity_success') },
 ]);
 
+// Auto-save: settings persist as you change them — no Save button, no toasts.
+// A change schedules a debounced PATCH; a quiet "Saving…/Saved" status is the
+// only feedback. Invalid values still surface inline via form.errors.
+const saveState = ref<'idle' | 'saving' | 'saved'>('idle');
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let savedTimer: ReturnType<typeof setTimeout> | null = null;
+
 function save() {
+    saveState.value = 'saving';
     form.patch('/admin/settings', {
         preserveScroll: true,
+        preserveState: true,
         onSuccess: () => {
-            push(t('admin.app_settings.toast_saved'), 'success');
             form.defaults();
+            saveState.value = 'saved';
+            if (savedTimer) clearTimeout(savedTimer);
+            savedTimer = setTimeout(() => { if (saveState.value === 'saved') saveState.value = 'idle'; }, 1500);
         },
-        onError: () => push(t('admin.app_settings.toast_error'), 'danger'),
+        onError: () => { saveState.value = 'idle'; },
     });
 }
 
-function discard() {
-    form.reset();
-    push(t('admin.app_settings.toast_discarded'), 'info');
+function scheduleSave() {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(save, 600);
 }
+
+// Persist on any field change once the initial load settles.
+watch(() => JSON.stringify(form.data()), () => {
+    if (loading.value) return;
+    scheduleSave();
+});
 
 const roleOpen = ref(false);
 </script>
@@ -177,35 +190,12 @@ const roleOpen = ref(false);
                 <PageTitle :title="t('admin.app_settings.title')" :subtitle="t('admin.app_settings.subtitle')">
                     <template #actions>
                         <span
-                            v-if="dirty"
-                            :style="{ fontSize: '11px', color: 'var(--warning)', display: 'flex', alignItems: 'center', gap: '5px' }"
+                            class="cmd-mono"
+                            :style="{ fontSize: '10.5px', color: 'var(--fg-mute)', display: 'inline-flex', alignItems: 'center', minHeight: '20px', transition: 'opacity 0.15s' }"
                         >
-                            <Dot color="var(--warning)" :size="5" />
-                            {{ t('admin.app_settings.unsaved') }}
+                            <template v-if="saveState === 'saving'">{{ t('admin.app_settings.saving') }}</template>
+                            <template v-else-if="saveState === 'saved'">{{ t('admin.app_settings.saved') }}</template>
                         </span>
-                        <button
-                            v-if="dirty"
-                            type="button"
-                            @click="discard"
-                            :style="{ background: 'transparent', color: 'var(--fg-dim)', border: '1px solid var(--border)', padding: '5px 10px', borderRadius: '5px', fontSize: '11.5px', cursor: 'pointer', fontFamily: 'inherit' }"
-                        >{{ t('admin.app_settings.discard') }}</button>
-                        <button
-                            type="button"
-                            :disabled="form.processing || !dirty"
-                            @click="save"
-                            :style="{
-                                background: 'var(--accent)',
-                                color: '#fff',
-                                border: 'none',
-                                padding: '5px 11px',
-                                borderRadius: '5px',
-                                fontSize: '11.5px',
-                                fontWeight: 500,
-                                cursor: form.processing || !dirty ? 'not-allowed' : 'pointer',
-                                opacity: form.processing || !dirty ? 0.55 : 1,
-                                fontFamily: 'inherit',
-                            }"
-                        >{{ t('common.save') }}</button>
                     </template>
                 </PageTitle>
             </div>

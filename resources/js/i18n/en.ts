@@ -981,6 +981,8 @@ export default {
             policy: 'Policies',
             announcement: 'Announcement',
             filesystem: 'File system',
+            saving: 'Saving…',
+            saved: 'Saved',
             unsaved: 'Unsaved changes',
             discard: 'Discard',
             toast_saved: 'Settings saved',
