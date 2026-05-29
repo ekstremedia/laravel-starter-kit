@@ -156,10 +156,6 @@ class HandleInertiaRequests extends Middleware
             'id' => $workspace->id,
             'slug' => $workspace->slug,
             'name' => $workspace->name,
-            'headline' => $workspace->headline,
-            'about' => $workspace->about,
-            'location' => $workspace->location,
-            'website' => $workspace->website,
             'files_feature_enabled' => (bool) $workspace->files_feature_enabled,
             'company_files_enabled' => (bool) $workspace->company_files_enabled,
         ];

@@ -63,7 +63,6 @@ export function useSidebarItems() {
             entries.push(
                 { separator: true, key: 'workspace', label: t('rail.section_workspace') },
                 { id: 'my-dashboard', href: wsHref('/dashboard'), label: t('rail.dashboard'), icon: 'home', match: railMatch((s) => s.startsWith('/dashboard')) },
-                { id: 'about', href: wsHref('/about'), label: t('rail.about'), icon: 'workspace', match: railMatch((s) => s.startsWith('/about')) },
                 { id: 'files', href: wsHref('/files'), label: t('rail.files'), icon: 'disk', match: railMatch((s) => s.startsWith('/files') && !s.startsWith('/files/company')), hideWhen: () => !globalFilesEnabled.value || !ws?.files_feature_enabled },
                 { id: 'company-files', href: wsHref('/files/company'), label: t('rail.company_files'), icon: 'workspace', match: railMatch((s) => s.startsWith('/files/company')), hideWhen: () => !tenancyEnabled.value || !globalFilesEnabled.value || !ws?.company_files_enabled || !canViewCompanyFiles.value },
                 // Demo entity documents. Remove this entry (and the Assets

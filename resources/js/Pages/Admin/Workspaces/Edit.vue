@@ -30,10 +30,6 @@ interface WorkspaceData {
     id: number;
     slug: string;
     name: string;
-    headline: string | null;
-    about: string | null;
-    location: string | null;
-    website: string | null;
     status: 'active' | 'suspended';
     files_feature_enabled: boolean;
     company_files_enabled: boolean;

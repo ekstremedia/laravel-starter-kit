@@ -11,7 +11,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Spatie\Activitylog\Models\Activity;
 
 class DashboardController extends Controller
 {
@@ -50,38 +49,10 @@ class DashboardController extends Controller
             ];
         }
 
-        // Workspace-scoped activity: stamped via the `Activity::creating`
-        // hook in AppServiceProvider, so we filter directly on `workspace_id`.
-        // A user who's Admin on A and plain User on B would otherwise
-        // surface B's actions on A's dashboard — a causer-id IN (members)
-        // filter can't separate them because the same user is in both
-        // member lists. `activity_log` lives in the one shared database; the
-        // explicit central connection is vestigial and resolves to the
-        // default connection.
-        $activity = [];
-        if ($workspace !== null) {
-            $centralConnection = (string) config('workspaces.database.central_connection');
-            $activity = Activity::on($centralConnection)
-                ->where('workspace_id', $workspace->getKey())
-                ->latest()
-                ->limit(8)
-                ->get()
-                ->map(fn (Activity $a) => [
-                    'id' => $a->id,
-                    'created_at' => $a->created_at?->toIso8601String(),
-                    'description' => $a->description,
-                    'event' => $a->event,
-                    'log_name' => $a->log_name,
-                ])
-                ->values()
-                ->all();
-        }
-
         return Inertia::render('Dashboard', [
             'memberCount' => $memberCount,
             'filesStats' => $filesStats,
             'chatStats' => $chatStats,
-            'activity' => $activity,
         ]);
     }
 }

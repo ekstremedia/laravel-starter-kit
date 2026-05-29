@@ -37,7 +37,7 @@ it('exposes each member with their workspace-scoped role(s) and a public_id on t
         });
 });
 
-it('saves workspace profile fields from the admin edit page', function () {
+it('saves workspace name and status from the admin edit page', function () {
     $super = makeSuperAdmin(User::factory()->create());
     $workspace = createWorkspace();
 
@@ -45,20 +45,10 @@ it('saves workspace profile fields from the admin edit page', function () {
         ->patch(route('admin.workspaces.update', $workspace), [
             'name' => 'Updated Co',
             'status' => 'suspended',
-            // Whitespace-padded — exercises the trim normalization in
-            // WorkspaceController::update().
-            'headline' => '  tagline  ',
-            'about' => 'about text',
-            'location' => 'Oslo',
-            'website' => 'https://example.com',
         ])
         ->assertSessionHasNoErrors();
 
     $fresh = $workspace->fresh();
     expect($fresh->name)->toBe('Updated Co');
     expect($fresh->status)->toBe('suspended');
-    expect($fresh->headline)->toBe('tagline');
-    expect($fresh->about)->toBe('about text');
-    expect($fresh->location)->toBe('Oslo');
-    expect($fresh->website)->toBe('https://example.com');
 });

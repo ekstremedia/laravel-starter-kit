@@ -11,25 +11,16 @@ import { Head, Link, usePage } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import { computed } from 'vue';
 import AppLayout from '@/Layouts/CommandLayout.vue';
-import Dot from '@/Components/Command/Dot.vue';
 import Icon from '@/Components/Command/Icon.vue';
 import { useWorkspace } from '@/composables/useWorkspace';
 import type { PageProps } from '@/types';
 
-interface ActivityRow {
-    id: number;
-    created_at: string | null;
-    description: string;
-    event: string | null;
-    log_name: string | null;
-}
 interface FilesStats { count: number; bytes: number }
 interface ChatStats { unread: number }
 interface Props {
     memberCount: number;
     filesStats: FilesStats | null;
     chatStats: ChatStats | null;
-    activity: ActivityRow[];
 }
 
 const props = defineProps<Props>();
@@ -41,30 +32,11 @@ const workspace = computed(() => page.props.workspace);
 const isAdmin = computed(() => user.value?.is_super_admin === true);
 const { workspaceUrl } = useWorkspace();
 
-const headerMeta = computed(() => {
-    const now = new Date();
-    const date = now.toLocaleDateString('nb-NO', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const time = now.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
-    return `${date} · ${time}`;
-});
-
 function formatBytes(bytes: number): string {
     if (!bytes) return '0 B';
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
-}
-
-function formatTime(iso: string | null): string {
-    if (!iso) return '—';
-    const d = new Date(iso);
-    return d.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatDate(iso: string | null): string {
-    if (!iso) return '—';
-    const d = new Date(iso);
-    return d.toLocaleDateString('nb-NO', { day: '2-digit', month: '2-digit' });
 }
 </script>
 
@@ -73,17 +45,6 @@ function formatDate(iso: string | null): string {
         <Head :title="t('nav.dashboard')" />
 
         <div :style="{ maxWidth: '880px', margin: '0 auto', padding: '32px 16px' }">
-            <div
-                class="cmd-mono"
-                :style="{ fontSize: '10.5px', color: 'var(--fg-mute)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '10px' }"
-            >
-                <span>{{ headerMeta }}</span>
-                <span>·</span>
-                <span :style="{ display: 'flex', alignItems: 'center', gap: '4px' }">
-                    <Dot color="var(--success)" :size="5" />{{ t('home.all_operational') }}
-                </span>
-            </div>
-
             <h1
                 :style="{ margin: 0, fontSize: '32px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--fg)' }"
             >{{ workspace?.name ?? t('nav.dashboard') }}</h1>
@@ -104,28 +65,6 @@ function formatDate(iso: string | null): string {
                     overflow: 'hidden',
                 }"
             >
-                <!-- Workspace identity -->
-                <div :style="{ background: 'var(--panel)', padding: '14px 16px' }">
-                    <div
-                        class="cmd-mono cmd-uc"
-                        :style="{ fontSize: '10px', color: 'var(--fg-mute)', marginBottom: '8px', fontWeight: 500 }"
-                    >{{ t('dashboard.workspace') }}</div>
-                    <div :style="{ display: 'flex', alignItems: 'center', gap: '8px' }">
-                        <span
-                            class="cmd-mono"
-                            :style="{
-                                fontSize: '11px',
-                                color: 'var(--accent)',
-                                background: 'var(--accent-soft)',
-                                border: '1px solid var(--accent-border)',
-                                padding: '2px 8px',
-                                borderRadius: '3px',
-                            }"
-                        >{{ workspace?.slug ?? '—' }}</span>
-                        <span :style="{ fontSize: '13px', color: 'var(--fg)' }">{{ workspace?.name ?? '—' }}</span>
-                    </div>
-                </div>
-
                 <!-- Members -->
                 <div :style="{ background: 'var(--panel)', padding: '14px 16px' }">
                     <div
@@ -181,35 +120,6 @@ function formatDate(iso: string | null): string {
                         href="/chat"
                         :style="{ fontSize: '11.5px', color: 'var(--accent)', textDecoration: 'none', display: 'inline-block', marginTop: '6px' }"
                     >{{ t('dashboard.open_chat') }} →</Link>
-                </div>
-            </div>
-
-            <!-- Workspace activity -->
-            <div
-                class="cmd-mono cmd-uc"
-                :style="{ marginTop: '32px', fontSize: '10px', color: 'var(--fg-mute)', marginBottom: '10px', fontWeight: 500 }"
-            >{{ t('dashboard.recent_workspace_activity') }}</div>
-
-            <div class="cmd-card" :style="{ padding: '12px 16px', fontSize: '12px' }">
-                <div
-                    v-if="activity.length === 0"
-                    :style="{ padding: '6px 0', color: 'var(--fg-mute)', fontStyle: 'italic' }"
-                >{{ t('dashboard.no_workspace_activity') }}</div>
-                <div
-                    v-for="(row, i) in activity"
-                    :key="row.id"
-                    :style="{
-                        display: 'grid',
-                        gridTemplateColumns: '90px 1fr',
-                        gap: '12px',
-                        padding: '6px 0',
-                        borderTop: i === 0 ? 'none' : '1px solid var(--border)',
-                    }"
-                >
-                    <span class="cmd-mono" :style="{ color: 'var(--fg-mute)' }">
-                        {{ formatDate(row.created_at) }} {{ formatTime(row.created_at) }}
-                    </span>
-                    <span :style="{ color: 'var(--fg-dim)' }">{{ row.description }}</span>
                 </div>
             </div>
 

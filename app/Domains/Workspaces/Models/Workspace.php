@@ -20,10 +20,6 @@ use Spatie\Permission\PermissionRegistrar;
  * @property int $id
  * @property string $slug
  * @property string $name
- * @property string|null $headline
- * @property string|null $about
- * @property string|null $location
- * @property string|null $website
  * @property string $status
  * @property bool $files_feature_enabled
  * @property bool $company_files_enabled
