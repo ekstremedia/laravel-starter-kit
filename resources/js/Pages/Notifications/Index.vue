@@ -18,7 +18,7 @@ defineOptions({ layout: CommandLayout });
 interface NotificationItem {
     id: string;
     type: string;
-    data: { title?: string; message?: string; icon?: string };
+    data: { title?: string; message?: string; icon?: string; action_url?: string };
     read_at: string | null;
     created_at: string;
 }
@@ -54,6 +54,13 @@ function markOneRead(n: NotificationItem) {
             decrementNotifications(1);
         },
     });
+}
+
+// Click marks read and, if the notification carries an action_url (e.g. a chat
+// message → its conversation), navigates there.
+function onNotificationClick(n: NotificationItem) {
+    markOneRead(n);
+    if (n.data.action_url) router.visit(n.data.action_url);
 }
 
 function deleteOne(n: NotificationItem) {
@@ -140,7 +147,7 @@ function title(n: NotificationItem): string {
                 :key="n.id"
                 @mouseenter="hoverId = n.id"
                 @mouseleave="hoverId = null"
-                @click="markOneRead(n)"
+                @click="onNotificationClick(n)"
                 :style="{
                     display: 'grid',
                     gridTemplateColumns: '10px 1fr auto',

@@ -422,6 +422,13 @@ class ChatController extends Controller
             'last_read_at' => now(),
         ]);
 
+        // Reading the conversation also clears its chat notifications from the
+        // bell, so the unread badge can't linger after the messages are read.
+        $request->user()->unreadNotifications()
+            ->where('type', NewChatMessageNotification::class)
+            ->where('data->conversation_id', $conversation->id)
+            ->update(['read_at' => now()]);
+
         return response()->json(['ok' => true]);
     }
 
@@ -437,6 +444,11 @@ class ChatController extends Controller
             ->table('conversation_user')
             ->where('user_id', $user->id)
             ->update(['last_read_at' => $now, 'updated_at' => $now]);
+
+        // Clear all chat notifications from the bell to match.
+        $user->unreadNotifications()
+            ->where('type', NewChatMessageNotification::class)
+            ->update(['read_at' => $now]);
 
         return response()->json(['ok' => true]);
     }
