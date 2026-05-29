@@ -8,6 +8,7 @@ import Field from '@/Components/Command/Field.vue';
 import Toggle from '@/Components/Command/Toggle.vue';
 import Icon from '@/Components/Command/Icon.vue';
 import Dot from '@/Components/Command/Dot.vue';
+import PageTitle from '@/Components/Command/PageTitle.vue';
 import { useCommandToasts } from '@/composables/useCommandToasts';
 import { humanBytes as sharedHumanBytes } from '@/utils/bytes';
 
@@ -194,30 +195,28 @@ function detach(member: Member) {
     <div>
         <Head :title="`${workspace.name} · Admin`" />
 
-        <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '18px', gap: '16px' }">
-        <div :style="{ minWidth: 0 }">
-            <h1 :style="{ margin: 0, fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--fg)' }">
-                {{ workspace.name }}
-            </h1>
-            <div
-                class="cmd-mono"
-                :style="{ marginTop: '4px', fontSize: '11.5px', color: 'var(--fg-mute)', display: 'flex', alignItems: 'center', gap: '8px' }"
-            >
-                <code :style="{ background: 'var(--panel2)', border: '1px solid var(--border)', padding: '1px 6px', borderRadius: '3px', color: 'var(--fg-dim)' }">/w/{{ workspace.slug }}</code>
-                <span>·</span>
-                <span :style="{ display: 'inline-flex', alignItems: 'center', gap: '5px' }">
-                    <Dot :color="workspace.status === 'active' ? 'var(--success)' : 'var(--warning)'" :size="5" />
-                    <span :style="{ color: workspace.status === 'active' ? 'var(--fg)' : 'var(--fg-dim)' }">{{ workspace.status }}</span>
+        <div :style="{ marginBottom: '4px' }">
+        <PageTitle :title="workspace.name">
+            <template #subtitle>
+                <span :style="{ display: 'inline-flex', alignItems: 'center', gap: '8px' }">
+                    <code :style="{ background: 'var(--panel2)', border: '1px solid var(--border)', padding: '1px 6px', borderRadius: '3px', color: 'var(--fg-dim)' }">/w/{{ workspace.slug }}</code>
+                    <span>·</span>
+                    <span :style="{ display: 'inline-flex', alignItems: 'center', gap: '5px' }">
+                        <Dot :color="workspace.status === 'active' ? 'var(--success)' : 'var(--warning)'" :size="5" />
+                        <span :style="{ color: workspace.status === 'active' ? 'var(--fg)' : 'var(--fg-dim)' }">{{ workspace.status }}</span>
+                    </span>
                 </span>
-            </div>
-        </div>
-        <Link
-            href="/admin/workspaces"
-            :style="{ fontSize: '11.5px', color: 'var(--fg-dim)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px' }"
-        >
-            <Icon name="chevR" :size="10" :style="{ transform: 'rotate(180deg)' }" />
-            {{ t('common.back') }}
-        </Link>
+            </template>
+            <template #actions>
+                <Link
+                    href="/admin/workspaces"
+                    :style="{ fontSize: '11.5px', color: 'var(--fg-dim)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px' }"
+                >
+                    <Icon name="chevR" :size="10" :style="{ transform: 'rotate(180deg)' }" />
+                    {{ t('common.back') }}
+                </Link>
+            </template>
+        </PageTitle>
     </div>
 
     <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }">

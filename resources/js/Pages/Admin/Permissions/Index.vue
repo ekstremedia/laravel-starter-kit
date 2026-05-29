@@ -6,6 +6,7 @@ import { useConfirm } from 'primevue/useconfirm';
 import CommandLayout from '@/Layouts/CommandLayout.vue';
 import CmdDataTable, { type Column } from '@/Components/Command/DataTable.vue';
 import Icon from '@/Components/Command/Icon.vue';
+import PageTitle from '@/Components/Command/PageTitle.vue';
 import { useCommandToasts } from '@/composables/useCommandToasts';
 
 defineOptions({ layout: CommandLayout });
@@ -64,17 +65,9 @@ function destroy(p: Permission) {
     <div>
     <Head :title="t('admin.permissions.head_title')" />
 
-    <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '14px' }">
-        <div>
-            <h1 :style="{ margin: 0, fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--fg)' }">
-                {{ t('admin.permissions.title') }}
-            </h1>
-            <div
-                class="cmd-mono"
-                :style="{ marginTop: '3px', fontSize: '11.5px', color: 'var(--fg-mute)' }"
-            >{{ permissions.length }} {{ t('admin.permissions.title').toLowerCase() }}</div>
-        </div>
-    </div>
+    <PageTitle :title="t('admin.permissions.title')">
+        <template #subtitle>{{ permissions.length }} {{ t('admin.permissions.title').toLowerCase() }}</template>
+    </PageTitle>
 
     <!-- Quick-add form -->
     <form

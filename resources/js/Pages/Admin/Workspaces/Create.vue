@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n';
 import CommandLayout from '@/Layouts/CommandLayout.vue';
 import Field from '@/Components/Command/Field.vue';
 import Icon from '@/Components/Command/Icon.vue';
+import PageTitle from '@/Components/Command/PageTitle.vue';
 
 defineOptions({ layout: CommandLayout });
 
@@ -35,17 +36,18 @@ function onNameBlur() {
     <div>
     <Head :title="t('admin.workspaces.new_workspace') + ' · Admin'" />
 
-    <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '18px' }">
-        <h1 :style="{ margin: 0, fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--fg)' }">
-            {{ t('admin.workspaces.new_workspace') }}
-        </h1>
-        <Link
-            href="/admin/workspaces"
-            :style="{ fontSize: '11.5px', color: 'var(--fg-dim)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px' }"
-        >
-            <Icon name="chevR" :size="10" :style="{ transform: 'rotate(180deg)' }" />
-            {{ t('common.back') }}
-        </Link>
+    <div :style="{ marginBottom: '4px' }">
+        <PageTitle :title="t('admin.workspaces.new_workspace')">
+            <template #actions>
+                <Link
+                    href="/admin/workspaces"
+                    :style="{ fontSize: '11.5px', color: 'var(--fg-dim)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px' }"
+                >
+                    <Icon name="chevR" :size="10" :style="{ transform: 'rotate(180deg)' }" />
+                    {{ t('common.back') }}
+                </Link>
+            </template>
+        </PageTitle>
     </div>
 
     <form

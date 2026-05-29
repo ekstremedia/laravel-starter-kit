@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n';
 import CommandLayout from '@/Layouts/CommandLayout.vue';
 import Dot from '@/Components/Command/Dot.vue';
 import Icon from '@/Components/Command/Icon.vue';
+import PageTitle from '@/Components/Command/PageTitle.vue';
 import Skeleton from '@/Components/Command/Skeleton.vue';
 import Toggle from '@/Components/Command/Toggle.vue';
 import { useCommandToasts } from '@/composables/useCommandToasts';
@@ -172,46 +173,41 @@ const roleOpen = ref(false);
 
         <!-- Content -->
         <div :style="{ flex: 1, minWidth: 0 }">
-            <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '20px' }">
-                <div>
-                    <h1 :style="{ margin: 0, fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--fg)' }">{{ t('admin.app_settings.title') }}</h1>
-                    <div
-                        class="cmd-mono"
-                        :style="{ marginTop: '3px', fontSize: '11.5px', color: 'var(--fg-mute)' }"
-                    >{{ t('admin.app_settings.subtitle') }}</div>
-                </div>
-                <div :style="{ display: 'flex', gap: '6px', alignItems: 'center' }">
-                    <span
-                        v-if="dirty"
-                        :style="{ fontSize: '11px', color: 'var(--warning)', display: 'flex', alignItems: 'center', gap: '5px' }"
-                    >
-                        <Dot color="var(--warning)" :size="5" />
-                        {{ t('admin.app_settings.unsaved') }}
-                    </span>
-                    <button
-                        v-if="dirty"
-                        type="button"
-                        @click="discard"
-                        :style="{ background: 'transparent', color: 'var(--fg-dim)', border: '1px solid var(--border)', padding: '5px 10px', borderRadius: '5px', fontSize: '11.5px', cursor: 'pointer', fontFamily: 'inherit' }"
-                    >{{ t('admin.app_settings.discard') }}</button>
-                    <button
-                        type="button"
-                        :disabled="form.processing || !dirty"
-                        @click="save"
-                        :style="{
-                            background: 'var(--accent)',
-                            color: '#fff',
-                            border: 'none',
-                            padding: '5px 11px',
-                            borderRadius: '5px',
-                            fontSize: '11.5px',
-                            fontWeight: 500,
-                            cursor: form.processing || !dirty ? 'not-allowed' : 'pointer',
-                            opacity: form.processing || !dirty ? 0.55 : 1,
-                            fontFamily: 'inherit',
-                        }"
-                    >{{ t('common.save') }}</button>
-                </div>
+            <div :style="{ marginBottom: '6px' }">
+                <PageTitle :title="t('admin.app_settings.title')" :subtitle="t('admin.app_settings.subtitle')">
+                    <template #actions>
+                        <span
+                            v-if="dirty"
+                            :style="{ fontSize: '11px', color: 'var(--warning)', display: 'flex', alignItems: 'center', gap: '5px' }"
+                        >
+                            <Dot color="var(--warning)" :size="5" />
+                            {{ t('admin.app_settings.unsaved') }}
+                        </span>
+                        <button
+                            v-if="dirty"
+                            type="button"
+                            @click="discard"
+                            :style="{ background: 'transparent', color: 'var(--fg-dim)', border: '1px solid var(--border)', padding: '5px 10px', borderRadius: '5px', fontSize: '11.5px', cursor: 'pointer', fontFamily: 'inherit' }"
+                        >{{ t('admin.app_settings.discard') }}</button>
+                        <button
+                            type="button"
+                            :disabled="form.processing || !dirty"
+                            @click="save"
+                            :style="{
+                                background: 'var(--accent)',
+                                color: '#fff',
+                                border: 'none',
+                                padding: '5px 11px',
+                                borderRadius: '5px',
+                                fontSize: '11.5px',
+                                fontWeight: 500,
+                                cursor: form.processing || !dirty ? 'not-allowed' : 'pointer',
+                                opacity: form.processing || !dirty ? 0.55 : 1,
+                                fontFamily: 'inherit',
+                            }"
+                        >{{ t('common.save') }}</button>
+                    </template>
+                </PageTitle>
             </div>
 
             <div :style="{ maxWidth: '640px' }">
