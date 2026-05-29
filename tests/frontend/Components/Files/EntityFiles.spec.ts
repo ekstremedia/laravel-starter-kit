@@ -2,13 +2,13 @@ import { mount } from '@vue/test-utils';
 import { describe, it, expect, vi } from 'vitest';
 import { router } from '@inertiajs/vue3';
 
-vi.mock('@/composables/useCustomer', () => ({
-    useCustomer: () => ({ customerUrl: (p: string) => `/c/acme${p}` }),
+vi.mock('@/composables/useWorkspace', () => ({
+    useWorkspace: () => ({ workspaceUrl: (p: string) => `/w/acme${p}` }),
 }));
 
 import EntityFiles from '@/Components/Files/EntityFiles.vue';
 
-const folderUrl = (id: number | null) => (id === null ? '/c/acme/assets/1' : `/c/acme/assets/1/folders/${id}`);
+const folderUrl = (id: number | null) => (id === null ? '/w/acme/assets/1' : `/w/acme/assets/1/folders/${id}`);
 
 const fileRow = (over: Record<string, unknown>) => ({
     id: 0, uuid: 'u', type: 'file', name: 'f', mime_type: null, size: 0, parent_id: null,
@@ -58,6 +58,6 @@ describe('Files/EntityFiles', () => {
     it('navigates into a folder on click', async () => {
         const w = mount(EntityFiles, { props: baseProps });
         await w.findAll('.cmd-file-card')[0].trigger('click');
-        expect(router.visit).toHaveBeenCalledWith('/c/acme/assets/1/folders/5');
+        expect(router.visit).toHaveBeenCalledWith('/w/acme/assets/1/folders/5');
     });
 });

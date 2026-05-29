@@ -11,7 +11,7 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
- * Fired when a customer admin (or super admin) deletes a native company file
+ * Fired when a workspace admin (or super admin) deletes a native company file
  * that someone else uploaded. Channels are chosen by the acting admin in the
  * delete dialog — the admin can decide per-action whether the owner gets an
  * in-app notification, an email, both, or nothing.
@@ -23,8 +23,8 @@ class CompanyFileDeletedByAdminNotification extends Notification implements Shou
 
     public function __construct(
         public string $fileName,
-        public int $tenantId,
-        public string $tenantName,
+        public int $workspaceId,
+        public string $workspaceName,
         public string $actorName,
         public bool $sendEmail = true,
         public bool $sendDatabase = true,
@@ -50,7 +50,7 @@ class CompanyFileDeletedByAdminNotification extends Notification implements Shou
     {
         return $this->renderTemplate('company-file-deleted', $notifiable, [
             'file_name' => $this->fileName,
-            'tenant_name' => $this->tenantName,
+            'tenant_name' => $this->workspaceName,
             'actor_name' => $this->actorName,
             'app_name' => (string) config('app.name'),
             'app_url' => (string) config('app.url'),
@@ -58,21 +58,21 @@ class CompanyFileDeletedByAdminNotification extends Notification implements Shou
     }
 
     /**
-     * @return array{title: string, message: string, icon: string, tenant_id: int, file_name: string}
+     * @return array{title: string, message: string, icon: string, workspace_id: int, file_name: string}
      */
     public function toArray(object $notifiable): array
     {
         $locale = $this->localeFor($notifiable);
 
         return [
-            'title' => __('files.company_deleted_title', ['tenant' => $this->tenantName], $locale),
+            'title' => __('files.company_deleted_title', ['workspace' => $this->workspaceName], $locale),
             'message' => __('files.company_deleted_body', [
                 'file' => $this->fileName,
-                'tenant' => $this->tenantName,
+                'workspace' => $this->workspaceName,
                 'actor' => $this->actorName,
             ], $locale),
             'icon' => 'pi-trash',
-            'tenant_id' => $this->tenantId,
+            'workspace_id' => $this->workspaceId,
             'file_name' => $this->fileName,
         ];
     }

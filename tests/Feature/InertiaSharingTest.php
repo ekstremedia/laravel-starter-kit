@@ -8,13 +8,13 @@ use Illuminate\Support\Facades\Storage;
 beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
     Storage::fake('public');
-    $this->customer = createCustomer();
-    $this->dashboardUrl = customerUrl($this->customer, '/dashboard');
+    $this->workspace = createWorkspace();
+    $this->dashboardUrl = workspaceUrl($this->workspace, '/dashboard');
 });
 
 it('shares avatar urls as null when no photo uploaded', function () {
     $user = User::factory()->create();
-    joinCustomer($user, $this->customer);
+    joinWorkspace($user, $this->workspace);
 
     $this->actingAs($user)
         ->get($this->dashboardUrl)
@@ -27,7 +27,7 @@ it('shares avatar urls as null when no photo uploaded', function () {
 
 it('shares avatar urls after upload', function () {
     $user = User::factory()->create();
-    joinCustomer($user, $this->customer);
+    joinWorkspace($user, $this->workspace);
 
     $user->addMedia(UploadedFile::fake()->image('a.png', 400, 400))
         ->toMediaCollection('avatar');
@@ -41,9 +41,9 @@ it('shares avatar urls after upload', function () {
         );
 });
 
-it('shares customer-scoped roles and permissions for authenticated users', function () {
+it('shares workspace-scoped roles and permissions for authenticated users', function () {
     $user = User::factory()->create();
-    grantRoleOnCustomer($user, 'Editor', $this->customer);
+    grantRoleOnWorkspace($user, 'Editor', $this->workspace);
 
     $this->actingAs($user)
         ->get($this->dashboardUrl)
@@ -62,7 +62,7 @@ it('shares null auth.user for guests', function () {
 
 it('shares user settings for authenticated users', function () {
     $user = User::factory()->create();
-    joinCustomer($user, $this->customer);
+    joinWorkspace($user, $this->workspace);
 
     $this->actingAs($user)
         ->get($this->dashboardUrl)
@@ -72,81 +72,81 @@ it('shares user settings for authenticated users', function () {
         );
 });
 
-it('shares the active customer while inside /c/<slug>', function () {
+it('shares the active workspace while inside /w/<slug>', function () {
     $user = User::factory()->create();
-    joinCustomer($user, $this->customer);
+    joinWorkspace($user, $this->workspace);
 
     $this->actingAs($user)
         ->get($this->dashboardUrl)
         ->assertInertia(fn ($page) => $page
-            ->where('customer.slug', $this->customer->slug)
-            ->where('customer.name', $this->customer->name)
+            ->where('workspace.slug', $this->workspace->slug)
+            ->where('workspace.name', $this->workspace->name)
         );
 });
 
-it('shares null customer on central routes', function () {
+it('shares null workspace on central routes', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
         ->get('/')
-        ->assertInertia(fn ($page) => $page->where('customer', null));
+        ->assertInertia(fn ($page) => $page->where('workspace', null));
 });
 
-it('resolves current_customer to the user membership on a central route', function () {
+it('resolves current_workspace to the user membership on a central route', function () {
     $user = User::factory()->create();
-    joinCustomer($user, $this->customer, 'User');
+    joinWorkspace($user, $this->workspace, 'User');
 
     $this->actingAs($user)
         ->get('/')
         ->assertInertia(fn ($page) => $page
-            ->where('current_customer.slug', $this->customer->slug)
-            ->where('current_customer.is_admin', false)
+            ->where('current_workspace.slug', $this->workspace->slug)
+            ->where('current_workspace.is_admin', false)
             // The 'User' role carries 'view company files'.
-            ->where('current_customer.can_view_company_files', true)
+            ->where('current_workspace.can_view_company_files', true)
         );
 });
 
-it('marks current_customer.is_admin true for a workspace admin on a central route', function () {
+it('marks current_workspace.is_admin true for a workspace admin on a central route', function () {
     $user = User::factory()->create();
-    grantRoleOnCustomer($user, 'Admin', $this->customer);
+    grantRoleOnWorkspace($user, 'Admin', $this->workspace);
 
     $this->actingAs($user)
         ->get('/')
         ->assertInertia(fn ($page) => $page
-            ->where('current_customer.slug', $this->customer->slug)
-            ->where('current_customer.is_admin', true)
-            ->where('current_customer.can_view_company_files', true)
+            ->where('current_workspace.slug', $this->workspace->slug)
+            ->where('current_workspace.is_admin', true)
+            ->where('current_workspace.can_view_company_files', true)
         );
 });
 
-it('shares the active customer as current_customer inside /c/<slug>', function () {
+it('shares the active workspace as current_workspace inside /w/<slug>', function () {
     $user = User::factory()->create();
-    joinCustomer($user, $this->customer, 'User');
+    joinWorkspace($user, $this->workspace, 'User');
 
     $this->actingAs($user)
         ->get($this->dashboardUrl)
         ->assertInertia(fn ($page) => $page
-            ->where('current_customer.slug', $this->customer->slug)
-            ->where('current_customer.is_admin', false)
+            ->where('current_workspace.slug', $this->workspace->slug)
+            ->where('current_workspace.is_admin', false)
         );
 });
 
-it('prefers the last-visited customer when the user has several', function () {
-    $other = createCustomer('globex', 'Globex');
+it('prefers the last-visited workspace when the user has several', function () {
+    $other = createWorkspace('globex', 'Globex');
     $user = User::factory()->create();
-    joinCustomer($user, $this->customer, 'User');
-    joinCustomer($user, $other, 'User');
-    $user->settings()->merge(['last_customer_slug' => $other->slug]);
+    joinWorkspace($user, $this->workspace, 'User');
+    joinWorkspace($user, $other, 'User');
+    $user->settings()->merge(['last_workspace_slug' => $other->slug]);
 
     $this->actingAs($user)
         ->get('/')
-        ->assertInertia(fn ($page) => $page->where('current_customer.slug', $other->slug));
+        ->assertInertia(fn ($page) => $page->where('current_workspace.slug', $other->slug));
 });
 
-it('shares null current_customer for a user with no membership', function () {
+it('shares null current_workspace for a user with no membership', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
         ->get('/')
-        ->assertInertia(fn ($page) => $page->where('current_customer', null));
+        ->assertInertia(fn ($page) => $page->where('current_workspace', null));
 });

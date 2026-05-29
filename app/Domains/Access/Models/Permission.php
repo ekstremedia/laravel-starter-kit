@@ -8,14 +8,14 @@ use Spatie\Permission\Models\Permission as SpatiePermission;
 
 /**
  * Pinned to the central connection — spatie/laravel-permission tables
- * live in the central schema, but stancl/tenancy swaps the default
- * connection to the tenant mid-request, so permission lookups would
- * otherwise hit the wrong database.
+ * live in the one shared database. The pin is vestigial (it resolves to
+ * the single default connection); there is no per-request connection swap
+ * to undo. Left in place so the subclass keeps an explicit home.
  */
 class Permission extends SpatiePermission
 {
     public function getConnectionName(): ?string
     {
-        return (string) config('tenancy.database.central_connection', 'central');
+        return (string) config('workspaces.database.central_connection', 'central');
     }
 }

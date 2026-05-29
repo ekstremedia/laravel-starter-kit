@@ -209,15 +209,15 @@ class ChatController extends Controller
 
         // Drop banned/invalid users *and* enforce the same tenancy scope the
         // search endpoint uses — a non-admin must only be able to start
-        // conversations with users from their shared customers.
+        // conversations with users from their shared workspaces.
         $allowedQuery = User::on($connection)
             ->notBanned()
             ->whereIn('id', $participantIds);
 
         if (! $user->isSuperAdmin()) {
-            $customerIds = $user->customers()->pluck('tenants.id');
-            $allowedQuery->whereHas('customers', function ($q) use ($customerIds) {
-                $q->whereIn('tenants.id', $customerIds);
+            $workspaceIds = $user->workspaces()->pluck('workspaces.id');
+            $allowedQuery->whereHas('workspaces', function ($q) use ($workspaceIds) {
+                $q->whereIn('workspaces.id', $workspaceIds);
             });
         }
 
@@ -463,11 +463,11 @@ class ChatController extends Controller
             });
 
         // When tenancy is enabled and user is not admin, limit to users
-        // who share at least one customer (company) with the searcher.
+        // who share at least one workspace (company) with the searcher.
         if (! $user->isSuperAdmin()) {
-            $customerIds = $user->customers()->pluck('tenants.id');
-            $usersQuery->whereHas('customers', function ($q) use ($customerIds) {
-                $q->whereIn('tenants.id', $customerIds);
+            $workspaceIds = $user->workspaces()->pluck('workspaces.id');
+            $usersQuery->whereHas('workspaces', function ($q) use ($workspaceIds) {
+                $q->whereIn('workspaces.id', $workspaceIds);
             });
         }
 

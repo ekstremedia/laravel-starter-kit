@@ -1,10 +1,10 @@
 import { mount } from '@vue/test-utils';
 import { describe, it, expect, vi } from 'vitest';
 
-vi.mock('@/composables/useCustomer', () => ({
-    useCustomer: () => ({
-        customerUrl: (p: string) => `/c/acme${p}`,
-        customer: { value: { files_feature_enabled: true, company_files_enabled: true } },
+vi.mock('@/composables/useWorkspace', () => ({
+    useWorkspace: () => ({
+        workspaceUrl: (p: string) => `/w/acme${p}`,
+        workspace: { value: { files_feature_enabled: true, company_files_enabled: true } },
     }),
 }));
 

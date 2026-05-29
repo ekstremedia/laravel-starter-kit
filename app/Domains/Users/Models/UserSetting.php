@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *     files_enabled: bool,
  *     storage_quota_override: int|null,
  *     storage_last_alerted_threshold: array<string, int>|null,
- *     last_customer_slug: string|null,
+ *     last_workspace_slug: string|null,
  * }
  */
 class UserSetting extends Model
@@ -26,14 +26,14 @@ class UserSetting extends Model
     protected $fillable = ['user_id', 'settings'];
 
     /**
-     * Pin every read/write to the central tenancy connection. Without this,
-     * stancl/tenancy swaps the default connection to the active tenant on
-     * InitializeTenancyByPath requests, and merge()/save() would then write
-     * user_settings into the wrong schema.
+     * Pin every read/write to the central connection. The pin is vestigial —
+     * user_settings lives in the one shared database and this resolves to the
+     * single default connection, so there is no per-request connection swap
+     * to undo.
      */
     public function getConnectionName(): ?string
     {
-        return config('tenancy.database.central_connection');
+        return config('workspaces.database.central_connection');
     }
 
     protected $casts = [
@@ -56,7 +56,7 @@ class UserSetting extends Model
         'notification_system_alerts' => true,
         'notification_storage_alerts' => true,
         // Per-user opt-OUT for the personal file system. Defaults to true so
-        // anyone who's a member of a customer with files_feature_enabled
+        // anyone who's a member of a workspace with files_feature_enabled
         // sees /files automatically. Power users can flip this off via the
         // settings API; most never will.
         'files_enabled' => true,
@@ -69,9 +69,9 @@ class UserSetting extends Model
         // Highest threshold (80/95/100) we've already notified about, so we
         // don't spam the same warning every upload. Reset to null on delete.
         'storage_last_alerted_threshold' => null,
-        // Most recently visited customer slug — used by CustomerLandingController
+        // Most recently visited workspace slug — used by WorkspaceLandingController
         // to auto-redirect returning users instead of forcing them through the picker.
-        'last_customer_slug' => null,
+        'last_workspace_slug' => null,
     ];
 
     public function user(): BelongsTo

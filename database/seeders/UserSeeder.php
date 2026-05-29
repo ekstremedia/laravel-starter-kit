@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
 use Faker\Factory as Faker;
 use Faker\Generator;
 use Illuminate\Database\Seeder;
@@ -16,14 +16,14 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        $defaultCustomer = Tenant::query()
-            ->where('slug', config('tenancy.default_customer_slug', 'default'))
+        $defaultWorkspace = Workspace::query()
+            ->where('slug', config('workspaces.default_workspace_slug', 'default'))
             ->first();
 
         // SuperAdmin (from .env) — platform super-user. The `is_super_admin`
         // boolean on the user row is the single source of truth; it grants
-        // access to /admin/*, lets them enter any customer, and bypasses
-        // customer-scoped role checks.
+        // access to /admin/*, lets them enter any workspace, and bypasses
+        // workspace-scoped role checks.
         $admin = User::firstOrCreate(
             ['email' => env('STARTER_ADMIN_EMAIL', 'admin@example.test')],
             [
@@ -39,10 +39,10 @@ class UserSeeder extends Seeder
         if (! $admin->is_super_admin) {
             $admin->forceFill(['is_super_admin' => true])->save();
         }
-        $this->attachToCustomer($admin, $defaultCustomer);
-        // Also give them a customer-scoped Admin role on the default customer
+        $this->attachToWorkspace($admin, $defaultWorkspace);
+        // Also give them a workspace-scoped Admin role on the default workspace
         // so they have a full member role when they enter it.
-        $this->assignCustomerRole($admin, 'Admin', $defaultCustomer);
+        $this->assignWorkspaceRole($admin, 'Admin', $defaultWorkspace);
 
         if (! env('SEED_DEMO_USERS', false)) {
             return;
@@ -51,8 +51,8 @@ class UserSeeder extends Seeder
         $faker = Faker::create('nb_NO');
         $password = Hash::make('password');
 
-        $this->seedRole($faker, 'Editor', 3, $password, $defaultCustomer);
-        $this->seedRole($faker, 'User', 8, $password, $defaultCustomer);
+        $this->seedRole($faker, 'Editor', 3, $password, $defaultWorkspace);
+        $this->seedRole($faker, 'User', 8, $password, $defaultWorkspace);
 
         // One unverified user so devs can exercise the verify flow
         $unverified = User::firstOrCreate(
@@ -64,11 +64,11 @@ class UserSeeder extends Seeder
                 'email_verified_at' => null,
             ],
         );
-        $this->attachToCustomer($unverified, $defaultCustomer);
-        $this->assignCustomerRole($unverified, 'User', $defaultCustomer);
+        $this->attachToWorkspace($unverified, $defaultWorkspace);
+        $this->assignWorkspaceRole($unverified, 'User', $defaultWorkspace);
     }
 
-    private function seedRole(Generator $faker, string $role, int $count, string $password, ?Tenant $customer): void
+    private function seedRole(Generator $faker, string $role, int $count, string $password, ?Workspace $workspace): void
     {
         for ($i = 0; $i < $count; $i++) {
             $first = $faker->firstName();
@@ -89,37 +89,37 @@ class UserSeeder extends Seeder
                 'password' => $password,
                 'email_verified_at' => now(),
             ]);
-            $this->attachToCustomer($user, $customer);
-            $this->assignCustomerRole($user, $role, $customer);
+            $this->attachToWorkspace($user, $workspace);
+            $this->assignWorkspaceRole($user, $role, $workspace);
         }
     }
 
-    private function attachToCustomer(User $user, ?Tenant $customer): void
+    private function attachToWorkspace(User $user, ?Workspace $workspace): void
     {
-        if ($customer === null) {
+        if ($workspace === null) {
             return;
         }
 
-        $user->customers()->syncWithoutDetaching([$customer->id]);
+        $user->workspaces()->syncWithoutDetaching([$workspace->id]);
     }
 
     /**
-     * Assigns a customer-scoped role with team_id = customer.id so the
-     * assignment only applies while that customer is the active team context.
+     * Assigns a workspace-scoped role with team_id = workspace.id so the
+     * assignment only applies while that workspace is the active team context.
      */
-    private function assignCustomerRole(User $user, string $role, ?Tenant $customer): void
+    private function assignWorkspaceRole(User $user, string $role, ?Workspace $workspace): void
     {
-        if ($customer === null) {
+        if ($workspace === null) {
             return;
         }
 
         try {
-            app(PermissionRegistrar::class)->setPermissionsTeamId($customer->id);
+            app(PermissionRegistrar::class)->setPermissionsTeamId($workspace->id);
             if (! $user->hasRole($role)) {
                 $user->assignRole($role);
             }
         } catch (RoleDoesNotExist) {
-            $this->command->warn("Role '{$role}' not found; skipping customer assignment for {$user->email}. Run RoleAndPermissionSeeder first.");
+            $this->command->warn("Role '{$role}' not found; skipping workspace assignment for {$user->email}. Run RoleAndPermissionSeeder first.");
         } finally {
             app(PermissionRegistrar::class)->setPermissionsTeamId(null);
         }

@@ -43,15 +43,15 @@ const secondaryVisible = computed(() => {
 });
 
 const chatEnabled = computed(() => page.props.chat?.enabled ?? false);
-const customerSlug = computed(() => page.props.customer?.slug ?? null);
-const filesEnabled = computed(() => page.props.customer?.files_feature_enabled ?? false);
+const workspaceSlug = computed(() => page.props.workspace?.slug ?? null);
+const filesEnabled = computed(() => page.props.workspace?.files_feature_enabled ?? false);
 
 interface QuickLink {
     key: string;
     href: string;
     label: string;
     hint: string;
-    icon: 'home' | 'user' | 'users' | 'cog' | 'key' | 'role' | 'shield' | 'disk' | 'mail' | 'customer' | 'server' | 'log';
+    icon: 'home' | 'user' | 'users' | 'cog' | 'key' | 'role' | 'shield' | 'disk' | 'mail' | 'workspace' | 'server' | 'log';
 }
 
 const quickLinks = computed<QuickLink[]>(() => {
@@ -67,10 +67,10 @@ const quickLinks = computed<QuickLink[]>(() => {
         { key: 'home', href: '/home', label: t('welcome.quick.home'), hint: t('welcome.quick.home_hint'), icon: 'user' },
     ];
 
-    if (customerSlug.value) {
-        links.push({ key: 'cdash', href: `/c/${customerSlug.value}/dashboard`, label: t('welcome.quick.customer_dashboard'), hint: page.props.customer?.name ?? t('welcome.quick.customer_dashboard_hint'), icon: 'home' });
+    if (workspaceSlug.value) {
+        links.push({ key: 'cdash', href: `/w/${workspaceSlug.value}/dashboard`, label: t('welcome.quick.workspace_dashboard'), hint: page.props.workspace?.name ?? t('welcome.quick.workspace_dashboard_hint'), icon: 'home' });
         if (filesEnabled.value) {
-            links.push({ key: 'files', href: `/c/${customerSlug.value}/files`, label: t('welcome.quick.files'), hint: t('welcome.quick.files_hint'), icon: 'disk' });
+            links.push({ key: 'files', href: `/w/${workspaceSlug.value}/files`, label: t('welcome.quick.files'), hint: t('welcome.quick.files_hint'), icon: 'disk' });
         }
     }
     if (chatEnabled.value) {

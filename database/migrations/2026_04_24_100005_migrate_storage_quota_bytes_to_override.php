@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Move any explicitly set `storage_quota_bytes` values in user_settings.settings
  * into the new `storage_quota_override` key so the 3-tier quota resolution
- * (user override → customer default → global default → unlimited) can tell
+ * (user override → workspace default → global default → unlimited) can tell
  * "admin explicitly set a value" apart from "admin never touched it".
  *
  * Semantics for the new key:
@@ -25,7 +25,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $conn = (string) config('tenancy.database.central_connection');
+        $conn = (string) config('workspaces.database.central_connection');
 
         DB::connection($conn)->table('user_settings')
             ->orderBy('id')
@@ -49,7 +49,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        $conn = (string) config('tenancy.database.central_connection');
+        $conn = (string) config('workspaces.database.central_connection');
 
         DB::connection($conn)->table('user_settings')
             ->orderBy('id')

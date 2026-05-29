@@ -3,9 +3,9 @@
 namespace App\Domains\Users\Console;
 
 use App\Domains\Access\Models\Role;
-use App\Domains\Tenancy\Models\Tenant;
-use App\Domains\Tenancy\Support\CustomerMembership;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
+use App\Domains\Workspaces\Support\WorkspaceMembership;
 use Illuminate\Console\Command;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -13,11 +13,11 @@ class UserGrantRole extends Command
 {
     protected $signature = 'user:grant-role
         {email}
-        {role : Customer-scoped role (Admin/Editor/User) or the literal SuperAdmin}
-        {--customer= : Customer slug for customer-scoped roles (required unless role=SuperAdmin)}
+        {role : Workspace-scoped role (Admin/Editor/User) or the literal SuperAdmin}
+        {--workspace= : Workspace slug for workspace-scoped roles (required unless role=SuperAdmin)}
         {--revoke : Revoke the role instead of granting it}';
 
-    protected $description = 'Grant (or revoke) a customer-scoped role, or toggle the SuperAdmin flag.';
+    protected $description = 'Grant (or revoke) a workspace-scoped role, or toggle the SuperAdmin flag.';
 
     public function handle(): int
     {
@@ -38,16 +38,16 @@ class UserGrantRole extends Command
             return self::SUCCESS;
         }
 
-        $customerSlug = $this->option('customer');
-        if ($customerSlug === null || $customerSlug === '') {
-            $this->error('Customer-scoped roles require --customer=<slug>. Pass role=SuperAdmin for the platform flag.');
+        $workspaceSlug = $this->option('workspace');
+        if ($workspaceSlug === null || $workspaceSlug === '') {
+            $this->error('Workspace-scoped roles require --workspace=<slug>. Pass role=SuperAdmin for the platform flag.');
 
             return self::FAILURE;
         }
 
-        $customer = Tenant::query()->where('slug', $customerSlug)->first();
-        if (! $customer) {
-            $this->error("No customer with slug [{$customerSlug}].");
+        $workspace = Workspace::query()->where('slug', $workspaceSlug)->first();
+        if (! $workspace) {
+            $this->error("No workspace with slug [{$workspaceSlug}].");
 
             return self::FAILURE;
         }
@@ -62,15 +62,15 @@ class UserGrantRole extends Command
             $registrar = app(PermissionRegistrar::class);
             $previous = $registrar->getPermissionsTeamId();
             try {
-                $registrar->setPermissionsTeamId($customer->id);
+                $registrar->setPermissionsTeamId($workspace->id);
                 $user->removeRole($role);
             } finally {
                 $registrar->setPermissionsTeamId($previous);
             }
-            $this->info("Revoked {$role} from {$user->email} on [{$customer->slug}].");
+            $this->info("Revoked {$role} from {$user->email} on [{$workspace->slug}].");
         } else {
-            CustomerMembership::attach($user, $customer, $role);
-            $this->info("Granted {$role} to {$user->email} on [{$customer->slug}].");
+            WorkspaceMembership::attach($user, $workspace, $role);
+            $this->info("Granted {$role} to {$user->email} on [{$workspace->slug}].");
         }
 
         return self::SUCCESS;

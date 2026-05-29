@@ -97,44 +97,44 @@ return [
         ],
     ],
 
-    'customer-member-added' => [
-        'variables' => ['user_name', 'customer_name', 'app_url'],
+    'workspace-member-added' => [
+        'variables' => ['user_name', 'workspace_name', 'app_url'],
         'locales' => [
             'en' => [
-                'name' => 'Added to Customer',
-                'subject' => 'You have been added to {{ customer_name }}',
+                'name' => 'Added to Workspace',
+                'subject' => 'You have been added to {{ workspace_name }}',
                 'heading' => 'Hi {{ user_name }},',
-                'body' => "You have been added as a member of {{ customer_name }}.\n\nYou can now access this workspace from your dashboard.",
+                'body' => "You have been added as a member of {{ workspace_name }}.\n\nYou can now access this workspace from your dashboard.",
                 'action_text' => 'Go to Dashboard',
                 'action_url' => '{{ app_url }}/app',
             ],
             'no' => [
                 'name' => 'Lagt til kunde',
-                'subject' => 'Du har blitt lagt til i {{ customer_name }}',
+                'subject' => 'Du har blitt lagt til i {{ workspace_name }}',
                 'heading' => 'Hei {{ user_name }},',
-                'body' => "Du har blitt lagt til som medlem av {{ customer_name }}.\n\nDu kan nå få tilgang til dette arbeidsområdet fra dashbordet ditt.",
+                'body' => "Du har blitt lagt til som medlem av {{ workspace_name }}.\n\nDu kan nå få tilgang til dette arbeidsområdet fra dashbordet ditt.",
                 'action_text' => 'Gå til dashbordet',
                 'action_url' => '{{ app_url }}/app',
             ],
         ],
     ],
 
-    'customer-member-removed' => [
-        'variables' => ['user_name', 'customer_name'],
+    'workspace-member-removed' => [
+        'variables' => ['user_name', 'workspace_name'],
         'locales' => [
             'en' => [
-                'name' => 'Removed from Customer',
-                'subject' => 'You have been removed from {{ customer_name }}',
+                'name' => 'Removed from Workspace',
+                'subject' => 'You have been removed from {{ workspace_name }}',
                 'heading' => 'Hi {{ user_name }},',
-                'body' => "You have been removed from {{ customer_name }}.\n\nIf you believe this is a mistake, please contact your administrator.",
+                'body' => "You have been removed from {{ workspace_name }}.\n\nIf you believe this is a mistake, please contact your administrator.",
                 'action_text' => null,
                 'action_url' => null,
             ],
             'no' => [
                 'name' => 'Fjernet fra kunde',
-                'subject' => 'Du har blitt fjernet fra {{ customer_name }}',
+                'subject' => 'Du har blitt fjernet fra {{ workspace_name }}',
                 'heading' => 'Hei {{ user_name }},',
-                'body' => "Du har blitt fjernet fra {{ customer_name }}.\n\nHvis du mener dette er en feil, vennligst kontakt administratoren din.",
+                'body' => "Du har blitt fjernet fra {{ workspace_name }}.\n\nHvis du mener dette er en feil, vennligst kontakt administratoren din.",
                 'action_text' => null,
                 'action_url' => null,
             ],

@@ -21,12 +21,14 @@ use App\Domains\Operations\Http\Controllers\StorageDashboardController;
 use App\Domains\Operations\Http\Controllers\SystemInfoController;
 use App\Domains\Settings\Http\Controllers\AppSettingsController;
 use App\Domains\Settings\Http\Controllers\SettingsController;
-use App\Domains\Tenancy\Http\Controllers\CustomerController;
-use App\Domains\Tenancy\Http\Controllers\CustomerLandingController;
 use App\Domains\Users\Http\Controllers\AvatarController;
 use App\Domains\Users\Http\Controllers\PersonalAccessTokenController;
 use App\Domains\Users\Http\Controllers\UserController;
 use App\Domains\Users\Http\Controllers\UserProfileController;
+use App\Domains\Workspaces\Http\Controllers\WorkspaceController;
+use App\Domains\Workspaces\Http\Controllers\WorkspaceInvitationController;
+use App\Domains\Workspaces\Http\Controllers\WorkspaceLandingController;
+use App\Domains\Workspaces\Http\Controllers\WorkspaceOnboardingController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -51,6 +53,12 @@ Route::get('/share/signed/file/{file}', [PublicShareController::class, 'signedDo
     ->middleware('signed')
     ->name('public.share.signed');
 
+// Accept a workspace invitation. Public so a brand-new invitee reaches it
+// before they have an account — the controller threads guests through
+// registration/login and finishes the join via WorkspaceLandingController.
+Route::get('/invitations/{token}', [WorkspaceInvitationController::class, 'accept'])
+    ->name('workspace.invitations.accept');
+
 // Dev easy-login (local/test only)
 if (app()->isLocal() || app()->runningUnitTests()) {
     Route::middleware('guest')->group(function () {
@@ -69,13 +77,13 @@ Route::get('/auth/{provider}/callback', [SocialiteController::class, 'callback']
     ->whereIn('provider', ['google', 'github'])
     ->name('oauth.callback');
 
-// Authenticated routes (user-level, customer-agnostic)
+// Authenticated routes (user-level, workspace-agnostic)
 Route::middleware('auth')->group(function () {
     Route::patch('/settings', [SettingsController::class, 'update'])->name('settings.update');
 
-    // Central routes — accessible without a customer context (e.g. from the
-    // picker page or admin panel). The customer-scoped copies in customer.php
-    // take precedence when a customer is active.
+    // Central routes — accessible without a workspace context (e.g. from the
+    // picker page or admin panel). The workspace-scoped copies in workspace.php
+    // take precedence when a workspace is active.
     Route::middleware('verified')->group(function () {
         // Public-ish profile for any user, keyed by UUID so URLs aren't
         // enumerable. Visibility is gated by UserProfilePolicy@view inside
@@ -84,9 +92,9 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/profile', fn () => Inertia::render('Profile'))->name('profile.central');
         // Avatar endpoints are also registered centrally — admins visiting
-        // /profile without an active customer (e.g. from the picker page or
+        // /profile without an active workspace (e.g. from the picker page or
         // the admin panel) would otherwise hit a 404 on upload, since the
-        // customer.php copy only exists under /c/{customer}/...
+        // workspace.php copy only exists under /w/{workspace}/...
         Route::post('/profile/avatar', [AvatarController::class, 'store'])->name('profile.avatar.central.store');
         Route::delete('/profile/avatar', [AvatarController::class, 'destroy'])->name('profile.avatar.central.destroy');
         Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.central.index');
@@ -120,12 +128,18 @@ Route::middleware('auth')->group(function () {
     });
 });
 
-// Post-login landing — redirects to the user's customer or renders the picker.
+// Post-login landing — redirects to the user's workspace or renders the picker.
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/app', CustomerLandingController::class)->name('app.landing');
+    Route::get('/app', WorkspaceLandingController::class)->name('app.landing');
 
     // Command-design "Min side" — user overview inside the CommandLayout shell.
     Route::get('/home', [HomeController::class, 'index'])->name('home.me');
+
+    // Self-serve workspace onboarding (multi-tenant create_own mode). Central
+    // route — a brand-new user has no membership yet, so this can't live under
+    // the /w/{workspace} group (ResolveWorkspace would reject them).
+    Route::get('/onboarding/workspace', [WorkspaceOnboardingController::class, 'show'])->name('workspaces.onboarding.show');
+    Route::post('/onboarding/workspace', [WorkspaceOnboardingController::class, 'store'])->name('workspaces.onboarding.store');
 });
 
 // Admin routes (system super-user — spans all tenants)
@@ -184,14 +198,14 @@ Route::middleware(['auth', 'verified', 'super.admin'])
         Route::get('backups/download', [BackupController::class, 'download'])->name('backups.download');
         Route::post('backups/prepare-restore', [BackupController::class, 'prepareRestore'])->name('backups.prepareRestore');
 
-        // Landlord — customer management.
-        Route::resource('customers', CustomerController::class)->except(['show']);
-        Route::post('customers/{customer}/members', [CustomerController::class, 'attachMember'])->name('customers.members.attach');
-        Route::delete('customers/{customer}/members/{user}', [CustomerController::class, 'detachMember'])->name('customers.members.detach');
+        // Platform admin — workspace management.
+        Route::resource('workspaces', WorkspaceController::class)->except(['show']);
+        Route::post('workspaces/{workspace}/members', [WorkspaceController::class, 'attachMember'])->name('workspaces.members.attach');
+        Route::delete('workspaces/{workspace}/members/{user}', [WorkspaceController::class, 'detachMember'])->name('workspaces.members.detach');
 
-        Route::post('users/{user}/customers', [UserController::class, 'attachCustomer'])->name('users.customers.attach');
-        Route::patch('users/{user}/customers/{customer}/role', [UserController::class, 'setCustomerRole'])->name('users.customers.setRole');
-        Route::delete('users/{user}/customers/{customer}', [UserController::class, 'detachCustomer'])->name('users.customers.detach');
+        Route::post('users/{user}/workspaces', [UserController::class, 'attachWorkspace'])->name('users.workspaces.attach');
+        Route::patch('users/{user}/workspaces/{workspace}/role', [UserController::class, 'setWorkspaceRole'])->name('users.workspaces.setRole');
+        Route::delete('users/{user}/workspaces/{workspace}', [UserController::class, 'detachWorkspace'])->name('users.workspaces.detach');
 
         Route::post('users/{user}/impersonate', [ImpersonateController::class, 'take'])->name('users.impersonate');
     });

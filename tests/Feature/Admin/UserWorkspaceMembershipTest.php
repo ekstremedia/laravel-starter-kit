@@ -1,0 +1,208 @@
+<?php
+
+use App\Domains\Notifications\Notifications\WorkspaceMemberAddedNotification;
+use App\Domains\Notifications\Notifications\WorkspaceMemberRemovedNotification;
+use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Support\WorkspaceMembership;
+use Database\Seeders\RoleAndPermissionSeeder;
+use Illuminate\Support\Facades\Notification;
+
+beforeEach(function () {
+    config()->set('workspaces.enabled', true);
+    $this->seed(RoleAndPermissionSeeder::class);
+});
+
+it('shows workspaces on user show page when tenancy enabled', function () {
+    $admin = User::factory()->create();
+    $admin->forceFill(['is_super_admin' => true])->save();
+
+    $user = User::factory()->create();
+    $workspace = createWorkspace();
+    joinWorkspace($user, $workspace);
+
+    $this->actingAs($admin)
+        ->get("/admin/users/{$user->id}")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('user.workspaces', 1)
+            ->where('user.workspaces.0.slug', $workspace->slug)
+        );
+});
+
+it('shows workspaces and all_workspaces on user edit page', function () {
+    $admin = User::factory()->create();
+    $admin->forceFill(['is_super_admin' => true])->save();
+
+    $user = User::factory()->create();
+    $workspace = createWorkspace();
+    joinWorkspace($user, $workspace);
+
+    $this->actingAs($admin)
+        ->get("/admin/users/{$user->id}/edit")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('user.workspaces', 1)
+            ->has('all_workspaces', 1)
+        );
+});
+
+it('allows admin to attach a workspace to a user', function () {
+    $admin = User::factory()->create();
+    $admin->forceFill(['is_super_admin' => true])->save();
+
+    $user = User::factory()->create();
+    $workspace = createWorkspace();
+
+    $this->actingAs($admin)
+        ->post("/admin/users/{$user->id}/workspaces", [
+            'workspace_ids' => [$workspace->id],
+            'roles' => ['User'],
+            'notify' => false,
+        ])
+        ->assertRedirect();
+
+    expect($user->fresh()->workspaces()->count())->toBe(1);
+});
+
+it('allows admin to detach a workspace from a user', function () {
+    $admin = User::factory()->create();
+    $admin->forceFill(['is_super_admin' => true])->save();
+
+    $user = User::factory()->create();
+    $workspace = createWorkspace();
+    joinWorkspace($user, $workspace);
+
+    $this->actingAs($admin)
+        ->delete("/admin/users/{$user->id}/workspaces/{$workspace->id}", [
+            'notify' => false,
+        ])
+        ->assertRedirect();
+
+    expect($user->fresh()->workspaces()->count())->toBe(0);
+});
+
+it('dispatches notification when notify is true on attach', function () {
+    Notification::fake();
+
+    $admin = User::factory()->create();
+    $admin->forceFill(['is_super_admin' => true])->save();
+
+    $user = User::factory()->create();
+    $workspace = createWorkspace();
+
+    $this->actingAs($admin)
+        ->post("/admin/users/{$user->id}/workspaces", [
+            'workspace_ids' => [$workspace->id],
+            'roles' => ['User'],
+            'notify' => true,
+        ])
+        ->assertRedirect();
+
+    Notification::assertSentTo($user, WorkspaceMemberAddedNotification::class);
+});
+
+it('does not dispatch notification when notify is false', function () {
+    Notification::fake();
+
+    $admin = User::factory()->create();
+    $admin->forceFill(['is_super_admin' => true])->save();
+
+    $user = User::factory()->create();
+    $workspace = createWorkspace();
+
+    $this->actingAs($admin)
+        ->post("/admin/users/{$user->id}/workspaces", [
+            'workspace_ids' => [$workspace->id],
+            'roles' => ['User'],
+            'notify' => false,
+        ])
+        ->assertRedirect();
+
+    Notification::assertNotSentTo($user, WorkspaceMemberAddedNotification::class);
+});
+
+it('dispatches removal notification when notify is true on detach', function () {
+    Notification::fake();
+
+    $admin = User::factory()->create();
+    $admin->forceFill(['is_super_admin' => true])->save();
+
+    $user = User::factory()->create();
+    $workspace = createWorkspace();
+    joinWorkspace($user, $workspace);
+
+    $this->actingAs($admin)
+        ->delete("/admin/users/{$user->id}/workspaces/{$workspace->id}", [
+            'notify' => true,
+        ])
+        ->assertRedirect();
+
+    Notification::assertSentTo($user, WorkspaceMemberRemovedNotification::class);
+});
+
+it('lets super admin set a users role on a specific workspace', function () {
+    $admin = User::factory()->create();
+    $admin->forceFill(['is_super_admin' => true])->save();
+
+    $user = User::factory()->create();
+    $workspace = createWorkspace();
+    grantRoleOnWorkspace($user, 'User', $workspace);
+
+    $this->actingAs($admin)
+        ->patch("/admin/users/{$user->id}/workspaces/{$workspace->id}/role", ['roles' => ['Admin']])
+        ->assertRedirect()
+        ->assertSessionHasNoErrors();
+
+    expect(WorkspaceMembership::roleOn($user->fresh(), $workspace))->toBe('Admin');
+});
+
+it('rejects setting a workspace role for a user not in the workspace', function () {
+    $admin = User::factory()->create();
+    $admin->forceFill(['is_super_admin' => true])->save();
+
+    $user = User::factory()->create();
+    $workspace = createWorkspace();
+
+    $this->actingAs($admin)
+        ->patch("/admin/users/{$user->id}/workspaces/{$workspace->id}/role", ['roles' => ['Admin']])
+        ->assertRedirect();
+
+    expect(WorkspaceMembership::roleOn($user->fresh(), $workspace))->toBeNull();
+});
+
+it('shows per-workspace roles in the user show payload', function () {
+    $admin = User::factory()->create();
+    $admin->forceFill(['is_super_admin' => true])->save();
+
+    $user = User::factory()->create();
+    $a = createWorkspace('a-co', 'A Co');
+    $b = createWorkspace('b-co', 'B Co');
+    grantRoleOnWorkspace($user, 'Admin', $a);
+    grantRoleOnWorkspace($user, 'User', $b);
+
+    $this->actingAs($admin)
+        ->get("/admin/users/{$user->id}")
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('user.workspaces', 2)
+            ->where('user.workspaces', fn ($workspaces) => collect($workspaces)
+                ->contains(fn ($c) => $c['slug'] === 'a-co' && $c['roles'] === ['Admin'])
+                && collect($workspaces)->contains(fn ($c) => $c['slug'] === 'b-co' && $c['roles'] === ['User'])
+            )
+        );
+});
+
+it('rejects non-admin from attaching workspaces', function () {
+    $user = User::factory()->create();
+
+    $target = User::factory()->create();
+    $workspace = createWorkspace();
+
+    $this->actingAs($user)
+        ->post("/admin/users/{$target->id}/workspaces", [
+            'workspace_ids' => [$workspace->id],
+            'roles' => ['User'],
+            'notify' => false,
+        ])
+        ->assertForbidden();
+});

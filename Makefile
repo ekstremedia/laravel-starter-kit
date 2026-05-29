@@ -102,10 +102,7 @@ seed: ## Run database seeders
 fresh: _require-local ## Fresh migrate and seed (local only)
 	docker compose exec $(APP_SERVICE) php artisan migrate:fresh --seed
 
-rebuild: _require-local ## Reset starter kit to a clean slate: drop tenant schemas + migrate:fresh --seed + clear caches (local only)
-	@echo ""
-	@echo "  → Dropping leftover tenant<id> Postgres schemas"
-	docker compose exec $(APP_SERVICE) php artisan db:drop-tenant-schemas
+rebuild: _require-local ## Reset starter kit to a clean slate: migrate:fresh --seed + clear caches (local only)
 	@echo ""
 	@echo "  → Running migrate:fresh --seed"
 	docker compose exec $(APP_SERVICE) php artisan migrate:fresh --seed

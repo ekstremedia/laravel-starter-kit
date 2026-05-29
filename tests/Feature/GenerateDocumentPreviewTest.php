@@ -15,14 +15,14 @@ it('dispatches the preview job after uploading a PDF', function () {
 
     $this->seed(RoleAndPermissionSeeder::class);
     $user = User::factory()->create();
-    $customer = createCustomer();
+    $workspace = createWorkspace();
     AppSetting::current()->update(['files_feature_enabled' => true]);
-    $customer->update(['files_feature_enabled' => true]);
-    joinCustomer($user, $customer);
+    $workspace->update(['files_feature_enabled' => true]);
+    joinWorkspace($user, $workspace);
     $user->settings()->merge(['files_enabled' => true]);
 
     $this->actingAs($user)
-        ->post(customerUrl($customer, '/files'), [
+        ->post(workspaceUrl($workspace, '/files'), [
             'files' => [UploadedFile::fake()->create('doc.pdf', 5, 'application/pdf')],
         ])
         ->assertRedirect();
@@ -35,14 +35,14 @@ it('skips the preview job for plain images', function () {
 
     $this->seed(RoleAndPermissionSeeder::class);
     $user = User::factory()->create();
-    $customer = createCustomer();
+    $workspace = createWorkspace();
     AppSetting::current()->update(['files_feature_enabled' => true]);
-    $customer->update(['files_feature_enabled' => true]);
-    joinCustomer($user, $customer);
+    $workspace->update(['files_feature_enabled' => true]);
+    joinWorkspace($user, $workspace);
     $user->settings()->merge(['files_enabled' => true]);
 
     $this->actingAs($user)
-        ->post(customerUrl($customer, '/files'), [
+        ->post(workspaceUrl($workspace, '/files'), [
             'files' => [UploadedFile::fake()->image('cat.png')],
         ])
         ->assertRedirect();

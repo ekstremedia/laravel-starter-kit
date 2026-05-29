@@ -10,8 +10,8 @@ use App\Domains\Files\Models\FileItem;
 use App\Domains\Files\Services\StorageUsageService;
 use App\Domains\Files\Support\OwnerResolver;
 use App\Domains\Settings\Models\AppSetting;
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
 use App\Http\Controllers\Controller;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
@@ -28,15 +28,15 @@ class FileTrashController extends Controller
 
     public function index(Request $request): Response
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertFeatureAvailable($request, $tenant);
+        $this->assertFeatureAvailable($request, $workspace);
 
         $owner = $this->resolveOwner($request, $user);
-        $this->authorizeOwnerAccess($user, $owner, $tenant, view: true);
+        $this->authorizeOwnerAccess($user, $owner, $workspace, view: true);
 
         $items = FileItem::onlyTrashed()
-            ->where('tenant_id', $tenant->id)
+            ->where('workspace_id', $workspace->id)
             ->forOwner($owner)
             // companyLink + user are optional in FileItemResource but
             // must be eager-loaded to avoid N+1 when present. Trashed
@@ -55,12 +55,12 @@ class FileTrashController extends Controller
 
     public function restore(Request $request, int $id): RedirectResponse
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertFeatureAvailable($request, $tenant);
+        $this->assertFeatureAvailable($request, $workspace);
 
         $item = FileItem::onlyTrashed()->findOrFail($id);
-        Gate::forUser($user)->authorize('delete', [$item, $tenant]);
+        Gate::forUser($user)->authorize('delete', [$item, $workspace]);
 
         // If the parent is also trashed (or gone), restore to root — don't
         // resurrect a row whose parent_id points at nothing.
@@ -102,19 +102,19 @@ class FileTrashController extends Controller
 
     public function forceDelete(Request $request, int $id): RedirectResponse
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertFeatureAvailable($request, $tenant);
+        $this->assertFeatureAvailable($request, $workspace);
 
         $item = FileItem::onlyTrashed()->findOrFail($id);
-        Gate::forUser($user)->authorize('delete', [$item, $tenant]);
+        Gate::forUser($user)->authorize('delete', [$item, $workspace]);
 
         $owner = $item->owner;
 
         // Atomic — either the whole cascade + usage refresh commits, or
         // nothing does. Otherwise a partial delete leaves orphaned children
         // plus a stale denormalized storage_used_bytes.
-        DB::connection((string) config('tenancy.database.central_connection'))
+        DB::connection((string) config('workspaces.database.central_connection'))
             ->transaction(function () use ($item, $owner, $user): void {
                 if ($item->isFolder()) {
                     $this->cascadeForceDelete($item);
@@ -128,19 +128,19 @@ class FileTrashController extends Controller
 
     public function empty(Request $request): RedirectResponse
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertFeatureAvailable($request, $tenant);
+        $this->assertFeatureAvailable($request, $workspace);
         abort_unless($user->can('delete files'), 403, __('files.permission_denied'));
 
         $owner = $this->resolveOwner($request, $user);
-        $this->authorizeOwnerAccess($user, $owner, $tenant, view: false);
+        $this->authorizeOwnerAccess($user, $owner, $workspace, view: false);
 
-        DB::connection((string) config('tenancy.database.central_connection'))
-            ->transaction(function () use ($tenant, $owner): void {
+        DB::connection((string) config('workspaces.database.central_connection'))
+            ->transaction(function () use ($workspace, $owner): void {
                 // Chunk so huge trashes don't load everything into memory.
                 FileItem::onlyTrashed()
-                    ->where('tenant_id', $tenant->id)
+                    ->where('workspace_id', $workspace->id)
                     ->forOwner($owner)
                     ->chunkById(100, function ($items): void {
                         foreach ($items as $item) {
@@ -181,14 +181,14 @@ class FileTrashController extends Controller
             });
     }
 
-    private function currentTenant(Request $request): Tenant
+    private function currentTenant(Request $request): Workspace
     {
-        $tenant = $request->attributes->get('customer');
-        if ($tenant instanceof Tenant) {
-            return $tenant;
+        $workspace = $request->attributes->get('workspace');
+        if ($workspace instanceof Workspace) {
+            return $workspace;
         }
-        $slug = config('tenancy.default_customer_slug');
-        $fallback = $slug ? Tenant::query()->where('slug', $slug)->first() : null;
+        $slug = config('workspaces.default_workspace_slug');
+        $fallback = $slug ? Workspace::query()->where('slug', $slug)->first() : null;
         if (! $fallback) {
             abort(404);
         }
@@ -196,7 +196,7 @@ class FileTrashController extends Controller
         return $fallback;
     }
 
-    private function assertFeatureAvailable(Request $request, Tenant $tenant): void
+    private function assertFeatureAvailable(Request $request, Workspace $workspace): void
     {
         if (! AppSetting::current()->files_feature_enabled) {
             abort(404);
@@ -205,7 +205,7 @@ class FileTrashController extends Controller
         $user = $request->user();
         $settings = $user->settings()->resolved();
 
-        if (! $tenant->files_feature_enabled) {
+        if (! $workspace->files_feature_enabled) {
             abort(404);
         }
 
@@ -219,7 +219,7 @@ class FileTrashController extends Controller
      * files — otherwise crafting `?owner_type=...&owner_id=...` would let
      * any authed user list or empty another owner's trash.
      */
-    private function authorizeOwnerAccess(User $user, Model $owner, Tenant $tenant, bool $view): void
+    private function authorizeOwnerAccess(User $user, Model $owner, Workspace $workspace, bool $view): void
     {
         if (! $owner instanceof FileOwner) {
             // Unknown owner type can't be authorized — refuse rather than
@@ -228,8 +228,8 @@ class FileTrashController extends Controller
         }
 
         $allowed = $view
-            ? $owner->canViewFiles($user, $tenant)
-            : $owner->canManageFiles($user, $tenant);
+            ? $owner->canViewFiles($user, $workspace)
+            : $owner->canManageFiles($user, $workspace);
 
         abort_unless($allowed, 403, __('files.permission_denied'));
     }

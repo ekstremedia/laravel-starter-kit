@@ -3,7 +3,7 @@ import { computed, nextTick, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import CommandDialog from '@/Components/Command/Dialog.vue';
 import { humanBytes } from '@/utils/bytes';
-import { useCustomer } from '@/composables/useCustomer';
+import { useWorkspace } from '@/composables/useWorkspace';
 
 interface DetailsFileItem {
     id: number;
@@ -43,7 +43,7 @@ const props = defineProps<{ item: DetailsFileItem | null }>();
 const emit = defineEmits<{ close: [] }>();
 
 const { t } = useI18n();
-const { customerUrl } = useCustomer();
+const { workspaceUrl } = useWorkspace();
 
 const loading = ref(false);
 const error = ref(false);
@@ -73,7 +73,7 @@ async function load(id: number) {
     error.value = false;
     details.value = null;
     try {
-        const res = await fetch(customerUrl(`/files/${id}/details`), {
+        const res = await fetch(workspaceUrl(`/files/${id}/details`), {
             headers: {
                 Accept: 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',

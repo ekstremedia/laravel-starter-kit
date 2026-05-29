@@ -14,17 +14,17 @@ beforeEach(function () {
     Storage::fake('public');
     AppSetting::current()->update(['files_feature_enabled' => true]);
 
-    $this->customer = createCustomer();
-    $this->customer->update(['files_feature_enabled' => true]);
+    $this->workspace = createWorkspace();
+    $this->workspace->update(['files_feature_enabled' => true]);
 
     $this->user = User::factory()->create();
-    joinCustomer($this->user, $this->customer);
+    joinWorkspace($this->user, $this->workspace);
     $this->user->settings()->merge([
         'files_enabled' => true,
         'storage_quota_override' => 10_000_000,
     ]);
 
-    $this->filesUrl = customerUrl($this->customer, '/files');
+    $this->filesUrl = workspaceUrl($this->workspace, '/files');
 });
 
 it('requires authentication', function () {
@@ -32,7 +32,7 @@ it('requires authentication', function () {
 });
 
 it('404s when the tenant feature flag is off', function () {
-    $this->customer->update(['files_feature_enabled' => false]);
+    $this->workspace->update(['files_feature_enabled' => false]);
 
     $this->actingAs($this->user)->get($this->filesUrl)->assertNotFound();
 });
@@ -52,7 +52,7 @@ it('renders the files page when feature is enabled', function () {
 
 it('creates a folder', function () {
     $this->actingAs($this->user)
-        ->post(customerUrl($this->customer, '/files/folder'), ['name' => 'Photos'])
+        ->post(workspaceUrl($this->workspace, '/files/folder'), ['name' => 'Photos'])
         ->assertRedirect();
 
     $folder = FileItem::where('user_id', $this->user->id)->first();
@@ -63,10 +63,10 @@ it('creates a folder', function () {
 
 it('auto-renames on duplicate folder names in the same parent', function () {
     $this->actingAs($this->user)
-        ->post(customerUrl($this->customer, '/files/folder'), ['name' => 'Inbox'])
+        ->post(workspaceUrl($this->workspace, '/files/folder'), ['name' => 'Inbox'])
         ->assertRedirect();
     $this->actingAs($this->user)
-        ->post(customerUrl($this->customer, '/files/folder'), ['name' => 'Inbox'])
+        ->post(workspaceUrl($this->workspace, '/files/folder'), ['name' => 'Inbox'])
         ->assertRedirect();
 
     expect(FileItem::where('name', 'Inbox')->count())->toBe(1)
@@ -75,7 +75,7 @@ it('auto-renames on duplicate folder names in the same parent', function () {
 
 it('uploads a file and links it via medialibrary', function () {
     $this->actingAs($this->user)
-        ->post(customerUrl($this->customer, '/files'), [
+        ->post(workspaceUrl($this->workspace, '/files'), [
             'files' => [UploadedFile::fake()->image('cat.png', 200, 200)],
         ])
         ->assertRedirect();
@@ -92,7 +92,7 @@ it('rejects uploads exceeding the user quota via middleware', function () {
 
     // Plain POST falls through to back-redirect + validation errors (web form).
     $this->actingAs($this->user)
-        ->post(customerUrl($this->customer, '/files'), [
+        ->post(workspaceUrl($this->workspace, '/files'), [
             'files' => [UploadedFile::fake()->create('big.bin', 5)],
         ])
         ->assertRedirect()
@@ -108,7 +108,7 @@ it('returns JSON validation errors for JSON/XHR quota rejections', function () {
     // XHRs follow the same shape (forwarded as a 303 redirect back by the
     // Inertia middleware — the UploadDialog picks them up via `onError`).
     $this->actingAs($this->user)
-        ->postJson(customerUrl($this->customer, '/files'), [
+        ->postJson(workspaceUrl($this->workspace, '/files'), [
             'files' => [UploadedFile::fake()->create('big.bin', 5)],
         ])
         ->assertStatus(422)
@@ -119,13 +119,13 @@ it('returns JSON validation errors for JSON/XHR quota rejections', function () {
 
 it('renames a file', function () {
     $item = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
         'name' => 'old.jpg',
     ]);
 
     $this->actingAs($this->user)
-        ->patch(customerUrl($this->customer, "/files/{$item->id}"), ['name' => 'new.jpg'])
+        ->patch(workspaceUrl($this->workspace, "/files/{$item->id}"), ['name' => 'new.jpg'])
         ->assertRedirect();
 
     expect($item->fresh()->name)->toBe('new.jpg');
@@ -133,16 +133,16 @@ it('renames a file', function () {
 
 it('moves a file into a folder', function () {
     $folder = FileItem::factory()->folder()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]);
     $file = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]);
 
     $this->actingAs($this->user)
-        ->patch(customerUrl($this->customer, "/files/{$file->id}"), ['parent_id' => $folder->id])
+        ->patch(workspaceUrl($this->workspace, "/files/{$file->id}"), ['parent_id' => $folder->id])
         ->assertRedirect();
 
     expect($file->fresh()->parent_id)->toBe($folder->id);
@@ -150,12 +150,12 @@ it('moves a file into a folder', function () {
 
 it('refuses setting a folder as its own parent', function () {
     $folder = FileItem::factory()->folder()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]);
 
     $this->actingAs($this->user)
-        ->patch(customerUrl($this->customer, "/files/{$folder->id}"), ['parent_id' => $folder->id])
+        ->patch(workspaceUrl($this->workspace, "/files/{$folder->id}"), ['parent_id' => $folder->id])
         ->assertStatus(422);
 
     expect($folder->fresh()->parent_id)->toBeNull();
@@ -163,17 +163,17 @@ it('refuses setting a folder as its own parent', function () {
 
 it('refuses moving a folder into its own descendant', function () {
     $parent = FileItem::factory()->folder()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]);
     $child = FileItem::factory()->folder()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
         'parent_id' => $parent->id,
     ]);
 
     $this->actingAs($this->user)
-        ->patch(customerUrl($this->customer, "/files/{$parent->id}"), ['parent_id' => $child->id])
+        ->patch(workspaceUrl($this->workspace, "/files/{$parent->id}"), ['parent_id' => $child->id])
         ->assertStatus(422);
 
     expect($parent->fresh()->parent_id)->toBeNull();
@@ -181,15 +181,15 @@ it('refuses moving a folder into its own descendant', function () {
 
 it('denies access to another user\'s file', function () {
     $other = User::factory()->create();
-    joinCustomer($other, $this->customer);
+    joinWorkspace($other, $this->workspace);
 
     $theirs = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->workspace->id,
         'user_id' => $other->id,
     ]);
 
     $this->actingAs($this->user)
-        ->delete(customerUrl($this->customer, "/files/{$theirs->id}"))
+        ->delete(workspaceUrl($this->workspace, "/files/{$theirs->id}"))
         ->assertForbidden();
 
     expect(FileItem::whereKey($theirs->id)->exists())->toBeTrue();
@@ -197,12 +197,12 @@ it('denies access to another user\'s file', function () {
 
 it('deletes a file', function () {
     $item = FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]);
 
     $this->actingAs($this->user)
-        ->delete(customerUrl($this->customer, "/files/{$item->id}"))
+        ->delete(workspaceUrl($this->workspace, "/files/{$item->id}"))
         ->assertRedirect();
 
     expect(FileItem::whereKey($item->id)->exists())->toBeFalse();
@@ -210,15 +210,15 @@ it('deletes a file', function () {
 
 it('scopes list results to the authenticated user', function () {
     $other = User::factory()->create();
-    joinCustomer($other, $this->customer);
+    joinWorkspace($other, $this->workspace);
 
     FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
         'name' => 'mine.jpg',
     ]);
     FileItem::factory()->create([
-        'tenant_id' => $this->customer->id,
+        'workspace_id' => $this->workspace->id,
         'user_id' => $other->id,
         'name' => 'theirs.jpg',
     ]);

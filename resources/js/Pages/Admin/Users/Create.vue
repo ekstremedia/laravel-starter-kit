@@ -84,7 +84,7 @@ function submit() {
 
         <div
             :style="{ fontSize: '11.5px', color: 'var(--fg-dim)', lineHeight: 1.5, padding: '10px 12px', borderRadius: '6px', background: 'var(--accent-soft)', border: '1px solid var(--accent-border)' }"
-        >{{ t('admin.users.roles_are_customer_scoped') }}</div>
+        >{{ t('admin.users.roles_are_workspace_scoped') }}</div>
 
         <div :style="{ display: 'flex', gap: '6px', paddingTop: '4px' }">
             <button

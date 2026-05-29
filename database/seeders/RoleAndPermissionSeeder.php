@@ -8,13 +8,13 @@ use Illuminate\Database\Seeder;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Seeds the customer-scoped role templates.
+ * Seeds the workspace-scoped role templates.
  *
  * `Admin`, `Editor`, and `User` are role **templates**: the role rows
  * themselves carry `team_id = null` (they're definitions, not assignments),
- * and each per-customer assignment in `model_has_roles` stamps the customer
+ * and each per-workspace assignment in `model_has_roles` stamps the workspace
  * id as `team_id`. Every `hasRole`/`can` check then auto-scopes to whichever
- * customer is active.
+ * workspace is active.
  *
  * Platform-wide super-user access is NOT a role — it's a boolean flag on the
  * user row (`users.is_super_admin`). Spatie's team schema forces
@@ -28,12 +28,12 @@ class RoleAndPermissionSeeder extends Seeder
     {
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        $customerPermissions = [
+        $workspacePermissions = [
             'view dashboard',
-            'manage customer users',     // invite / remove members of the active customer
-            'manage customer settings',  // toggle customer-level feature flags
+            'manage workspace users',     // invite / remove members of the active workspace
+            'manage workspace settings',  // toggle workspace-level feature flags
             'manage profile',
-            // File manager — gate each mutation individually so customer-Admins
+            // File manager — gate each mutation individually so workspace-Admins
             // can carve out read-only roles by removing a subset of these.
             'upload files',
             'create folders',
@@ -50,20 +50,20 @@ class RoleAndPermissionSeeder extends Seeder
             'share files to company',
             'manage company files',
             // Cross-cutting override: holders can manage any FileItem regardless
-            // of owner. Granted to customer Admins so they can curate building
-            // / customer / etc. file trees that aren't strictly "company" or
+            // of owner. Granted to workspace Admins so they can curate building
+            // / workspace / etc. file trees that aren't strictly "company" or
             // "personal". SuperAdmin always passes the policy without this.
             'manage all files',
         ];
 
-        foreach ($customerPermissions as $permission) {
+        foreach ($workspacePermissions as $permission) {
             Permission::firstOrCreate(['name' => $permission]);
         }
 
-        // Customer-scoped role templates. The role rows are team-agnostic;
+        // Workspace-scoped role templates. The role rows are team-agnostic;
         // the assignment in model_has_roles carries the team id.
         $adminRole = Role::firstOrCreate(['name' => 'Admin']);
-        $adminRole->syncPermissions($customerPermissions);
+        $adminRole->syncPermissions($workspacePermissions);
 
         $editorRole = Role::firstOrCreate(['name' => 'Editor']);
         $editorRole->syncPermissions([

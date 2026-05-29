@@ -11,7 +11,7 @@ A Laravel 13 + Inertia/Vue starter with the usual production pieces already wire
 - **Spatie** Medialibrary · Activitylog · Backup · Pulse · Horizon · Sentry · opcodesio log-viewer · lab404 impersonate
 - **Pest 4** + **Vitest 4** tests · Pint · Larastan · Husky pre-commit · GitHub Actions CI
 
-Backend code is organised into domain modules under `app/Domains/*` (Auth, Users, Access, Files, Chat, Tenancy, Notifications, Settings, Operations). Conventions live in `AGENTS.md`.
+Backend code is organised into domain modules under `app/Domains/*` (Auth, Users, Access, Files, Chat, Workspaces, Notifications, Settings, Operations). Conventions live in `AGENTS.md`.
 
 ## Quick start
 
@@ -52,7 +52,7 @@ Everything under `/admin/*` is gated by `role:Admin`.
 | --- | --- |
 | `/admin` | Dashboard — stats, charts, recent activity |
 | `/admin/users` | Users CRUD, roles, quotas, impersonate |
-| `/admin/customers` | Customer (tenant) CRUD — when `TENANCY_ENABLED=true` |
+| `/admin/workspaces` | Workspace CRUD — when `WORKSPACES_ENABLED=true` |
 | `/admin/roles` · `/admin/permissions` | Roles + granular permissions |
 | `/admin/mail` | SMTP settings (encrypted) + test send |
 | `/admin/storage` | Per-user storage usage and quotas |
@@ -64,7 +64,11 @@ Users self-manage profile, password, and 2FA at `/profile`.
 
 ## Optional features
 
-- **Multi-customer** — `stancl/tenancy` v3 is pre-wired but off. Set `TENANCY_ENABLED=true` and re-seed for `/c/{slug}/*` routes, a `default` customer, the `/admin/customers` UI, and a Postgres schema per customer. The user-facing name is "Customer"; the model stays `App\Domains\Tenancy\Models\Tenant`.
+- **Multi-tenancy (workspaces)** — optional, **single-database row-level** isolation (no schema/DB per workspace). Every workspace-scoped table carries a `workspace_id` and the `BelongsToWorkspace` global scope auto-filters queries to the current workspace, so you can't leak across workspaces by forgetting a `where`. The current workspace is held by the `App\Domains\Workspaces\Support\WorkspaceContext` resolver (set per request by `ResolveWorkspace`).
+  - `WORKSPACES_ENABLED=true` → users can belong to many workspaces with per-workspace roles; routes live under `/w/{workspace}/*`; the `/admin/workspaces` UI + workspace switcher appear.
+  - `WORKSPACES_ENABLED=false` → behaves like a normal single-workspace Laravel app: workspace routes mount at the **root** (no `/w/` prefix), no switcher/picker.
+  - `WORKSPACES_REGISTRATION_MODE=create_own` makes each sign-up create its own workspace (becoming admin) and invite others; `join_default` (default) auto-joins the shared default workspace.
+  - Admins invite by email (`/members` → *Invite by email*); invitees accept via a tokenised link (`/invitations/{token}`), registering or logging in along the way. See **[docs/adding-a-workspace-entity.md](docs/adding-a-workspace-entity.md)** to add your own workspace-scoped entity (Car, Medicine, …). Model: `App\Domains\Workspaces\Models\Workspace`.
 - **Table prefix** — set `DB_TABLE_PREFIX=acme_` and re-migrate to namespace every core table. Only Eloquent / Query Builder / Schema queries inherit it; raw SQL must call `DB::getTablePrefix()`.
 
 ## Testing

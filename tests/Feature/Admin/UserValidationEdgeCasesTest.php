@@ -25,8 +25,8 @@ it('rejects creating a user with an existing email', function () {
 });
 
 it('ignores a roles payload on platform user creation', function () {
-    // Platform /admin/users doesn't set customer-scoped roles (those live
-    // per-customer on the user Show page), so an incoming `roles` field is
+    // Platform /admin/users doesn't set workspace-scoped roles (those live
+    // per-workspace on the user Show page), so an incoming `roles` field is
     // silently dropped rather than validated. Verify the create succeeds and
     // no validation error surfaces — catching the next time someone re-adds
     // a stale validator.

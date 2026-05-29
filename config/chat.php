@@ -39,10 +39,10 @@ return [
     | Database Connection
     |--------------------------------------------------------------------------
     |
-    | Chat tables live in the central (public) schema, not in per-tenant
-    | schemas. This connection is used by the Conversation and Message models.
-    | Defaults to 'pgsql' (the central connection); tests may override this
-    | to use the default in-memory SQLite connection.
+    | Chat tables live in the one shared database (the `public` schema). This
+    | connection is used by the Conversation and Message models. Defaults to
+    | 'pgsql'; tests may override this to use the default in-memory SQLite
+    | connection.
     |
     */
     'connection' => env('CHAT_DB_CONNECTION', env('DB_CONNECTION', 'pgsql')),

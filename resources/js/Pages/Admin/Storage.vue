@@ -9,7 +9,7 @@ import { useTweaks } from '@/composables/useTweaks';
 defineOptions({ layout: CommandLayout });
 
 interface TopUser { user_id: number; name: string; email: string; bytes: number }
-interface CustomerUsage { tenant_id: number; name: string; slug: string; bytes: number; file_count: number }
+interface WorkspaceUsage { workspace_id: number; name: string; slug: string; bytes: number; file_count: number }
 interface EntityTypeUsage { type: string; key: string; label: string; file_count: number; bytes: number }
 interface GrowthPoint { date: string; bytes: number }
 
@@ -20,15 +20,15 @@ interface PageData {
         disk_free: number;
         file_count: number;
         user_count: number;
-        customer_count: number;
+        workspace_count: number;
     };
     by_type: Record<string, number>;
     by_collection: Record<string, number>;
     by_entity_type: EntityTypeUsage[];
-    by_customer: CustomerUsage[];
+    by_workspace: WorkspaceUsage[];
     top_users: TopUser[];
     growth: GrowthPoint[];
-    filters: { user_search: string; customer_search: string };
+    filters: { user_search: string; workspace_search: string };
 }
 
 const props = defineProps<PageData>();
@@ -46,14 +46,14 @@ const ACCENT_HEX: Record<string, string> = { cobalt: '#4c6fff', emerald: '#10b98
 const accentHex = computed(() => ACCENT_HEX[tweaks.value.accent] ?? '#4c6fff');
 
 const userSearch = ref(props.filters.user_search ?? '');
-const customerSearch = ref(props.filters.customer_search ?? '');
+const workspaceSearch = ref(props.filters.workspace_search ?? '');
 
 function applyFilters() {
     router.get(
         '/admin/storage',
         {
             user_search: userSearch.value || undefined,
-            customer_search: customerSearch.value || undefined,
+            workspace_search: workspaceSearch.value || undefined,
         },
         { preserveState: true, preserveScroll: true, replace: true },
     );
@@ -177,7 +177,7 @@ const inputStyle = {
                 { label: t('admin.storage.total_used'), value: formatBytes(props.totals.bytes) },
                 { label: t('admin.storage.file_count'), value: props.totals.file_count.toLocaleString() },
                 { label: t('admin.storage.users'), value: props.totals.user_count.toLocaleString() },
-                { label: t('admin.storage.customers'), value: props.totals.customer_count.toLocaleString() },
+                { label: t('admin.storage.workspaces'), value: props.totals.workspace_count.toLocaleString() },
                 { label: t('admin.storage.disk_usage'), value: `${diskPercent.toFixed(0)}%`, hint: `${formatBytes(props.totals.disk_total - props.totals.disk_free)} / ${formatBytes(props.totals.disk_total)}` },
             ]"
             :key="i"
@@ -269,29 +269,29 @@ const inputStyle = {
         <section class="cmd-card" :style="{ padding: '16px', gridColumn: 'span 2' }">
             <div :style="{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', gap: '10px' }">
                 <div :style="{ fontSize: '13px', fontWeight: 600, color: 'var(--fg)' }">
-                    {{ t('admin.storage.by_customer') }}
+                    {{ t('admin.storage.by_workspace') }}
                 </div>
                 <input
-                    v-model="customerSearch"
+                    v-model="workspaceSearch"
                     type="search"
-                    :placeholder="t('admin.storage.search_customers')"
+                    :placeholder="t('admin.storage.search_workspaces')"
                     :style="{ ...inputStyle, width: '260px' }"
                     @keyup.enter="applyFilters"
                     @search="applyFilters"
                 />
             </div>
-            <div v-if="props.by_customer.length" :style="{ overflowX: 'auto' }">
+            <div v-if="props.by_workspace.length" :style="{ overflowX: 'auto' }">
                 <table :style="{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }">
                     <thead>
                         <tr class="cmd-mono cmd-uc" :style="{ fontSize: '10px', color: 'var(--fg-mute)', fontWeight: 500, borderBottom: '1px solid var(--border)' }">
-                            <th :style="{ padding: '8px 10px', textAlign: 'left' }">{{ t('admin.storage.customer') }}</th>
+                            <th :style="{ padding: '8px 10px', textAlign: 'left' }">{{ t('admin.storage.workspace') }}</th>
                             <th :style="{ padding: '8px 10px', textAlign: 'left' }">{{ t('admin.storage.slug') }}</th>
                             <th :style="{ padding: '8px 10px', textAlign: 'right' }">{{ t('admin.storage.file_count') }}</th>
                             <th :style="{ padding: '8px 10px', textAlign: 'right' }">{{ t('admin.storage.bytes') }}</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="c in props.by_customer" :key="c.tenant_id" :style="{ borderBottom: '1px solid var(--border)' }">
+                        <tr v-for="c in props.by_workspace" :key="c.workspace_id" :style="{ borderBottom: '1px solid var(--border)' }">
                             <td :style="{ padding: '8px 10px', color: 'var(--fg)' }">{{ c.name }}</td>
                             <td class="cmd-mono" :style="{ padding: '8px 10px', color: 'var(--fg-dim)', fontSize: '11px' }">{{ c.slug }}</td>
                             <td class="cmd-mono" :style="{ padding: '8px 10px', textAlign: 'right', color: 'var(--fg-dim)', fontSize: '11px' }">{{ c.file_count.toLocaleString() }}</td>

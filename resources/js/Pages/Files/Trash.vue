@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import ConfirmDialog from 'primevue/confirmdialog';
 import { useConfirm } from 'primevue/useconfirm';
 import AppLayout from '@/Layouts/CommandLayout.vue';
-import { useCustomer } from '@/composables/useCustomer';
+import { useWorkspace } from '@/composables/useWorkspace';
 
 interface FileItem {
     id: number;
@@ -24,11 +24,11 @@ interface PageData {
 
 const props = defineProps<PageData>();
 const { t, locale } = useI18n();
-const { customerUrl } = useCustomer();
+const { workspaceUrl } = useWorkspace();
 const confirm = useConfirm();
 
 function restore(id: number) {
-    router.post(customerUrl(`/files/trash/${id}/restore`), {}, { preserveScroll: true });
+    router.post(workspaceUrl(`/files/trash/${id}/restore`), {}, { preserveScroll: true });
 }
 
 function forceDelete(item: FileItem) {
@@ -40,7 +40,7 @@ function forceDelete(item: FileItem) {
         acceptLabel: t('files.delete_forever'),
         rejectLabel: t('common.cancel'),
         acceptProps: { severity: 'danger' },
-        accept: () => router.delete(customerUrl(`/files/trash/${item.id}`), { preserveScroll: true }),
+        accept: () => router.delete(workspaceUrl(`/files/trash/${item.id}`), { preserveScroll: true }),
     });
 }
 
@@ -53,7 +53,7 @@ function emptyTrash() {
         acceptLabel: t('files.empty_trash'),
         rejectLabel: t('common.cancel'),
         acceptProps: { severity: 'danger' },
-        accept: () => router.delete(customerUrl('/files/trash'), { preserveScroll: true }),
+        accept: () => router.delete(workspaceUrl('/files/trash'), { preserveScroll: true }),
     });
 }
 
@@ -80,7 +80,7 @@ function iconFor(item: FileItem) {
         <ConfirmDialog group="files-trash" />
         <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
             <div class="mb-6 flex items-center gap-2 text-sm">
-                <Link :href="customerUrl('/files')" class="text-indigo-600 hover:underline dark:text-indigo-400">
+                <Link :href="workspaceUrl('/files')" class="text-indigo-600 hover:underline dark:text-indigo-400">
                     {{ t('files.root') }}
                 </Link>
                 <i class="pi pi-chevron-right text-xs text-slate-400" />

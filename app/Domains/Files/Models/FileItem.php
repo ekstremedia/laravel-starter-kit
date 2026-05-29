@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Files\Models;
 
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Concerns\BelongsToWorkspace;
+use App\Domains\Workspaces\Models\Workspace;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -26,7 +27,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 /**
  * @property int $id
  * @property string $uuid
- * @property int $tenant_id
+ * @property int $workspace_id
  * @property int $user_id
  * @property string $owner_type
  * @property int $owner_id
@@ -38,7 +39,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * @property int $size
  * @property Carbon $created_at
  * @property Carbon $updated_at
- * @property-read Tenant $tenant
+ * @property-read Workspace $workspace
  * @property-read User $creator
  * @property-read User $user
  * @property-read Model|null $owner
@@ -46,6 +47,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  */
 class FileItem extends Model implements HasMedia
 {
+    use BelongsToWorkspace;
     use HasFactory;
     use HasUuids;
     use InteractsWithMedia;
@@ -68,7 +70,7 @@ class FileItem extends Model implements HasMedia
     ];
 
     protected $fillable = [
-        'tenant_id',
+        'workspace_id',
         'user_id',
         'owner_type',
         'owner_id',
@@ -82,7 +84,7 @@ class FileItem extends Model implements HasMedia
     ];
 
     /**
-     * Audit create/update/delete/restore on FileItems so Customer Admins can
+     * Audit create/update/delete/restore on FileItems so Workspace Admins can
      * see "who uploaded this folder" or "who renamed that file". We log a
      * compact attribute set — the full media blob doesn't belong in an audit
      * trail, and a bare timestamp change (Eloquent's updated_at touch after
@@ -98,13 +100,14 @@ class FileItem extends Model implements HasMedia
     }
 
     /**
-     * Pin to the central connection so queries don't follow the tenant schema
-     * switch performed by stancl/tenancy middleware — file_items lives in the
-     * central DB alongside users and tenants, not inside per-tenant schemas.
+     * Pin to the central connection. The pin is vestigial — file_items lives
+     * in the one shared database alongside users and workspaces, and this
+     * resolves to the single default connection; there is no per-request
+     * connection swap to undo.
      */
     public function getConnectionName(): ?string
     {
-        return config('tenancy.database.central_connection');
+        return config('workspaces.database.central_connection');
     }
 
     /**
@@ -125,14 +128,14 @@ class FileItem extends Model implements HasMedia
         return 'int';
     }
 
-    public function tenant(): BelongsTo
+    public function workspace(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsTo(Workspace::class, 'workspace_id');
     }
 
     /**
      * Polymorphic owner: the model that owns this file (User for personal,
-     * Tenant for company, future Building/Customer/etc.). Can be null when
+     * Workspace for company, future Building/Workspace/etc.). Can be null when
      * the related row was hard-deleted out from under the morph.
      *
      * @return MorphTo<Model, $this>
@@ -144,7 +147,7 @@ class FileItem extends Model implements HasMedia
 
     /**
      * Who uploaded/created this file. Always a User (column is NOT NULL).
-     * Distinct from owner() — a Tenant-owned file is still created by a user.
+     * Distinct from owner() — a Workspace-owned file is still created by a user.
      *
      * @return BelongsTo<User, $this>
      */
@@ -327,7 +330,7 @@ class FileItem extends Model implements HasMedia
     {
         return [
             'size' => 'integer',
-            'tenant_id' => 'integer',
+            'workspace_id' => 'integer',
             'user_id' => 'integer',
             'owner_id' => 'integer',
             'parent_id' => 'integer',

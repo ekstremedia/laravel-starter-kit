@@ -3,9 +3,10 @@
 namespace App\Http\Middleware;
 
 use App\Domains\Settings\Models\AppSetting;
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
 use App\Domains\Users\Models\UserSetting;
+use App\Domains\Workspaces\Models\Workspace;
+use App\Domains\Workspaces\Support\WorkspaceContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Http\Request;
@@ -48,10 +49,10 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'request_id' => (string) $request->attributes->get('request_id', ''),
             // `user` resolves lazily so `getRoleNames()` / `getAllPermissions()`
-            // see the team id set by `InitializeTenancyByPath` — Inertia's
+            // see the team id set by `ResolveWorkspace` — Inertia's
             // `share()` runs *before* the rest of the middleware stack, so
             // eagerly reading roles here would yield the pre-tenancy (empty)
-            // set on customer-scoped routes.
+            // set on workspace-scoped routes.
             'auth' => [
                 'user' => fn () => $request->user() ? [
                     'id' => $request->user()->id,
@@ -102,8 +103,8 @@ class HandleInertiaRequests extends Middleware
                 'new_token' => fn () => $request->session()->get('new_token'),
             ],
             'app_settings' => fn () => $this->appSettings(),
-            'tenancy' => [
-                'enabled' => (bool) config('tenancy.enabled'),
+            'workspaces' => [
+                'enabled' => (bool) config('workspaces.enabled'),
             ],
             'chat' => [
                 'enabled' => (bool) config('chat.enabled'),
@@ -118,59 +119,60 @@ class HandleInertiaRequests extends Middleware
             'oauth' => [
                 'providers' => $this->enabledOauthProviders(),
             ],
-            'customer' => fn () => $this->currentCustomer(),
-            // The workspace ("customer") the left rail should be scoped to,
+            'workspace' => fn () => $this->currentWorkspaceProfile(),
+            // The workspace ("workspace") the left rail should be scoped to,
             // resolved even on central routes (/home, /admin, …) so the rail
             // shows the same workspace section everywhere instead of only
-            // inside a /c/{slug}/... route. Carries the user's workspace-scoped
+            // inside a /w/{slug}/... route. Carries the user's workspace-scoped
             // capabilities so permission-gated entries render identically
             // off-route. See currentWorkspace().
-            'current_customer' => fn () => $this->currentWorkspace($request),
-            // The navbar customer switcher needs the user's memberships, so
+            'current_workspace' => fn () => $this->currentWorkspace($request),
+            // The navbar workspace switcher needs the user's memberships, so
             // share a compact list. Capped at 50 — past that, admins should
-            // use the full picker or the /admin/customers UI.
+            // use the full picker or the /admin/workspaces UI.
             //
-            // Keyed under `available_customers` to avoid being shadowed by the
-            // `customers` paginator prop on /admin/customers and similar pages.
-            'available_customers' => fn () => $this->availableCustomers($request),
+            // Keyed under `available_workspaces` to avoid being shadowed by the
+            // `workspaces` paginator prop on /admin/workspaces and similar pages.
+            'available_workspaces' => fn () => $this->availableWorkspaces($request),
         ];
     }
 
     /**
-     * The customer the request is currently scoped to, or null on central routes.
+     * The workspace the request is currently scoped to, or null on central routes.
      *
      * @return array<string, mixed>|null
      */
-    private function currentCustomer(): ?array
+    private function currentWorkspaceProfile(): ?array
     {
-        if (! tenancy()->initialized) {
+        $tenancy = app(WorkspaceContext::class);
+        if (! $tenancy->check()) {
             return null;
         }
 
-        /** @var Tenant $customer */
-        $customer = tenancy()->tenant;
+        /** @var Workspace $workspace */
+        $workspace = $tenancy->current();
 
         return [
-            'id' => $customer->id,
-            'slug' => $customer->slug,
-            'name' => $customer->name,
-            'headline' => $customer->headline,
-            'about' => $customer->about,
-            'location' => $customer->location,
-            'website' => $customer->website,
-            'files_feature_enabled' => (bool) $customer->files_feature_enabled,
-            'company_files_enabled' => (bool) $customer->company_files_enabled,
+            'id' => $workspace->id,
+            'slug' => $workspace->slug,
+            'name' => $workspace->name,
+            'headline' => $workspace->headline,
+            'about' => $workspace->about,
+            'location' => $workspace->location,
+            'website' => $workspace->website,
+            'files_feature_enabled' => (bool) $workspace->files_feature_enabled,
+            'company_files_enabled' => (bool) $workspace->company_files_enabled,
         ];
     }
 
     /**
-     * The workspace the left rail should be scoped to. Inside a customer route
+     * The workspace the left rail should be scoped to. Inside a workspace route
      * this is the active tenant; on central routes it falls back to the user's
-     * last-visited customer, then their first membership. Null for guests or
-     * users who belong to no active customer.
+     * last-visited workspace, then their first membership. Null for guests or
+     * users who belong to no active workspace.
      *
      * Resolved regardless of `tenancy.enabled` — the app is always
-     * customer-scoped, so the rail's Private files / dashboard must work even
+     * workspace-scoped, so the rail's Private files / dashboard must work even
      * in single-workspace mode. The `tenancy.enabled` flag only governs the
      * multi-tenant *chrome* (Shared files, scope pill, workspace switcher),
      * which is gated in the components that render it.
@@ -185,24 +187,25 @@ class HandleInertiaRequests extends Middleware
             return null;
         }
 
-        // Inside a /c/{slug}/... route the active tenant *is* the workspace,
+        // Inside a /w/{slug}/... route the active tenant *is* the workspace,
         // and the Spatie team id is already scoped to it by the tenancy
         // middleware — so read capabilities directly.
-        if (tenancy()->initialized) {
-            /** @var Tenant $customer */
-            $customer = tenancy()->tenant;
+        $tenancy = app(WorkspaceContext::class);
+        if ($tenancy->check()) {
+            /** @var Workspace $workspace */
+            $workspace = $tenancy->current();
 
-            return $this->workspacePayload($customer, $user, alreadyScoped: true);
+            return $this->workspacePayload($workspace, $user, alreadyScoped: true);
         }
 
-        /** @var Collection<int, Tenant> $accessible */
-        $accessible = $this->accessibleCustomersQuery($user)->orderBy('name')->get();
+        /** @var Collection<int, Workspace> $accessible */
+        $accessible = $this->accessibleWorkspacesQuery($user)->orderBy('name')->get();
 
         if ($accessible->isEmpty()) {
             return null;
         }
 
-        $remembered = $user->settings()->resolved()['last_customer_slug'] ?? null;
+        $remembered = $user->settings()->resolved()['last_workspace_slug'] ?? null;
         $current = (is_string($remembered) && $remembered !== '')
             ? $accessible->firstWhere('slug', $remembered)
             : null;
@@ -218,33 +221,33 @@ class HandleInertiaRequests extends Middleware
      *
      * @return array<string, mixed>
      */
-    private function workspacePayload(Tenant $customer, User $user, bool $alreadyScoped): array
+    private function workspacePayload(Workspace $workspace, User $user, bool $alreadyScoped): array
     {
-        [$isAdmin, $canViewCompanyFiles] = $this->workspaceCapabilities($customer, $user, $alreadyScoped);
+        [$isAdmin, $canViewCompanyFiles] = $this->workspaceCapabilities($workspace, $user, $alreadyScoped);
 
         return [
-            'id' => $customer->id,
-            'slug' => $customer->slug,
-            'name' => $customer->name,
-            'files_feature_enabled' => (bool) $customer->files_feature_enabled,
-            'company_files_enabled' => (bool) $customer->company_files_enabled,
+            'id' => $workspace->id,
+            'slug' => $workspace->slug,
+            'name' => $workspace->name,
+            'files_feature_enabled' => (bool) $workspace->files_feature_enabled,
+            'company_files_enabled' => (bool) $workspace->company_files_enabled,
             'is_admin' => $isAdmin,
             'can_view_company_files' => $canViewCompanyFiles,
         ];
     }
 
     /**
-     * Resolve [isAdmin, canViewCompanyFiles] for the user within $customer.
+     * Resolve [isAdmin, canViewCompanyFiles] for the user within $workspace.
      * SuperAdmins short-circuit to true (they bypass membership and pass the
-     * customer.admin gate). For everyone else the checks are Spatie
+     * workspace.admin gate). For everyone else the checks are Spatie
      * team-scoped, so on central routes we temporarily set the permission team
-     * id to the workspace — mirroring InitializeTenancyByPath — and restore it
+     * id to the workspace — mirroring ResolveWorkspace — and restore it
      * afterwards, resetting the cached role/permission relations on both sides
      * so neither the central nor the workspace scope leaks into the other.
      *
      * @return array{0: bool, 1: bool}
      */
-    private function workspaceCapabilities(Tenant $customer, User $user, bool $alreadyScoped): array
+    private function workspaceCapabilities(Workspace $workspace, User $user, bool $alreadyScoped): array
     {
         if ($user->isSuperAdmin()) {
             return [true, true];
@@ -256,7 +259,7 @@ class HandleInertiaRequests extends Middleware
 
         $registrar = app(PermissionRegistrar::class);
         $previousTeamId = $registrar->getPermissionsTeamId();
-        $registrar->setPermissionsTeamId($customer->id);
+        $registrar->setPermissionsTeamId($workspace->id);
         $user->unsetRelation('roles')->unsetRelation('permissions');
 
         try {
@@ -268,29 +271,29 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * Base query for the active customers a user may enter: every active one
+     * Base query for the active workspaces a user may enter: every active one
      * for SuperAdmins, only their memberships otherwise. Returns either an
      * Eloquent\Builder or a BelongsToMany relation — both honour the
      * orderBy()/limit()/get() calls the callers chain onto it.
      *
-     * @return Builder<Tenant>|BelongsToMany<Tenant, User>
+     * @return Builder<Workspace>|BelongsToMany<Workspace, User>
      */
-    private function accessibleCustomersQuery(User $user): Builder|BelongsToMany
+    private function accessibleWorkspacesQuery(User $user): Builder|BelongsToMany
     {
         return $user->isSuperAdmin()
-            ? Tenant::query()->where('status', 'active')
-            : $user->customers()->where('status', 'active');
+            ? Workspace::query()->where('status', 'active')
+            : $user->workspaces()->where('status', 'active');
     }
 
     /**
-     * Customers the authenticated user can enter. Admins see every active one;
-     * non-admins see only the customers they are a member of.
+     * Workspaces the authenticated user can enter. Admins see every active one;
+     * non-admins see only the workspaces they are a member of.
      *
      * @return array<int, array<string, mixed>>
      */
-    private function availableCustomers(Request $request): array
+    private function availableWorkspaces(Request $request): array
     {
-        if (! config('tenancy.enabled')) {
+        if (! config('workspaces.enabled')) {
             return [];
         }
 
@@ -300,15 +303,15 @@ class HandleInertiaRequests extends Middleware
             return [];
         }
 
-        /** @var Collection<int, Tenant> $customers */
-        $customers = $this->accessibleCustomersQuery($user)->orderBy('name')->limit(50)->get();
+        /** @var Collection<int, Workspace> $workspaces */
+        $workspaces = $this->accessibleWorkspacesQuery($user)->orderBy('name')->limit(50)->get();
 
-        return $customers
-            ->map(fn (Tenant $customer) => [
-                'id' => $customer->id,
-                'slug' => $customer->slug,
-                'name' => $customer->name,
-                'files_feature_enabled' => (bool) $customer->files_feature_enabled,
+        return $workspaces
+            ->map(fn (Workspace $workspace) => [
+                'id' => $workspace->id,
+                'slug' => $workspace->slug,
+                'name' => $workspace->name,
+                'files_feature_enabled' => (bool) $workspace->files_feature_enabled,
             ])
             ->values()
             ->all();

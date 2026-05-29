@@ -49,7 +49,7 @@ export interface UserSettings {
     [key: string]: UserSettingValue;
 }
 
-export interface Customer {
+export interface Workspace {
     id: number;
     slug: string;
     name: string;
@@ -63,12 +63,12 @@ export interface Customer {
 
 /**
  * The workspace the left rail is scoped to. Resolved on every route (unlike
- * `customer`, which is null on central routes), and carries the user's
+ * `workspace`, which is null on central routes), and carries the user's
  * workspace-scoped capabilities so the rail's permission-gated entries render
  * the same on /home as inside the workspace. Null when the user belongs to no
- * active workspace (or tenancy is disabled).
+ * active workspace (or workspaces is disabled).
  */
-export interface CurrentCustomer {
+export interface CurrentWorkspace {
     id: number;
     slug: string;
     name: string;
@@ -96,7 +96,7 @@ export interface PageProps extends InertiaPageProps {
         error?: string;
         status?: string;
     };
-    tenancy: {
+    workspaces: {
         enabled: boolean;
     };
     chat: {
@@ -112,7 +112,7 @@ export interface PageProps extends InertiaPageProps {
         files_feature_enabled?: boolean;
         announcement?: { text: string; severity: string } | null;
     };
-    customer: Customer | null;
-    current_customer: CurrentCustomer | null;
-    available_customers: Customer[];
+    workspace: Workspace | null;
+    current_workspace: CurrentWorkspace | null;
+    available_workspaces: Workspace[];
 }

@@ -9,13 +9,13 @@ beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
 });
 
-it('lets a viewer who shares a customer with the profile owner view that profile', function () {
-    $customer = createCustomer();
+it('lets a viewer who shares a workspace with the profile owner view that profile', function () {
+    $workspace = createWorkspace();
     $viewer = User::factory()->create();
     $owner = User::factory()->create(['headline' => 'Senior engineer', 'bio' => 'Hi!']);
 
-    grantRoleOnCustomer($viewer, 'User', $customer);
-    grantRoleOnCustomer($owner, 'User', $customer);
+    grantRoleOnWorkspace($viewer, 'User', $workspace);
+    grantRoleOnWorkspace($owner, 'User', $workspace);
 
     $this->actingAs($viewer)
         ->get('/u/'.$owner->public_id)
@@ -26,25 +26,25 @@ it('lets a viewer who shares a customer with the profile owner view that profile
             ->where('profile.headline', 'Senior engineer')
             ->where('profile.bio', 'Hi!')
             ->where('is_self', false)
-            ->has('shared_customers', 1)
+            ->has('shared_workspaces', 1)
         );
 });
 
-it('forbids viewing the profile of a user who shares no customer with the viewer', function () {
-    $a = createCustomer('a', 'Acme');
-    $b = createCustomer('b', 'Beta');
+it('forbids viewing the profile of a user who shares no workspace with the viewer', function () {
+    $a = createWorkspace('a', 'Acme');
+    $b = createWorkspace('b', 'Beta');
 
     $viewer = User::factory()->create();
     $owner = User::factory()->create();
-    grantRoleOnCustomer($viewer, 'User', $a);
-    grantRoleOnCustomer($owner, 'User', $b);
+    grantRoleOnWorkspace($viewer, 'User', $a);
+    grantRoleOnWorkspace($owner, 'User', $b);
 
     $this->actingAs($viewer)
         ->get('/u/'.$owner->public_id)
         ->assertForbidden();
 });
 
-it('lets a SuperAdmin view any profile regardless of shared customers', function () {
+it('lets a SuperAdmin view any profile regardless of shared workspaces', function () {
     $super = makeSuperAdmin(User::factory()->create());
     $owner = User::factory()->create();
 
@@ -54,7 +54,7 @@ it('lets a SuperAdmin view any profile regardless of shared customers', function
         ->assertInertia(fn ($page) => $page->component('UserProfile')->where('is_self', false));
 });
 
-it('lets a user view their own profile even with no shared customers', function () {
+it('lets a user view their own profile even with no shared workspaces', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)

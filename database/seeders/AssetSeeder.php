@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Domains\Assets\Models\Asset;
-use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Workspaces\Models\Workspace;
 use Illuminate\Database\Seeder;
 
 /**
- * A few demo Assets per customer so the file-owning-entity feature is visible
+ * A few demo Assets per workspace so the file-owning-entity feature is visible
  * on a fresh install. Idempotent (firstOrCreate). Delete this seeder (and its
  * DatabaseSeeder call) together with the rest of the Assets module to drop the
  * demo.
@@ -24,10 +24,10 @@ class AssetSeeder extends Seeder
             ['name' => 'Laptop — Dell XPS', 'category' => 'Device', 'serial' => 'DXPS-5521'],
         ];
 
-        Tenant::query()->each(function (Tenant $tenant) use ($demo): void {
+        Workspace::query()->each(function (Workspace $workspace) use ($demo): void {
             foreach ($demo as $row) {
                 Asset::firstOrCreate(
-                    ['tenant_id' => $tenant->id, 'name' => $row['name']],
+                    ['workspace_id' => $workspace->id, 'name' => $row['name']],
                     ['category' => $row['category'], 'serial' => $row['serial']],
                 );
             }

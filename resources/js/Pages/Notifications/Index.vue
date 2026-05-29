@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /*
  * Full notifications page. Reached by navigating to /notifications (or the
- * customer-scoped /c/{slug}/notifications) — e.g. the "View all" link in the
+ * workspace-scoped /w/{slug}/notifications) — e.g. the "View all" link in the
  * bell. The bell itself fetches the same endpoint with Accept: application/json
  * and gets a compact JSON slice; this page is the HTML rendering.
  */
@@ -10,7 +10,7 @@ import { useI18n } from 'vue-i18n';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import CommandLayout from '@/Layouts/CommandLayout.vue';
 import Icon from '@/Components/Command/Icon.vue';
-import { useCustomer } from '@/composables/useCustomer';
+import { useWorkspace } from '@/composables/useWorkspace';
 import { useUnreadCounts } from '@/composables/useUnreadCounts';
 
 defineOptions({ layout: CommandLayout });
@@ -29,7 +29,7 @@ const props = defineProps<{
 }>();
 
 const { t } = useI18n();
-const { customerUrl } = useCustomer();
+const { workspaceUrl } = useWorkspace();
 const { setNotifications, decrementNotifications } = useUnreadCounts();
 
 const items = ref<NotificationItem[]>([...props.notifications]);
@@ -47,7 +47,7 @@ onBeforeUnmount(() => { if (tickHandle !== undefined) window.clearInterval(tickH
 
 function markOneRead(n: NotificationItem) {
     if (n.read_at) return;
-    router.post(customerUrl(`/notifications/${n.id}/read`), {}, {
+    router.post(workspaceUrl(`/notifications/${n.id}/read`), {}, {
         preserveScroll: true,
         onSuccess: () => {
             n.read_at = new Date().toISOString();
@@ -58,7 +58,7 @@ function markOneRead(n: NotificationItem) {
 
 function deleteOne(n: NotificationItem) {
     const wasUnread = !n.read_at;
-    router.delete(customerUrl(`/notifications/${n.id}`), {
+    router.delete(workspaceUrl(`/notifications/${n.id}`), {
         preserveScroll: true,
         onSuccess: () => {
             items.value = items.value.filter((x) => x.id !== n.id);
@@ -68,7 +68,7 @@ function deleteOne(n: NotificationItem) {
 }
 
 function markAllRead() {
-    router.post(customerUrl('/notifications/read-all'), {}, {
+    router.post(workspaceUrl('/notifications/read-all'), {}, {
         preserveScroll: true,
         onSuccess: () => {
             items.value.forEach((n) => { n.read_at = n.read_at ?? new Date().toISOString(); });
@@ -78,7 +78,7 @@ function markAllRead() {
 }
 
 function clearAll() {
-    router.delete(customerUrl('/notifications'), {
+    router.delete(workspaceUrl('/notifications'), {
         preserveScroll: true,
         onSuccess: () => {
             items.value = [];

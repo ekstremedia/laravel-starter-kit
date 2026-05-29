@@ -10,7 +10,7 @@ class AppSetting extends Model
 
     public function getConnectionName(): ?string
     {
-        return config('tenancy.database.central_connection');
+        return config('workspaces.database.central_connection');
     }
 
     protected $casts = [
@@ -44,7 +44,7 @@ class AppSetting extends Model
             'files_feature_enabled' => true,
             'max_share_days' => 7,
             // 5 GB baseline per user, cascading down through the 3-tier
-            // resolution. Customer/user overrides still take precedence —
+            // resolution. Workspace/user overrides still take precedence —
             // this is the "nothing configured" fallback.
             'default_personal_storage_bytes' => 5 * 1024 * 1024 * 1024,
             // 50 MB per-file upload ceiling out of the box.

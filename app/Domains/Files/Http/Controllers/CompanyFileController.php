@@ -18,8 +18,8 @@ use App\Domains\Files\Support\UploadLimits;
 use App\Domains\Notifications\Notifications\CompanyFileDeletedByAdminNotification;
 use App\Domains\Notifications\Notifications\CompanyFileUnlinkedByAdminNotification;
 use App\Domains\Settings\Models\AppSetting;
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -40,17 +40,17 @@ class CompanyFileController extends Controller
 
     public function index(Request $request, ?FileItem $folder = null): Response
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertFeatureAvailable($tenant, $user);
+        $this->assertFeatureAvailable($workspace, $user);
 
         if ($folder !== null && $folder->exists) {
-            $this->assertCompanyFolder($folder, $tenant);
+            $this->assertCompanyFolder($folder, $workspace);
         }
 
         $parentId = $folder?->id;
         $search = $request->string('q')->toString();
-        $canManage = $this->canManageCompanyFiles($user, $tenant);
+        $canManage = $this->canManageCompanyFiles($user, $workspace);
 
         // Cache the resolved resource payload per (tenant, version, folder,
         // search). Every mutation bumps the tenant's version via
@@ -59,10 +59,10 @@ class CompanyFileController extends Controller
         // `can_manage` column is resolved per-user from permission state, so
         // we re-map that after the cache read.
         $cached = CompanyFilesCache::rememberList(
-            tenantId: $tenant->id,
+            workspaceId: $workspace->id,
             folderId: $parentId,
             search: $search,
-            builder: fn () => $this->buildListingPayload($request, $tenant, $parentId, $search),
+            builder: fn () => $this->buildListingPayload($request, $workspace, $parentId, $search),
         );
 
         // `can_manage` depends on the *viewer*, so it's patched post-cache.
@@ -83,9 +83,9 @@ class CompanyFileController extends Controller
             'current_folder' => $folder?->only(['id', 'name', 'uuid']),
             'usage' => [
                 'used_bytes' => $usedBytes,
-                'quota_bytes' => $this->resolveCompanyQuotaBytes($tenant),
-                'quota_unlimited' => $this->isCompanyQuotaUnlimited($tenant),
-                'percent' => $this->percentCompany($tenant, $usedBytes),
+                'quota_bytes' => $this->resolveCompanyQuotaBytes($workspace),
+                'quota_unlimited' => $this->isCompanyQuotaUnlimited($workspace),
+                'percent' => $this->percentCompany($workspace, $usedBytes),
             ],
             'can_manage' => $canManage,
             'permissions' => [
@@ -94,7 +94,7 @@ class CompanyFileController extends Controller
                 'manage' => $canManage,
             ],
             'search' => $search ?: null,
-            'realtime_version' => CompanyFilesCache::version($tenant->id),
+            'realtime_version' => CompanyFilesCache::version($workspace->id),
         ]);
     }
 
@@ -107,17 +107,17 @@ class CompanyFileController extends Controller
      *
      * @return array{items: array<int, array<string, mixed>>, used_bytes: int}
      */
-    private function buildListingPayload(Request $request, Tenant $tenant, ?int $parentId, string $search): array
+    private function buildListingPayload(Request $request, Workspace $workspace, ?int $parentId, string $search): array
     {
         $native = FileItem::query()
-            ->where('tenant_id', $tenant->id)
+            ->where('workspace_id', $workspace->id)
             ->where('scope', FileItem::SCOPE_COMPANY)
             ->where('parent_id', $parentId)
             ->with(['media', 'user'])
             ->get();
 
         $linkRows = CompanyFileLink::query()
-            ->where('tenant_id', $tenant->id)
+            ->where('workspace_id', $workspace->id)
             ->where('company_parent_id', $parentId)
             ->with(['fileItem.media', 'fileItem.user', 'sharedBy'])
             ->get();
@@ -155,15 +155,15 @@ class CompanyFileController extends Controller
 
         return [
             'items' => $rows,
-            'used_bytes' => $this->usage->usedBytesForTenantCompany($tenant),
+            'used_bytes' => $this->usage->usedBytesForTenantCompany($workspace),
         ];
     }
 
     public function storeFolder(Request $request): RedirectResponse
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertFeatureAvailable($tenant, $user);
+        $this->assertFeatureAvailable($workspace, $user);
         abort_unless($user->can('create company folders'), 403, __('files.permission_denied'));
 
         $data = $request->validate([
@@ -173,30 +173,30 @@ class CompanyFileController extends Controller
 
         if (isset($data['parent_id'])) {
             $parent = FileItem::findOrFail($data['parent_id']);
-            $this->assertCompanyFolder($parent, $tenant);
+            $this->assertCompanyFolder($parent, $workspace);
         }
 
         $folder = FileItem::create([
-            'tenant_id' => $tenant->id,
+            'workspace_id' => $workspace->id,
             'user_id' => $user->id,
-            'owner_type' => $tenant->getMorphClass(),
-            'owner_id' => $tenant->id,
+            'owner_type' => $workspace->getMorphClass(),
+            'owner_id' => $workspace->id,
             'parent_id' => $data['parent_id'] ?? null,
             'type' => FileItem::TYPE_FOLDER,
             'scope' => FileItem::SCOPE_COMPANY,
-            'name' => $this->uniqueNameCompany($tenant->id, $data['parent_id'] ?? null, $data['name']),
+            'name' => $this->uniqueNameCompany($workspace->id, $data['parent_id'] ?? null, $data['name']),
         ]);
 
-        CompanyFilesCache::bump($tenant->id, 'folder_created', $data['parent_id'] ?? null);
+        CompanyFilesCache::bump($workspace->id, 'folder_created', $data['parent_id'] ?? null);
 
         return back()->with('success', __('files.folder_created', ['name' => $folder->name]));
     }
 
     public function store(Request $request): RedirectResponse
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertFeatureAvailable($tenant, $user);
+        $this->assertFeatureAvailable($workspace, $user);
         abort_unless($user->can('upload to company files'), 403, __('files.permission_denied'));
 
         $request->validate([
@@ -208,7 +208,7 @@ class CompanyFileController extends Controller
         $parentId = $request->integer('parent_id') ?: null;
         if ($parentId !== null) {
             $parent = FileItem::findOrFail($parentId);
-            $this->assertCompanyFolder($parent, $tenant);
+            $this->assertCompanyFolder($parent, $workspace);
         }
 
         $created = 0;
@@ -216,15 +216,15 @@ class CompanyFileController extends Controller
         $videoTargets = [];
         $imageTargets = [];
         $allTargets = [];
-        DB::connection((string) config('tenancy.database.central_connection'))->transaction(function () use ($request, $tenant, $user, $parentId, &$created, &$previewTargets, &$videoTargets, &$imageTargets, &$allTargets): void {
+        DB::connection((string) config('workspaces.database.central_connection'))->transaction(function () use ($request, $workspace, $user, $parentId, &$created, &$previewTargets, &$videoTargets, &$imageTargets, &$allTargets): void {
             foreach ($request->file('files', []) as $file) {
-                $name = $this->uniqueNameCompany($tenant->id, $parentId, $file->getClientOriginalName());
+                $name = $this->uniqueNameCompany($workspace->id, $parentId, $file->getClientOriginalName());
                 $size = $file->getSize();
                 $item = FileItem::create([
-                    'tenant_id' => $tenant->id,
+                    'workspace_id' => $workspace->id,
                     'user_id' => $user->id,
-                    'owner_type' => $tenant->getMorphClass(),
-                    'owner_id' => $tenant->id,
+                    'owner_type' => $workspace->getMorphClass(),
+                    'owner_id' => $workspace->id,
                     'parent_id' => $parentId,
                     'type' => FileItem::TYPE_FILE,
                     'scope' => FileItem::SCOPE_COMPANY,
@@ -269,22 +269,22 @@ class CompanyFileController extends Controller
             }
         }
 
-        $this->usage->recomputeForTenant($tenant);
-        CompanyFilesCache::bump($tenant->id, 'files_uploaded', $parentId);
+        $this->usage->recomputeForTenant($workspace);
+        CompanyFilesCache::bump($workspace->id, 'files_uploaded', $parentId);
 
         return back()->with('success', __('files.upload_success', ['count' => $created]));
     }
 
     public function update(Request $request, FileItem $file): RedirectResponse
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertFeatureAvailable($tenant, $user);
-        $this->assertCompanyItem($file, $tenant);
+        $this->assertFeatureAvailable($workspace, $user);
+        $this->assertCompanyItem($file, $workspace);
 
         // Renaming/moving a native company item: owner or admin.
         $isOwner = $file->user_id === $user->id;
-        $canManage = $this->canManageCompanyFiles($user, $tenant);
+        $canManage = $this->canManageCompanyFiles($user, $workspace);
         abort_unless($isOwner || $canManage, 403, __('files.permission_denied'));
         abort_unless($user->can('rename files'), 403, __('files.permission_denied'));
 
@@ -299,7 +299,7 @@ class CompanyFileController extends Controller
                     abort(422, __('files.cannot_self_parent'));
                 }
                 $parent = FileItem::findOrFail($data['parent_id']);
-                $this->assertCompanyFolder($parent, $tenant);
+                $this->assertCompanyFolder($parent, $workspace);
                 if ($file->isFolder() && $this->isDescendantOf($parent, $file)) {
                     abort(422, __('files.cannot_move_into_descendant'));
                 }
@@ -308,38 +308,38 @@ class CompanyFileController extends Controller
         }
 
         if (array_key_exists('name', $data) && $data['name'] !== '') {
-            $file->name = $this->uniqueNameCompany($tenant->id, $file->parent_id, $data['name'], $file->id);
+            $file->name = $this->uniqueNameCompany($workspace->id, $file->parent_id, $data['name'], $file->id);
         }
 
         $file->save();
 
-        CompanyFilesCache::bump($tenant->id, 'item_updated', $file->parent_id);
+        CompanyFilesCache::bump($workspace->id, 'item_updated', $file->parent_id);
 
         return back()->with('success', __('files.updated'));
     }
 
     public function destroy(Request $request, FileItem $file): RedirectResponse
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertFeatureAvailable($tenant, $user);
-        $this->assertCompanyItem($file, $tenant);
+        $this->assertFeatureAvailable($workspace, $user);
+        $this->assertCompanyItem($file, $workspace);
 
         $isOwner = $file->user_id === $user->id;
-        $canManage = $this->canManageCompanyFiles($user, $tenant);
+        $canManage = $this->canManageCompanyFiles($user, $workspace);
 
         abort_unless($isOwner || $canManage, 403, __('files.permission_denied'));
 
         [$notifyInApp, $notifyEmail] = $this->notifyFlags($request);
         // `user_id` is NOT NULL on file_items, so the uploader relation is
         // always set — no defensive null-check needed. (For company files the
-        // polymorphic owner is the Tenant; `$file->user` is the uploader.)
+        // polymorphic owner is the Workspace; `$file->user` is the uploader.)
         $uploader = $file->user;
 
         $parentIdBeforeDelete = $file->parent_id;
         $file->delete();
-        $this->usage->recomputeForTenant($tenant);
-        CompanyFilesCache::bump($tenant->id, 'item_deleted', $parentIdBeforeDelete);
+        $this->usage->recomputeForTenant($workspace);
+        CompanyFilesCache::bump($workspace->id, 'item_deleted', $parentIdBeforeDelete);
         // Uploader's personal denormalized usage doesn't change for native
         // company files (they weren't billable to the user), but keeping the
         // recompute path consistent costs one query and avoids drift.
@@ -348,8 +348,8 @@ class CompanyFileController extends Controller
         if (! $isOwner && ($notifyInApp || $notifyEmail)) {
             $uploader->notify(new CompanyFileDeletedByAdminNotification(
                 fileName: $file->name,
-                tenantId: $tenant->id,
-                tenantName: $tenant->name,
+                workspaceId: $workspace->id,
+                workspaceName: $workspace->name,
                 actorName: $user->fullName(),
                 sendEmail: $notifyEmail,
                 sendDatabase: $notifyInApp,
@@ -365,11 +365,11 @@ class CompanyFileController extends Controller
      */
     public function unlink(Request $request, CompanyFileLink $link): RedirectResponse
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertFeatureAvailable($tenant, $user);
+        $this->assertFeatureAvailable($workspace, $user);
 
-        if ($link->tenant_id !== $tenant->id) {
+        if ($link->workspace_id !== $workspace->id) {
             abort(404);
         }
 
@@ -384,11 +384,11 @@ class CompanyFileController extends Controller
 
         // file_items.user_id is NOT NULL (see migration), so the relation
         // is always resolved. phpstan enforces this from the phpdoc.
-        // For company files the polymorphic owner is the Tenant; `$fileItem->user`
+        // For company files the polymorphic owner is the Workspace; `$fileItem->user`
         // is the uploader, which is what we compare and notify here.
         $uploader = $fileItem->user;
         $isUploader = $uploader->id === $user->id;
-        $canManage = $this->canManageCompanyFiles($user, $tenant);
+        $canManage = $this->canManageCompanyFiles($user, $workspace);
 
         abort_unless($isUploader || $canManage, 403, __('files.permission_denied'));
 
@@ -396,8 +396,8 @@ class CompanyFileController extends Controller
         $fileName = $fileItem->name;
 
         $link->delete();
-        $this->usage->recomputeForTenant($tenant);
-        CompanyFilesCache::bump($tenant->id, 'link_removed');
+        $this->usage->recomputeForTenant($workspace);
+        CompanyFilesCache::bump($workspace->id, 'link_removed');
 
         // Skip the uploader notification when the file has been trashed —
         // they're already aware they deleted it, and a separate admin-unlink
@@ -405,8 +405,8 @@ class CompanyFileController extends Controller
         if (! $isUploader && ! $fileItem->trashed() && ($notifyInApp || $notifyEmail)) {
             $uploader->notify(new CompanyFileUnlinkedByAdminNotification(
                 fileName: $fileName,
-                tenantId: $tenant->id,
-                tenantName: $tenant->name,
+                workspaceId: $workspace->id,
+                workspaceName: $workspace->name,
                 actorName: $user->fullName(),
                 sendEmail: $notifyEmail,
                 sendDatabase: $notifyInApp,
@@ -418,18 +418,18 @@ class CompanyFileController extends Controller
 
     public function download(Request $request, FileItem $file): BinaryFileResponse
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertFeatureAvailable($tenant, $user);
+        $this->assertFeatureAvailable($workspace, $user);
 
         // Allow download from either a native company file in this tenant,
         // or a personal file linked into this tenant's company tree.
         $linked = CompanyFileLink::query()
-            ->where('tenant_id', $tenant->id)
+            ->where('workspace_id', $workspace->id)
             ->where('file_item_id', $file->id)
             ->exists();
 
-        $native = $file->scope === FileItem::SCOPE_COMPANY && $file->tenant_id === $tenant->id;
+        $native = $file->scope === FileItem::SCOPE_COMPANY && $file->workspace_id === $workspace->id;
 
         if (! $native && ! $linked) {
             abort(403, __('files.permission_denied'));
@@ -476,15 +476,15 @@ class CompanyFileController extends Controller
     // Helpers
     // -------------------------------------------------------------------
 
-    private function currentTenant(Request $request): Tenant
+    private function currentTenant(Request $request): Workspace
     {
-        $tenant = $request->attributes->get('customer');
-        if ($tenant instanceof Tenant) {
-            return $tenant;
+        $workspace = $request->attributes->get('workspace');
+        if ($workspace instanceof Workspace) {
+            return $workspace;
         }
 
-        $slug = config('tenancy.default_customer_slug');
-        $fallback = $slug ? Tenant::query()->where('slug', $slug)->first() : null;
+        $slug = config('workspaces.default_workspace_slug');
+        $fallback = $slug ? Workspace::query()->where('slug', $slug)->first() : null;
 
         if (! $fallback) {
             abort(404);
@@ -493,28 +493,28 @@ class CompanyFileController extends Controller
         return $fallback;
     }
 
-    private function assertFeatureAvailable(Tenant $tenant, User $user): void
+    private function assertFeatureAvailable(Workspace $workspace, User $user): void
     {
         // The app-level flag is the master kill switch for everything
-        // file-related. Per-customer, the shared workspace lives behind
+        // file-related. Per-workspace, the shared workspace lives behind
         // its own `company_files_enabled` toggle — independent of the
-        // personal `files_feature_enabled`, so a customer can run with
+        // personal `files_feature_enabled`, so a workspace can run with
         // one or the other or both.
         if (! AppSetting::current()->files_feature_enabled) {
             abort(404);
         }
 
-        if (! $tenant->company_files_enabled) {
+        if (! $workspace->company_files_enabled) {
             abort(404);
         }
 
         abort_unless($user->can('view company files'), 403, __('files.permission_denied'));
     }
 
-    private function assertCompanyFolder(FileItem $folder, Tenant $tenant): void
+    private function assertCompanyFolder(FileItem $folder, Workspace $workspace): void
     {
         if (
-            $folder->tenant_id !== $tenant->id
+            $folder->workspace_id !== $workspace->id
             || $folder->scope !== FileItem::SCOPE_COMPANY
             || ! $folder->isFolder()
         ) {
@@ -522,16 +522,16 @@ class CompanyFileController extends Controller
         }
     }
 
-    private function assertCompanyItem(FileItem $item, Tenant $tenant): void
+    private function assertCompanyItem(FileItem $item, Workspace $workspace): void
     {
-        if ($item->tenant_id !== $tenant->id || $item->scope !== FileItem::SCOPE_COMPANY) {
+        if ($item->workspace_id !== $workspace->id || $item->scope !== FileItem::SCOPE_COMPANY) {
             abort(404);
         }
     }
 
-    private function canManageCompanyFiles(User $user, Tenant $tenant): bool
+    private function canManageCompanyFiles(User $user, Workspace $workspace): bool
     {
-        // Super admins always qualify. Otherwise the per-customer permission
+        // Super admins always qualify. Otherwise the per-workspace permission
         // (scoped via the tenancy middleware) governs admin actions.
         return $user->isSuperAdmin() || (bool) $user->can('manage company files');
     }
@@ -548,12 +548,12 @@ class CompanyFileController extends Controller
         };
     }
 
-    private function uniqueNameCompany(int $tenantId, ?int $parentId, string $name, ?int $ignoreId = null): string
+    private function uniqueNameCompany(int $workspaceId, ?int $parentId, string $name, ?int $ignoreId = null): string
     {
         $base = $name;
         $i = 1;
         while (FileItem::query()
-            ->where('tenant_id', $tenantId)
+            ->where('workspace_id', $workspaceId)
             ->where('scope', FileItem::SCOPE_COMPANY)
             ->where('parent_id', $parentId)
             ->where('name', $name)
@@ -624,9 +624,9 @@ class CompanyFileController extends Controller
         ];
     }
 
-    private function resolveCompanyQuotaBytes(Tenant $tenant): ?int
+    private function resolveCompanyQuotaBytes(Workspace $workspace): ?int
     {
-        $quota = $tenant->storage_quota_bytes;
+        $quota = $workspace->storage_quota_bytes;
         if ($quota === null || (int) $quota < 0) {
             return null;
         }
@@ -634,16 +634,16 @@ class CompanyFileController extends Controller
         return (int) $quota;
     }
 
-    private function isCompanyQuotaUnlimited(Tenant $tenant): bool
+    private function isCompanyQuotaUnlimited(Workspace $workspace): bool
     {
-        $quota = $tenant->storage_quota_bytes;
+        $quota = $workspace->storage_quota_bytes;
 
         return $quota === null || (int) $quota < 0;
     }
 
-    private function percentCompany(Tenant $tenant, int $usedBytes): float
+    private function percentCompany(Workspace $workspace, int $usedBytes): float
     {
-        $quota = $this->resolveCompanyQuotaBytes($tenant);
+        $quota = $this->resolveCompanyQuotaBytes($workspace);
         if ($quota === null || $quota <= 0) {
             return 0.0;
         }

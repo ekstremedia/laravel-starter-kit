@@ -6,7 +6,7 @@ import Icon from '@/Components/Command/Icon.vue';
 import ConfirmDialog from 'primevue/confirmdialog';
 import { useConfirm } from 'primevue/useconfirm';
 import { useCommandToasts } from '@/composables/useCommandToasts';
-import { useCustomer } from '@/composables/useCustomer';
+import { useWorkspace } from '@/composables/useWorkspace';
 import { humanBytes } from '@/utils/bytes';
 
 defineOptions({ layout: CommandLayout });
@@ -31,14 +31,14 @@ const props = defineProps<{
 }>();
 
 const { t } = useI18n();
-const { customerUrl } = useCustomer();
+const { workspaceUrl } = useWorkspace();
 const { push } = useCommandToasts();
 const confirmer = useConfirm();
 
 function restore(item: TrashItem) {
     // Server flashes files.restored; useFlashToast surfaces it. Pushing
     // again here would stack two toasts for the same action.
-    router.post(customerUrl(`/files/company/trash/${item.id}/restore`), {}, {
+    router.post(workspaceUrl(`/files/company/trash/${item.id}/restore`), {}, {
         preserveScroll: true,
     });
 }
@@ -54,7 +54,7 @@ function forceDelete(item: TrashItem) {
         acceptLabel: t('files.delete_forever'),
         rejectLabel: t('common.cancel'),
         accept: () => {
-            router.delete(customerUrl(`/files/company/trash/${item.id}`), {
+            router.delete(workspaceUrl(`/files/company/trash/${item.id}`), {
                 preserveScroll: true,
                 // Success toast comes from the server flash.
                 onError: (errors) => {
@@ -91,7 +91,7 @@ function iconFor(item: TrashItem): 'disk' | 'log' {
                 </div>
             </div>
             <Link
-                :href="customerUrl('/files/company')"
+                :href="workspaceUrl('/files/company')"
                 :style="{ fontSize: '11.5px', color: 'var(--fg-dim)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px' }"
             >
                 <Icon name="chevR" :size="10" :style="{ transform: 'rotate(180deg)' }" />

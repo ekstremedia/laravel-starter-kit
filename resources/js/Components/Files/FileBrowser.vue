@@ -26,7 +26,7 @@ import FileDetailsDialog from '@/Components/Files/FileDetailsDialog.vue';
 import TextPreviewDialog from '@/Components/Files/TextPreviewDialog.vue';
 import BulkActionBar from '@/Components/Files/BulkActionBar.vue';
 import { humanBytes as formatBytes } from '@/utils/bytes';
-import { useCustomer } from '@/composables/useCustomer';
+import { useWorkspace } from '@/composables/useWorkspace';
 import { useFileMedia } from '@/composables/useFileMedia';
 import type { FileBrowserItem } from '@/types/files';
 
@@ -69,7 +69,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const { customerUrl } = useCustomer();
+const { workspaceUrl } = useWorkspace();
 
 const perm = computed(() => ({
     rename: props.permissions?.rename ?? false,
@@ -79,7 +79,7 @@ const perm = computed(() => ({
     upload: props.permissions?.upload ?? false,
 }));
 
-const url = (path: string) => customerUrl(`${props.basePath}${path}`);
+const url = (path: string) => workspaceUrl(`${props.basePath}${path}`);
 // Param kept structural (not `T`) so it accepts both the rendered rows and the
 // non-generic `docPreviewItem` ref below without fighting the component generic.
 const downloadUrl = (item: { id: number }) => url(`/${item.id}/download`);

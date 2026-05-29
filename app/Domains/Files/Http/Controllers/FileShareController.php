@@ -7,8 +7,8 @@ namespace App\Domains\Files\Http\Controllers;
 use App\Domains\Files\Models\FileItem;
 use App\Domains\Files\Models\FileShare;
 use App\Domains\Settings\Models\AppSetting;
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -27,10 +27,10 @@ class FileShareController extends Controller
 {
     public function store(Request $request, FileItem $file): JsonResponse
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertCanShare($file, $user, $tenant);
-        $this->assertFeatureAvailable($tenant, $user);
+        $this->assertCanShare($file, $user, $workspace);
+        $this->assertFeatureAvailable($workspace, $user);
         abort_unless($user->can('share files'), 403, __('files.permission_denied'));
 
         $maxDays = AppSetting::current()->max_share_days ?? 7;
@@ -58,10 +58,10 @@ class FileShareController extends Controller
 
     public function index(Request $request, FileItem $file): JsonResponse
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertCanShare($file, $user, $tenant);
-        $this->assertFeatureAvailable($tenant, $user);
+        $this->assertCanShare($file, $user, $workspace);
+        $this->assertFeatureAvailable($workspace, $user);
         abort_unless($user->can('share files'), 403, __('files.permission_denied'));
 
         $shares = FileShare::where('file_item_id', $file->id)
@@ -81,12 +81,12 @@ class FileShareController extends Controller
         // trashes the file, which would TypeError on assertCanShare. Load
         // the relation with `withTrashed()` so the authorization + revoke
         // path keeps working until the item is hard-purged.
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
         $file = FileItem::withTrashed()->find($share->file_item_id);
         abort_if($file === null, 404);
-        $this->assertCanShare($file, $user, $tenant);
-        $this->assertFeatureAvailable($tenant, $user);
+        $this->assertCanShare($file, $user, $workspace);
+        $this->assertFeatureAvailable($workspace, $user);
         abort_unless($user->can('share files'), 403, __('files.permission_denied'));
 
         $share->delete();
@@ -100,10 +100,10 @@ class FileShareController extends Controller
      */
     public function quickSignedLink(Request $request, FileItem $file): JsonResponse
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertCanShare($file, $user, $tenant);
-        $this->assertFeatureAvailable($tenant, $user);
+        $this->assertCanShare($file, $user, $workspace);
+        $this->assertFeatureAvailable($workspace, $user);
         abort_unless($user->can('share files'), 403, __('files.permission_denied'));
 
         if ($file->isFolder()) {
@@ -142,14 +142,14 @@ class FileShareController extends Controller
         ];
     }
 
-    private function currentTenant(Request $request): Tenant
+    private function currentTenant(Request $request): Workspace
     {
-        $tenant = $request->attributes->get('customer');
-        if ($tenant instanceof Tenant) {
-            return $tenant;
+        $workspace = $request->attributes->get('workspace');
+        if ($workspace instanceof Workspace) {
+            return $workspace;
         }
-        $slug = config('tenancy.default_customer_slug');
-        $fallback = $slug ? Tenant::query()->where('slug', $slug)->first() : null;
+        $slug = config('workspaces.default_workspace_slug');
+        $fallback = $slug ? Workspace::query()->where('slug', $slug)->first() : null;
         abort_if(! $fallback, 404);
 
         return $fallback;
@@ -162,7 +162,7 @@ class FileShareController extends Controller
      *     what the original `assertOwns` enforced and the default branch
      *     below preserves it.
      *   - Native company file: the file's uploader (`user_id`) OR a
-     *     customer admin can create/revoke. Sharing externally is an
+     *     workspace admin can create/revoke. Sharing externally is an
      *     admin-level action — we don't want any ordinary member
      *     exposing another member's upload publicly.
      *   - Linked personal file (a personal file surfaced via
@@ -170,9 +170,9 @@ class FileShareController extends Controller
      *     want public exposure should ask the owner to share, or copy
      *     the file as a native company upload first.
      */
-    private function assertCanShare(FileItem $item, User $user, Tenant $tenant): void
+    private function assertCanShare(FileItem $item, User $user, Workspace $workspace): void
     {
-        if ($item->tenant_id !== $tenant->id) {
+        if ($item->workspace_id !== $workspace->id) {
             throw new AccessDeniedHttpException;
         }
 
@@ -192,12 +192,12 @@ class FileShareController extends Controller
         }
     }
 
-    private function assertFeatureAvailable(Tenant $tenant, User $user): void
+    private function assertFeatureAvailable(Workspace $workspace, User $user): void
     {
         if (! AppSetting::current()->files_feature_enabled) {
             abort(404);
         }
-        if (! $tenant->files_feature_enabled) {
+        if (! $workspace->files_feature_enabled) {
             abort(404);
         }
         if (! ($user->settings()->resolved()['files_enabled'] ?? false)) {

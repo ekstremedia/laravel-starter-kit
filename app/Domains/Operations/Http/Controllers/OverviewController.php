@@ -2,8 +2,8 @@
 
 namespace App\Domains\Operations\Http\Controllers;
 
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
 use App\Http\Controllers\Controller;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -41,7 +41,7 @@ class OverviewController extends Controller
         return [
             'generated_at' => $now->toIso8601String(),
             'users' => $this->userMetrics($now, $sevenDaysAgo, $thirtyDaysAgo),
-            'customers' => $this->customerMetrics(),
+            'workspaces' => $this->workspaceMetrics(),
             'storage' => $this->storageMetrics(),
             'queue' => $this->queueMetrics(),
             'backups' => $this->backupMetrics(),
@@ -59,7 +59,7 @@ class OverviewController extends Controller
             ->orderBy('d')
             ->pluck('c', 'd');
 
-        $central = (string) config('tenancy.database.central_connection', config('database.default'));
+        $central = (string) config('workspaces.database.central_connection', config('database.default'));
 
         return [
             'total' => User::count(),
@@ -75,16 +75,16 @@ class OverviewController extends Controller
         ];
     }
 
-    private function customerMetrics(): ?array
+    private function workspaceMetrics(): ?array
     {
-        if (! config('tenancy.enabled')) {
+        if (! config('workspaces.enabled')) {
             return null;
         }
 
         return [
-            'total' => Tenant::count(),
-            'active' => Tenant::where('status', 'active')->count(),
-            'suspended' => Tenant::where('status', 'suspended')->count(),
+            'total' => Workspace::count(),
+            'active' => Workspace::where('status', 'active')->count(),
+            'suspended' => Workspace::where('status', 'suspended')->count(),
         ];
     }
 
@@ -100,10 +100,10 @@ class OverviewController extends Controller
 
     private function queueMetrics(): array
     {
-        // Jobs / failed_jobs live on the central connection — pin the queries
-        // there so tenant-scoped requests don't read the wrong schema and
-        // report zero.
-        $connection = (string) config('tenancy.database.central_connection', config('database.default'));
+        // Jobs / failed_jobs live in the one shared database. The explicit
+        // central connection is vestigial and resolves to the default
+        // connection.
+        $connection = (string) config('workspaces.database.central_connection', config('database.default'));
         $schema = Schema::connection($connection);
         $db = DB::connection($connection);
 

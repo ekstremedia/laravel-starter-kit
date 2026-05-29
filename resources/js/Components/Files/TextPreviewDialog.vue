@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import CommandDialog from '@/Components/Command/Dialog.vue';
-import { useCustomer } from '@/composables/useCustomer';
+import { useWorkspace } from '@/composables/useWorkspace';
 
 interface TextFileItem {
     id: number;
@@ -14,7 +14,7 @@ const props = defineProps<{ item: TextFileItem | null; downloadUrl?: string }>()
 const emit = defineEmits<{ close: [] }>();
 
 const { t } = useI18n();
-const { customerUrl } = useCustomer();
+const { workspaceUrl } = useWorkspace();
 
 const loading = ref(false);
 const error = ref(false);
@@ -35,7 +35,7 @@ async function load(id: number, isMarkdown: boolean) {
     renderedHtml.value = null;
     truncated.value = false;
     try {
-        const res = await fetch(customerUrl(`/files/${id}/text`), {
+        const res = await fetch(workspaceUrl(`/files/${id}/text`), {
             headers: {
                 Accept: 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',

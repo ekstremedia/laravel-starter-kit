@@ -9,11 +9,11 @@ beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
     Storage::fake('public');
 
-    $this->customer = createCustomer();
+    $this->workspace = createWorkspace();
     $this->user = User::factory()->create();
-    joinCustomer($this->user, $this->customer);
+    joinWorkspace($this->user, $this->workspace);
 
-    $this->avatarUrl = customerUrl($this->customer, '/profile/avatar');
+    $this->avatarUrl = workspaceUrl($this->workspace, '/profile/avatar');
 });
 
 it('requires authentication to upload an avatar', function () {

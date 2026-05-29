@@ -9,7 +9,7 @@ use App\Domains\Files\Models\Concerns\HasFiles;
 use App\Domains\Files\Models\FileItem;
 use App\Domains\Notifications\Notifications\ResetPasswordNotification;
 use App\Domains\Notifications\Notifications\VerifyEmailNotification;
-use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Workspaces\Models\Workspace;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\Translation\HasLocalePreference;
@@ -106,12 +106,13 @@ class User extends Authenticatable implements FileOwner, HasLocalePreference, Ha
     }
 
     /**
-     * User rows live in the central schema — pin so queries don't follow the
-     * tenant schema swap performed by stancl/tenancy's DatabaseTenancyBootstrapper.
+     * User rows live in the one shared database. The pin is vestigial — it
+     * resolves to the single default connection; there is no per-request
+     * connection swap to undo.
      */
     public function getConnectionName(): ?string
     {
-        return config('tenancy.database.central_connection');
+        return config('workspaces.database.central_connection');
     }
 
     public function canImpersonate(): bool
@@ -127,10 +128,10 @@ class User extends Authenticatable implements FileOwner, HasLocalePreference, Ha
     /**
      * Platform super-user flag. Stored as a plain column on users rather than
      * a Spatie role: Spatie's team schema forces `model_has_roles.team_id` to
-     * be non-null, so "global, not attached to any customer" isn't
+     * be non-null, so "global, not attached to any workspace" isn't
      * representable there. Keeping it as a boolean also makes the distinction
      * crystal-clear — SuperAdmin is a platform property of the account, not a
-     * per-customer assignment.
+     * per-workspace assignment.
      */
     public function isSuperAdmin(): bool
     {
@@ -282,21 +283,20 @@ class User extends Authenticatable implements FileOwner, HasLocalePreference, Ha
     }
 
     /**
-     * Customers (a.k.a. tenants in package-speak) this user is a member of.
-     * The underlying model is `App\Domains\Tenancy\Models\Tenant` because stancl/tenancy's base
-     * contract names it that way; at the application layer we call them customers.
+     * Workspaces this user is a member of, via the `workspace_user` pivot.
+     * The underlying model is a plain Eloquent `App\Domains\Workspaces\Models\Workspace`.
      *
-     * @return BelongsToMany<Tenant, $this>
+     * @return BelongsToMany<Workspace, $this>
      */
-    public function customers(): BelongsToMany
+    public function workspaces(): BelongsToMany
     {
-        return $this->belongsToMany(Tenant::class, 'tenant_user')
+        return $this->belongsToMany(Workspace::class, 'workspace_user', 'user_id', 'workspace_id')
             ->withTimestamps();
     }
 
-    public function belongsToCustomer(Tenant $customer): bool
+    public function belongsToWorkspace(Workspace $workspace): bool
     {
-        return $this->customers()->whereKey($customer->getKey())->exists();
+        return $this->workspaces()->whereKey($workspace->getKey())->exists();
     }
 
     /**
@@ -317,7 +317,7 @@ class User extends Authenticatable implements FileOwner, HasLocalePreference, Ha
      * arbitrary user-owned files only via the cross-cutting `manage all
      * files` permission (or super-admin).
      */
-    public function canManageFiles(User $user, ?Tenant $tenant = null): bool
+    public function canManageFiles(User $user, ?Workspace $workspace = null): bool
     {
         if ($user->isSuperAdmin() || $user->can('manage all files')) {
             return true;
@@ -326,9 +326,9 @@ class User extends Authenticatable implements FileOwner, HasLocalePreference, Ha
         return $user->getKey() === $this->getKey();
     }
 
-    public function canViewFiles(User $user, ?Tenant $tenant = null): bool
+    public function canViewFiles(User $user, ?Workspace $workspace = null): bool
     {
-        return $this->canManageFiles($user, $tenant);
+        return $this->canManageFiles($user, $workspace);
     }
 
     /**
@@ -395,7 +395,7 @@ class User extends Authenticatable implements FileOwner, HasLocalePreference, Ha
 
     /**
      * Grantable platform-level capability (e.g. "manage_email_templates") —
-     * not super-admin, not customer-scoped. Stored on the user row because
+     * not super-admin, not workspace-scoped. Stored on the user row because
      * Spatie's team schema can't represent a team-less assignment. This is the
      * *explicit* grant only; SuperAdmins bypass abilities via Gate::before.
      */

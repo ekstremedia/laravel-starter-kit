@@ -6,8 +6,8 @@ namespace App\Domains\Files\Http\Middleware;
 
 use App\Domains\Files\Services\StorageUsageService;
 use App\Domains\Files\Support\OwnerResolver;
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
 use Closure;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
@@ -33,12 +33,12 @@ class EnsureStorageAvailable
             return $next($request);
         }
 
-        // Quota is applied per-tenant. On customer-scoped routes
-        // `InitializeTenancyByPath` stashes the tenant in request attributes.
-        // If this middleware is ever hit outside a customer route (shouldn't
+        // Quota is applied per-workspace. On workspace-scoped routes
+        // `ResolveWorkspace` stashes the workspace in request attributes.
+        // If this middleware is ever hit outside a workspace route (shouldn't
         // happen in practice), skip — there's nothing to scope against.
-        $tenant = $request->attributes->get('customer');
-        if (! $tenant instanceof Tenant) {
+        $workspace = $request->attributes->get('workspace');
+        if (! $workspace instanceof Workspace) {
             return $next($request);
         }
 
@@ -46,7 +46,7 @@ class EnsureStorageAvailable
         // personal files, or an entity (Asset, …) for entity files. Falls
         // back to the user when no owner_type/owner_id is on the request.
         $owner = OwnerResolver::fromRequest($request, $user);
-        $quota = $this->usage->effectiveQuota($owner, $tenant);
+        $quota = $this->usage->effectiveQuota($owner, $workspace);
 
         // 0 = hard disabled.
         if ($quota === 0) {
@@ -59,7 +59,7 @@ class EnsureStorageAvailable
         }
 
         $incoming = $this->incomingUploadBytes($request);
-        $remaining = $this->usage->remainingBytesForOwner($owner, $tenant) ?? PHP_INT_MAX;
+        $remaining = $this->usage->remainingBytesForOwner($owner, $workspace) ?? PHP_INT_MAX;
 
         if ($incoming > $remaining) {
             $this->fail($request, 'files.quota_exceeded');

@@ -21,16 +21,16 @@ class SnapshotStorageUsage extends Command
     {
         $today = now()->toDateString();
         $count = 0;
-        $conn = (string) config('tenancy.database.central_connection');
+        $conn = (string) config('workspaces.database.central_connection');
 
-        // `User::on($conn)` keeps the chunk query on the central connection
-        // even if something upstream swapped the default (tenancy bootstrap).
+        // `User::on($conn)` keeps the chunk query on the central connection,
+        // which is vestigial and resolves to the single default connection.
         User::on($conn)->chunkById(200, function ($users) use ($service, $today, $conn, &$count): void {
             foreach ($users as $user) {
                 $bytes = $service->recomputeForUser($user);
                 $fileCount = $this->fileCountFor($user->id);
 
-                $key = ['user_id' => $user->id, 'tenant_id' => null, 'snapshot_date' => $today];
+                $key = ['user_id' => $user->id, 'workspace_id' => null, 'snapshot_date' => $today];
                 $now = now();
 
                 // Distinguish insert vs update so we don't overwrite the
@@ -61,7 +61,7 @@ class SnapshotStorageUsage extends Command
 
     private function fileCountFor(int $userId): int
     {
-        $conn = (string) config('tenancy.database.central_connection');
+        $conn = (string) config('workspaces.database.central_connection');
 
         return (int) DB::connection($conn)->table('media')
             ->leftJoin('file_items', function ($join): void {

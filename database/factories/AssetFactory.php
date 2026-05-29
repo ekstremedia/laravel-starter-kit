@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Database\Factories;
 
 use App\Domains\Assets\Models\Asset;
-use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Workspaces\Models\Workspace;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -22,7 +22,7 @@ class AssetFactory extends Factory
     public function definition(): array
     {
         return [
-            'tenant_id' => Tenant::factory(),
+            'workspace_id' => Workspace::factory(),
             'name' => fake()->unique()->words(2, true),
             'category' => fake()->randomElement(['Vehicle', 'Equipment', 'Device', 'Tool', null]),
             'serial' => fake()->boolean(70) ? mb_strtoupper(fake()->bothify('??-#####')) : null,

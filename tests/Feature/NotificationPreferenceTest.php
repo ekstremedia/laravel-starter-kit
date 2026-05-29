@@ -7,9 +7,9 @@ beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
     config()->set('chat.connection', config('database.default'));
 
-    $this->customer = createCustomer();
+    $this->workspace = createWorkspace();
     $this->user = User::factory()->create();
-    joinCustomer($this->user, $this->customer);
+    joinWorkspace($this->user, $this->workspace);
 });
 
 it('renders the notification preferences page', function () {

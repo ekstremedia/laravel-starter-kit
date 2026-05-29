@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import { useToast } from 'primevue/usetoast';
-import { useCustomer } from '@/composables/useCustomer';
+import { useWorkspace } from '@/composables/useWorkspace';
 import { useUnreadCounts } from '@/composables/useUnreadCounts';
 import Icon from '@/Components/Command/Icon.vue';
 
@@ -17,7 +17,7 @@ interface NotificationItem {
 
 const { t } = useI18n();
 const toast = useToast();
-const { customerUrl } = useCustomer();
+const { workspaceUrl } = useWorkspace();
 const { notificationsCount: unreadCount, decrementNotifications, setNotifications } = useUnreadCounts();
 
 const open = ref(false);
@@ -25,9 +25,9 @@ const notifications = ref<NotificationItem[]>([]);
 const loading = ref(false);
 const hoverId = ref<string | null>(null);
 
-const notificationsUrl = computed(() => customerUrl('/notifications'));
-const readAllUrl = computed(() => customerUrl('/notifications/read-all'));
-const clearAllUrl = computed(() => customerUrl('/notifications'));
+const notificationsUrl = computed(() => workspaceUrl('/notifications'));
+const readAllUrl = computed(() => workspaceUrl('/notifications/read-all'));
+const clearAllUrl = computed(() => workspaceUrl('/notifications'));
 
 function fetchNotifications() {
     loading.value = true;
@@ -63,7 +63,7 @@ defineExpose({ refresh: fetchNotifications });
 
 function markOneRead(n: NotificationItem) {
     if (n.read_at) return;
-    router.post(customerUrl(`/notifications/${n.id}/read`), {}, {
+    router.post(workspaceUrl(`/notifications/${n.id}/read`), {}, {
         preserveScroll: true,
         onSuccess: () => {
             n.read_at = new Date().toISOString();
@@ -74,7 +74,7 @@ function markOneRead(n: NotificationItem) {
 
 function deleteOne(n: NotificationItem) {
     const wasUnread = !n.read_at;
-    router.delete(customerUrl(`/notifications/${n.id}`), {
+    router.delete(workspaceUrl(`/notifications/${n.id}`), {
         preserveScroll: true,
         onSuccess: () => {
             notifications.value = notifications.value.filter(x => x.id !== n.id);

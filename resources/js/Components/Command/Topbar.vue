@@ -5,7 +5,7 @@ import { Link, usePage, router } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import type { PageProps } from '@/types';
 import Icon from './Icon.vue';
-import CustomerSwitcher from './CustomerSwitcher.vue';
+import WorkspaceSwitcher from './WorkspaceSwitcher.vue';
 import NotificationBell from '@/Components/NotificationBell.vue';
 import { useTweaks } from '@/composables/useTweaks';
 
@@ -41,7 +41,7 @@ const breadcrumbs = computed<string[]>(() => {
     if (p === '/home' || p === '/') return crumbs('home');
     if (p === '/admin') return crumbs('admin_overview');
     if (p.startsWith('/admin/users')) return crumbs('admin_users');
-    if (p.startsWith('/admin/customers')) return crumbs('admin_customers');
+    if (p.startsWith('/admin/workspaces')) return crumbs('admin_workspaces');
     if (p.startsWith('/admin/roles')) return crumbs('admin_roles');
     if (p.startsWith('/admin/permissions')) return crumbs('admin_permissions');
     if (p === '/admin/settings') return crumbs('admin_settings');
@@ -56,17 +56,17 @@ const breadcrumbs = computed<string[]>(() => {
     if (p.startsWith('/settings')) return crumbs('settings');
     if (p.startsWith('/chat')) return crumbs('chat');
     if (p.startsWith('/notifications')) return crumbs('notifications');
-    const customerMatch = p.match(/^\/c\/([^/]+)(?:\/(.+))?$/);
-    if (customerMatch) {
-        const section = customerMatch[2] ?? '';
-        const customer = page.props.customer?.name ?? customerMatch[1];
-        if (section.startsWith('dashboard')) return [customer, t('topbar.customer.dashboard')];
-        if (section.startsWith('files')) return [customer, t('topbar.customer.files')];
-        if (section.startsWith('profile')) return [customer, t('topbar.customer.profile')];
-        if (section.startsWith('notifications')) return [customer, t('topbar.customer.notifications')];
-        if (section.startsWith('settings')) return [customer, t('topbar.customer.settings')];
-        if (section) return [customer, section];
-        return [customer];
+    const workspaceMatch = p.match(/^\/w\/([^/]+)(?:\/(.+))?$/);
+    if (workspaceMatch) {
+        const section = workspaceMatch[2] ?? '';
+        const workspace = page.props.workspace?.name ?? workspaceMatch[1];
+        if (section.startsWith('dashboard')) return [workspace, t('topbar.workspace.dashboard')];
+        if (section.startsWith('files')) return [workspace, t('topbar.workspace.files')];
+        if (section.startsWith('profile')) return [workspace, t('topbar.workspace.profile')];
+        if (section.startsWith('notifications')) return [workspace, t('topbar.workspace.notifications')];
+        if (section.startsWith('settings')) return [workspace, t('topbar.workspace.settings')];
+        if (section) return [workspace, section];
+        return [workspace];
     }
     if (p === '/app') return crumbs('home');
     return [];
@@ -167,7 +167,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                 >{{ shortcutKey }}</kbd>
             </button>
 
-            <CustomerSwitcher v-if="!isAdminMode" />
+            <WorkspaceSwitcher v-if="!isAdminMode" />
 
             <NotificationBell />
 

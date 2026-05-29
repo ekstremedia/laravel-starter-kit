@@ -2,9 +2,9 @@
 
 namespace App\Domains\Users\Console;
 
-use App\Domains\Tenancy\Models\Tenant;
-use App\Domains\Tenancy\Support\CustomerMembership;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
+use App\Domains\Workspaces\Support\WorkspaceMembership;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
 
@@ -15,8 +15,8 @@ class UserCreate extends Command
         {--first-name=Admin : First name}
         {--last-name=User : Last name}
         {--password= : Leave empty to auto-generate}
-        {--role=User : Customer-scoped role to assign (Admin, Editor, User). Requires --customer.}
-        {--customer= : Customer slug to attach the user to with the given role}
+        {--role=User : Workspace-scoped role to assign (Admin, Editor, User). Requires --workspace.}
+        {--workspace= : Workspace slug to attach the user to with the given role}
         {--super-admin : Flag the user as a platform SuperAdmin}
         {--verified : Mark email as verified immediately}';
 
@@ -32,30 +32,30 @@ class UserCreate extends Command
             return self::FAILURE;
         }
 
-        // Validate role + customer coupling up-front so an invalid combination
+        // Validate role + workspace coupling up-front so an invalid combination
         // doesn't create a half-onboarded user before failing at attach time.
         $role = (string) $this->option('role');
-        $customerSlug = $this->option('customer');
-        $hasCustomer = $customerSlug !== null && $customerSlug !== '';
+        $workspaceSlug = $this->option('workspace');
+        $hasWorkspace = $workspaceSlug !== null && $workspaceSlug !== '';
 
-        if ($hasCustomer && ! in_array($role, CustomerMembership::assignableRoles(), true)) {
-            $this->error("Role [{$role}] is not assignable. Pick one of: ".implode(', ', CustomerMembership::assignableRoles()).'.');
+        if ($hasWorkspace && ! in_array($role, WorkspaceMembership::assignableRoles(), true)) {
+            $this->error("Role [{$role}] is not assignable. Pick one of: ".implode(', ', WorkspaceMembership::assignableRoles()).'.');
 
             return self::FAILURE;
         }
 
-        $customer = null;
-        if ($hasCustomer) {
-            $customer = Tenant::query()->where('slug', $customerSlug)->first();
-            if ($customer === null) {
-                $this->error("Customer with slug [{$customerSlug}] not found.");
+        $workspace = null;
+        if ($hasWorkspace) {
+            $workspace = Workspace::query()->where('slug', $workspaceSlug)->first();
+            if ($workspace === null) {
+                $this->error("Workspace with slug [{$workspaceSlug}] not found.");
 
                 return self::FAILURE;
             }
         } elseif ($this->option('role') !== $this->getDefinition()->getOption('role')->getDefault()) {
-            // `--role` was set explicitly without `--customer` — surface this
-            // rather than silently drop the role on a customer-less account.
-            $this->error('--role requires --customer=<slug> (customer-scoped roles need a customer context).');
+            // `--role` was set explicitly without `--workspace` — surface this
+            // rather than silently drop the role on a workspace-less account.
+            $this->error('--role requires --workspace=<slug> (workspace-scoped roles need a workspace context).');
 
             return self::FAILURE;
         }
@@ -76,9 +76,9 @@ class UserCreate extends Command
             'is_super_admin' => (bool) $this->option('super-admin'),
         ])->save();
 
-        if ($customer !== null) {
-            CustomerMembership::attach($user, $customer, $role);
-            $this->info("Created user {$user->id} <{$email}> as {$role} on [{$customer->slug}].");
+        if ($workspace !== null) {
+            WorkspaceMembership::attach($user, $workspace, $role);
+            $this->info("Created user {$user->id} <{$email}> as {$role} on [{$workspace->slug}].");
         } else {
             $this->info("Created user {$user->id} <{$email}>.");
         }

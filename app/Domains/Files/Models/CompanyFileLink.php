@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Files\Models;
 
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Concerns\BelongsToWorkspace;
+use App\Domains\Workspaces\Models\Workspace;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,26 +16,27 @@ use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * @property int $id
- * @property int $tenant_id
+ * @property int $workspace_id
  * @property int $file_item_id
  * @property int|null $company_parent_id
  * @property int|null $shared_by_user_id
  * @property Carbon $created_at
  * @property Carbon $updated_at
- * @property-read Tenant $tenant
+ * @property-read Workspace $workspace
  * @property-read FileItem $fileItem
  * @property-read FileItem|null $companyParent
  * @property-read User|null $sharedBy
  */
 class CompanyFileLink extends Model
 {
+    use BelongsToWorkspace;
     use HasFactory;
     use LogsActivity;
 
-    protected $fillable = ['tenant_id', 'file_item_id', 'company_parent_id', 'shared_by_user_id'];
+    protected $fillable = ['workspace_id', 'file_item_id', 'company_parent_id', 'shared_by_user_id'];
 
     /**
-     * Share/unshare are auditable events on the company side — a Customer
+     * Share/unshare are auditable events on the company side — a Workspace
      * Admin dashboard filtering log_name = 'company-files' gets a clean
      * feed of who linked what in, without the noise of every rename/upload
      * on the underlying FileItems.
@@ -42,24 +44,24 @@ class CompanyFileLink extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['tenant_id', 'file_item_id', 'company_parent_id', 'shared_by_user_id'])
+            ->logOnly(['workspace_id', 'file_item_id', 'company_parent_id', 'shared_by_user_id'])
             ->dontLogEmptyChanges()
             ->useLogName('company-files');
     }
 
     /**
-     * Live in the central DB alongside file_items and tenants — stancl/tenancy
-     * swaps the default connection to the tenant schema inside the request
-     * lifecycle, and links have no business following that swap.
+     * Live in the one shared database alongside file_items and workspaces. The
+     * pin is vestigial — it resolves to the single default connection; there
+     * is no per-request connection swap to undo.
      */
     public function getConnectionName(): ?string
     {
-        return config('tenancy.database.central_connection');
+        return config('workspaces.database.central_connection');
     }
 
-    public function tenant(): BelongsTo
+    public function workspace(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsTo(Workspace::class, 'workspace_id');
     }
 
     public function fileItem(): BelongsTo
@@ -80,7 +82,7 @@ class CompanyFileLink extends Model
     protected function casts(): array
     {
         return [
-            'tenant_id' => 'integer',
+            'workspace_id' => 'integer',
             'file_item_id' => 'integer',
             'company_parent_id' => 'integer',
             'shared_by_user_id' => 'integer',

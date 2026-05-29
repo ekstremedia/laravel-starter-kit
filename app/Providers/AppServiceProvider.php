@@ -11,9 +11,10 @@ use App\Domains\Files\Models\CompanyFileLink;
 use App\Domains\Files\Models\FileItem;
 use App\Domains\Files\Models\FileShare;
 use App\Domains\Operations\Models\Activity;
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\PersonalAccessToken;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
+use App\Domains\Workspaces\Support\WorkspaceContext;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Model;
@@ -34,10 +35,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // personal_access_tokens lives on the central schema — point Sanctum
-        // at our pinned subclass before any token query runs, or tenant-scoped
-        // requests will try to read the table from the active tenant schema.
+        // Point Sanctum at our subclass so personal access tokens resolve via
+        // the model's pinned (vestigial) central connection.
         Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
+
+        // Current-workspace context. A singleton so the resolving middleware
+        // and the BelongsToWorkspace global scope read the same active
+        // workspace for the request.
+        $this->app->singleton(WorkspaceContext::class);
     }
 
     /**
@@ -63,7 +68,10 @@ class AppServiceProvider extends ServiceProvider
         // zero data backfill. When a model moves, only update its VALUE below.
         Relation::morphMap([
             'App\\Models\\User' => User::class,
-            'App\\Models\\Tenant' => Tenant::class,
+            // KEY stays the historical `App\Models\Tenant` string already stored
+            // in `*_type` columns (e.g. file_items.owner_type for company files);
+            // only the VALUE moved from Tenant to the renamed Workspace model.
+            'App\\Models\\Tenant' => Workspace::class,
             'App\\Models\\FileItem' => FileItem::class,
             'App\\Models\\FileShare' => FileShare::class,
             'App\\Models\\CompanyFileLink' => CompanyFileLink::class,
@@ -98,19 +106,19 @@ class AppServiceProvider extends ServiceProvider
         // never takes the site down in the field.
         Model::preventLazyLoading(! $this->app->isProduction());
 
-        // Stamp the active customer on every activity_log row. Without this,
-        // customer-scoped dashboards that filter activity by "members of
-        // this customer" would leak rows from other customers the same
+        // Stamp the active workspace on every activity_log row. Without this,
+        // workspace-scoped dashboards that filter activity by "members of
+        // this workspace" would leak rows from other workspaces the same
         // users belong to (a user who's Admin on A and User on B would see
-        // B's actions on A's dashboard). Null tenant_id is preserved for
+        // B's actions on A's dashboard). Null workspace_id is preserved for
         // genuine central-only events (password reset, profile edit from
         // the picker page, etc.).
         //
         // Escape hatch: callers that fire a deliberately platform-level
         // event while tenancy happens to be initialized can opt out with
         // `activity()->withProperties(['central' => true])->log(...)` — we
-        // skip the stamp and leave `tenant_id` null so the row remains in
-        // "all central activity" (tenant_id IS NULL) queries.
+        // skip the stamp and leave `workspace_id` null so the row remains in
+        // "all central activity" (workspace_id IS NULL) queries.
         Activity::creating(function (Activity $activity): void {
             // `properties` is a Collection cast by Spatie Activitylog (can be
             // null when no properties were set).
@@ -118,8 +126,9 @@ class AppServiceProvider extends ServiceProvider
                 return;
             }
 
-            if ($activity->tenant_id === null && tenancy()->initialized) {
-                $activity->tenant_id = tenancy()->tenant?->getKey();
+            $tenancy = app(WorkspaceContext::class);
+            if ($activity->workspace_id === null && $tenancy->check()) {
+                $activity->workspace_id = $tenancy->id();
             }
         });
 
@@ -144,9 +153,9 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // SuperAdmin bypass: `Gate::before` runs before every ability check
-        // (Spatie permission gates included), so a SuperAdmin clears customer-
-        // scoped `can('upload files')` / `can('manage customer users')` checks
-        // even when they enter a customer they hold no membership role on.
+        // (Spatie permission gates included), so a SuperAdmin clears workspace-
+        // scoped `can('upload files')` / `can('manage workspace users')` checks
+        // even when they enter a workspace they hold no membership role on.
         // Returning `null` falls through to normal resolution for everyone else.
         Gate::before(function ($user, $ability) {
             if ($user !== null && $user->isSuperAdmin()) {

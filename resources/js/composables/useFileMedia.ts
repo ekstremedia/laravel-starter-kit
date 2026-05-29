@@ -2,7 +2,7 @@ import { computed, onUnmounted, ref, type Ref } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
-import { useCustomer } from '@/composables/useCustomer';
+import { useWorkspace } from '@/composables/useWorkspace';
 import type { LightboxItem } from '@/types/lightbox';
 
 /**
@@ -52,7 +52,7 @@ export interface UseFileMediaOptions<T extends MediaFileRow> {
  */
 export function useFileMedia<T extends MediaFileRow>(opts: UseFileMediaOptions<T>) {
     const { t } = useI18n();
-    const { customerUrl } = useCustomer();
+    const { workspaceUrl } = useWorkspace();
     const toast = useToast();
 
     const lightboxIndex = ref<number | null>(null);
@@ -155,7 +155,7 @@ export function useFileMedia<T extends MediaFileRow>(opts: UseFileMediaOptions<T
     async function copyLink(item: T): Promise<void> {
         if (item.type !== 'file') return;
         try {
-            const res = await fetch(customerUrl(`/files/${item.id}/shares/signed`), {
+            const res = await fetch(workspaceUrl(`/files/${item.id}/shares/signed`), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

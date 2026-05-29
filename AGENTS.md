@@ -48,10 +48,10 @@ Backend code lives in domain modules, **not** flat `app/Http`/`app/Models`. Each
 |---|---|
 | `Auth` | Fortify actions, Login/Register responses, Socialite, dev-login, `FortifyServiceProvider` |
 | `Users` | `User`, `UserSetting`, `PersonalAccessToken`, profile/avatar/token controllers, user commands |
-| `Access` | `Role`, `Permission`, role/permission admin, super-admin & customer-admin middleware |
+| `Access` | `Role`, `Permission`, role/permission admin, super-admin & workspace-admin middleware |
 | `Files` | `FileItem`/`FileShare`/`CompanyFileLink`, `FileOwner` contract, `HasFiles`/`HasFileQuota` concerns, `OwnerResolver`, policies, controllers, resources, jobs, events, `StorageUsageService` |
 | `Assets` | Demo file-owning entity (removable — see Files) |
-| `Tenancy` | `Tenant`, `InitializeTenancyByPath`, customer controllers, `CustomerMembership`, `TenancyServiceProvider` |
+| `Workspaces` | `Workspace`, `Support\WorkspaceContext` (resolver), `Concerns\BelongsToWorkspace` (global scope), `ResolveWorkspace` + `BindDefaultWorkspace`, workspace controllers, `CreateWorkspace`, `WorkspaceInvitation(Controller)`, `WorkspaceMembership` |
 | `Notifications` | `EmailTemplate`, `MailSetting`, `MjmlCompiler`, mailables, notifications, mail/notification controllers |
 | `Chat` | `Conversation`, `Message`, `ChatController`, `MessageSent` |
 | `Settings` | `AppSetting`, settings controllers, `EnforceAppSettings` |
@@ -65,7 +65,7 @@ Global infra stays at the `App\` root: base `App\Http\Controllers\Controller`, g
 - **Factories stay flat** in `database/factories` (`Database\Factories\<Name>Factory`) — `Factory::guessFactoryNamesUsing` + a `protected $model` on each factory wire them up.
 - **Domain commands** auto-register via `->withCommands([app/Domains])` in `bootstrap/app.php`.
 - A controller moved out of `App\Http\Controllers` must `use App\Http\Controllers\Controller;` explicitly. A model referencing a sibling in another domain needs an explicit `use` (same-namespace short names break across domains).
-- When moving a model, update its references in `config/*` (auth, permission, tenancy, activitylog), `phpstan.neon`, and `bootstrap/*`.
+- When moving a model, update its references in `config/*` (auth, permission, workspaces, activitylog), `phpstan.neon`, and `bootstrap/*`.
 - URLs are generated from `APP_URL` (`URL::forceRootUrl` in `AppServiceProvider`) — the bundled nginx `fastcgi_params` pass `$host` (no port), so don't rely on the request host for absolute URLs.
 
 ## Coding rules
@@ -87,11 +87,11 @@ Global infra stays at the `App\` root: base `App\Http\Controllers\Controller`, g
 
 ## Features
 
-**Admin** (`/admin/*`, super-admin gate): overview, users, customers, roles, permissions, settings, mail, storage, backups, system, monitoring (`/admin/monitoring` embeds Horizon/Pulse/log-viewer). Customer-admins manage their own members at `/c/{slug}/members`.
+**Admin** (`/admin/*`, super-admin gate): overview, users, workspaces, roles, permissions, settings, mail, storage, backups, system, monitoring (`/admin/monitoring` embeds Horizon/Pulse/log-viewer). Workspace-admins manage their own members at `/w/{slug}/members`.
 
 **Auth** — Inertia pages via `App\Domains\Auth\Providers\FortifyServiceProvider`; customizations in `app/Domains/Auth/`. `config('fortify.home')` = `/app` (post-login landing). Flows: login, register, email verify, password reset, 2FA (TOTP + recovery), password confirm. Don't `validateWithBag()` in Fortify actions unless you wire the bag through `useForm()`.
 
-**Roles & permissions** (Spatie, **teams** = customers) — seeded `Admin`/`Editor`/`User`; `is_super_admin` is a column bypass (not a role), enforced via `Gate::before`. Roles are per-customer (team-scoped); assign from a user's show page / customer members panel.
+**Roles & permissions** (Spatie, **teams** = workspaces) — seeded `Admin`/`Editor`/`User`; `is_super_admin` is a column bypass (not a role), enforced via `Gate::before`. Roles are per-workspace (team-scoped); assign from a user's show page / workspace members panel.
 
 **Files + entity documents** — personal files at `/files`, company files at `/files/company`, and **any entity can own a file tree** via the `FileOwner` contract:
 - Adopt `HasFiles` (+ optional `HasFileQuota`), implement `FileOwner`, register a morph alias in `AppServiceProvider`, add the class to `config('files.allowed_owner_types')`, and a route + `<EntityFiles>` browser component. The **Assets** domain is the reference implementation (gated by `ASSETS_ENABLED`, deletable wholesale).
@@ -101,14 +101,13 @@ Global infra stays at the `App\` root: base `App\Http\Controllers\Controller`, g
 - Sharing: `/share/{token}` public pages (`file_shares`, optional password + expiry); quick links use signed URLs. Soft-delete + trash with cascade; `PurgeTrashedFileItems` hard-deletes after the retention window.
 - **Queue worker gotcha:** after `composer require`, run `php artisan horizon:terminate` so workers respawn with a fresh autoloader (else "Class X not found").
 
-**Multi-customer tenancy** (`stancl/tenancy` v3, **off by default**) — flip `TENANCY_ENABLED=true` + `migrate:fresh --seed`. "Customer" = user-facing (`/c/{slug}/...`, UI); "Tenant" = package model/tables/config. When off, routes still live under `/c/{slug}`, `tenants` holds the default row.
+**Multi-tenancy (workspaces)** — optional, **single-database row-level** (NO schema/DB per workspace; `stancl/tenancy` was removed). Every workspace-scoped table has a `workspace_id`; the `BelongsToWorkspace` trait (`app/Domains/Workspaces/Models/Concerns`) adds a global scope that filters to the current workspace and auto-stamps `workspace_id` on create — so you can't leak across workspaces by forgetting a `where`. Current workspace = the `App\Domains\Workspaces\Support\WorkspaceContext` resolver (singleton), set per request by `ResolveWorkspace` (multi-tenant, `/w/{workspace}`) or `BindDefaultWorkspace` (single-tenant, root). The scope is **inert when no workspace is active** (central/admin routes) so admins query across workspaces; bypass explicitly with `Model::withoutGlobalScope('workspace')`. Per-workspace roles via Spatie teams (`team_id = workspace id`), synced through `WorkspaceMembership`. The `Workspace` model is plain Eloquent.
+- `WORKSPACES_ENABLED` (`config('workspaces.enabled')`): true → `/w/{workspace}/*` routes + switcher/picker; false → workspace routes mount at the **root**, one default workspace, no chrome (a normal Laravel app).
+- `WORKSPACES_REGISTRATION_MODE`: `create_own` (sign-up creates its own workspace, becomes Admin — via the `CreateWorkspace` action) | `join_default` (auto-join default). Branch lives in `CreateNewUser`.
+- Invitations: `WorkspaceInvitation` + `WorkspaceInvitationController` — admins invite by email under `/members/invitations`; the public `/invitations/{token}` accept threads guests through register/login; `WorkspaceLandingController` finishes deferred accepts.
+- `exists:` validation runs on the default connection — validate users via a closure rule (see `FileItemController::existsFileItemRule`).
 
-*Central-vs-tenant connection gotchas* (the tenant DB connection swaps in after `InitializeTenancyByPath`):
-- Models whose tables are central (users, tenants, media, file_items, app_settings, conversations, …) pin `getConnectionName(): config('tenancy.database.central_connection')`.
-- `exists:` validation bypasses the model connection — use a closure rule through the model (see `FileItemController::existsFileItemRule`).
-- Raw `DB::table(...)` needs the central connection explicitly.
-
-**Layered feature flags** (global → per-customer → per-user): `AppSetting::current()->{x}_feature_enabled` → `tenants.{x}_feature_enabled` (+ `getCustomColumns()`) → `UserSetting::$defaults['{x}_enabled']`. Backends abort 404/403; nav links check all three via shared Inertia props.
+**Layered feature flags** (global → per-workspace → per-user): `AppSetting::current()->{x}_feature_enabled` → `workspaces.{x}_feature_enabled` (a plain cast column on `Workspace`) → `UserSetting::$defaults['{x}_enabled']`. Backends abort 404/403; nav links check all three via shared Inertia props.
 
 **Chat** (off by default, `CHAT_ENABLED`) — 1:1 + group at `/chat`; `Conversation`/`Message` (optionally encrypted); broadcasts on `private:chat.conversation.{id}`; `NewChatMessageNotification` is broadcast-only (navbar badge, **not** the bell inbox) — don't "fix" it to `database`.
 
@@ -139,7 +138,7 @@ Project skills auto-activate by domain — use them: `fortify-development`, `lar
 
 - New UI string → both `en.ts` + `no.ts` (and `lang/{en,no}/*.php` for backend).
 - New user setting → `UserSetting::$defaults` + `UserSettingsShape` PHPDoc + TS interface.
-- New tenant column → `Tenant::getCustomColumns()` + cast + factory.
-- New central-DB model → pin `getConnectionName()`; if it's morphed, add a morph-map alias.
-- New file-owning entity → mirror `app/Domains/Assets` (FileOwner + HasFiles, morph alias, `allowed_owner_types`, route + `<EntityFiles>`).
+- New workspace column → migration + cast on `Workspace` + factory (`Workspace` is a plain Eloquent model).
+- New workspace-scoped entity → `use BelongsToWorkspace` (auto-scope + auto-stamp); migration with a `workspace_id` FK; morph-map alias if morphed. See **`docs/adding-a-workspace-entity.md`**.
+- New file-owning entity → mirror `app/Domains/Assets` (`BelongsToWorkspace` + `FileOwner` + `HasFiles`, morph alias, `allowed_owner_types`, route + `<EntityFiles>`).
 - Keep behavior generic (no domain-specific nouns/seed data); prefer env-driven config; run `make test-all` before finishing.

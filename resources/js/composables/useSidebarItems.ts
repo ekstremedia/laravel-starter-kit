@@ -6,9 +6,9 @@
  *   - admin → `adminItems` / `adminVisible`: the platform admin groups, shown
  *             on /admin/* and reached from the topbar profile dropdown.
  *
- * The Workspace group is driven by `current_customer` (resolved server-side on
+ * The Workspace group is driven by `current_workspace` (resolved server-side on
  * every route, see HandleInertiaRequests), so it renders the same on /home as
- * inside a /c/{slug}/... route — the topbar switcher just changes which
+ * inside a /w/{slug}/... route — the topbar switcher just changes which
  * workspace the links target.
  *
  * To add, remove, or reorder an item: edit the arrays below. Every
@@ -27,53 +27,54 @@ export function useSidebarItems() {
 
     const user = computed(() => page.props.auth?.user);
     const isSuperAdmin = computed(() => user.value?.is_super_admin === true);
-    const tenancyEnabled = computed(() => page.props.tenancy?.enabled ?? false);
+    const tenancyEnabled = computed(() => page.props.workspaces?.enabled ?? false);
     const chatEnabled = computed(() => page.props.chat?.enabled ?? false);
     const globalFilesEnabled = computed(() => page.props.app_settings?.files_feature_enabled ?? false);
     const assetsEnabled = computed(() => page.props.assetsEnabled ?? false);
     const canManageEmailTemplates = computed(() => page.props.auth?.can?.manage_email_templates === true);
 
-    // The workspace the rail is scoped to. `current_customer` is resolved on
-    // every route; fall back to the tenancy-scoped `customer` for safety.
-    const workspace = computed(() => page.props.current_customer ?? page.props.customer ?? null);
+    // The workspace the rail is scoped to. `current_workspace` is resolved on
+    // every route; fall back to the workspaces-scoped `workspace` for safety.
+    const workspace = computed(() => page.props.current_workspace ?? page.props.workspace ?? null);
     const workspaceSlug = computed(() => workspace.value?.slug ?? null);
     const isWorkspaceAdmin = computed(() => isSuperAdmin.value || (workspace.value as { is_admin?: boolean } | null)?.is_admin === true);
     const canViewCompanyFiles = computed(() => isSuperAdmin.value || (workspace.value as { can_view_company_files?: boolean } | null)?.can_view_company_files === true);
 
+    // Workspace URL helper: prefix with /w/<slug> in multi-tenant mode, bare
+    // path in single-tenant mode (routes mounted at root). Matches are made
+    // prefix-agnostic by stripping any leading /w/<slug> before comparing, so
+    // the same entry highlights correctly in both modes.
+    const wsHref = (suffix: string) => (tenancyEnabled.value && workspaceSlug.value ? `/w/${workspaceSlug.value}` : '') + suffix;
+    const railMatch = (test: (suffix: string) => boolean) => (p: string) => test(p.replace(/^\/w\/[^/]+/, '') || '/');
+
     // ── App mode ────────────────────────────────────────────────────────────
     const appItems = computed<SidebarEntry[]>(() => {
-        // Match the personal files nav on /files but NOT /files/company so the
-        // two entries highlight independently as the user moves between them.
-        const filesActive = (p: string) => p.startsWith('/c/') && p.includes('/files') && !p.includes('/files/company');
-        const companyFilesActive = (p: string) => p.startsWith('/c/') && p.includes('/files/company');
-
         const entries: SidebarEntry[] = [
             { id: 'home', href: '/home', label: t('rail.home'), icon: 'user', kb: 'H', match: (p) => p === '/home' || p === '/' },
             { id: 'chat', href: '/chat', label: t('rail.chat'), icon: 'mail', match: (p) => p.startsWith('/chat'), hideWhen: () => !chatEnabled.value },
         ];
 
-        // Workspace group: the current customer's own dashboard, files, shared
+        // Workspace group: the current workspace's own dashboard, files, shared
         // files, assets, and (for workspace admins) members. Always present
         // when a workspace is resolvable, so the rail is identical on /home and
         // inside the workspace.
         if (workspaceSlug.value) {
-            const slug = workspaceSlug.value;
             const ws = workspace.value;
             entries.push(
                 { separator: true, key: 'workspace', label: t('rail.section_workspace') },
-                { id: 'my-dashboard', href: `/c/${slug}/dashboard`, label: t('rail.dashboard'), icon: 'home', match: (p) => p.startsWith('/c/') && p.includes('/dashboard') },
-                { id: 'about', href: `/c/${slug}/about`, label: t('rail.about'), icon: 'customer', match: (p) => p.startsWith(`/c/${slug}/about`) },
-                { id: 'files', href: `/c/${slug}/files`, label: t('rail.files'), icon: 'disk', match: filesActive, hideWhen: () => !globalFilesEnabled.value || !ws?.files_feature_enabled },
-                { id: 'company-files', href: `/c/${slug}/files/company`, label: t('rail.company_files'), icon: 'customer', match: companyFilesActive, hideWhen: () => !tenancyEnabled.value || !globalFilesEnabled.value || !ws?.company_files_enabled || !canViewCompanyFiles.value },
+                { id: 'my-dashboard', href: wsHref('/dashboard'), label: t('rail.dashboard'), icon: 'home', match: railMatch((s) => s.startsWith('/dashboard')) },
+                { id: 'about', href: wsHref('/about'), label: t('rail.about'), icon: 'workspace', match: railMatch((s) => s.startsWith('/about')) },
+                { id: 'files', href: wsHref('/files'), label: t('rail.files'), icon: 'disk', match: railMatch((s) => s.startsWith('/files') && !s.startsWith('/files/company')), hideWhen: () => !globalFilesEnabled.value || !ws?.files_feature_enabled },
+                { id: 'company-files', href: wsHref('/files/company'), label: t('rail.company_files'), icon: 'workspace', match: railMatch((s) => s.startsWith('/files/company')), hideWhen: () => !tenancyEnabled.value || !globalFilesEnabled.value || !ws?.company_files_enabled || !canViewCompanyFiles.value },
                 // Demo entity documents. Remove this entry (and the Assets
                 // module) to drop the demo — it's the template for real
                 // file-owning entities (Vehicle, Medicine, …).
-                { id: 'assets', href: `/c/${slug}/assets`, label: t('rail.assets'), icon: 'box', match: (p) => p.startsWith(`/c/${slug}/assets`), hideWhen: () => !assetsEnabled.value || !canViewCompanyFiles.value },
+                { id: 'assets', href: wsHref('/assets'), label: t('rail.assets'), icon: 'box', match: railMatch((s) => s.startsWith('/assets')), hideWhen: () => !assetsEnabled.value || !canViewCompanyFiles.value },
             );
 
             if (isWorkspaceAdmin.value) {
                 entries.push(
-                    { id: 'members', href: `/c/${slug}/members`, label: t('rail.members'), icon: 'users', match: (p) => p.startsWith(`/c/${slug}/members`) },
+                    { id: 'members', href: wsHref('/members'), label: t('rail.members'), icon: 'users', match: railMatch((s) => s.startsWith('/members')) },
                 );
             }
         }
@@ -88,7 +89,7 @@ export function useSidebarItems() {
                 { separator: true, key: 'access', label: t('rail.section_access') },
                 { id: 'dashboard', href: '/admin', label: t('rail.admin_overview'), icon: 'home', kb: 'D', match: (p) => p === '/admin' },
                 { id: 'users', href: '/admin/users', label: t('rail.users'), icon: 'users', kb: 'U', match: (p) => p.startsWith('/admin/users') },
-                { id: 'customers', href: '/admin/customers', label: t('rail.customers'), icon: 'customer', match: (p) => p.startsWith('/admin/customers'), hideWhen: () => !tenancyEnabled.value },
+                { id: 'workspaces', href: '/admin/workspaces', label: t('rail.workspaces'), icon: 'workspace', match: (p) => p.startsWith('/admin/workspaces'), hideWhen: () => !tenancyEnabled.value },
                 { id: 'roles', href: '/admin/roles', label: t('rail.roles'), icon: 'role', match: (p) => p.startsWith('/admin/roles') },
                 { id: 'perms', href: '/admin/permissions', label: t('rail.permissions'), icon: 'key', match: (p) => p.startsWith('/admin/permissions') },
                 { separator: true, key: 'system', label: t('rail.section_system') },

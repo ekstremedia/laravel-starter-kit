@@ -8,13 +8,13 @@ use Illuminate\Support\Facades\Storage;
 beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
     Storage::fake('public');
-    $this->customer = createCustomer();
-    $this->avatarUrl = customerUrl($this->customer, '/profile/avatar');
+    $this->workspace = createWorkspace();
+    $this->avatarUrl = workspaceUrl($this->workspace, '/profile/avatar');
 });
 
 it('generates the thumb conversion synchronously on upload', function () {
     $user = User::factory()->create();
-    joinCustomer($user, $this->customer);
+    joinWorkspace($user, $this->workspace);
 
     $this->actingAs($user)
         ->post($this->avatarUrl, [
@@ -30,7 +30,7 @@ it('generates the thumb conversion synchronously on upload', function () {
 
 it('updates the avatar on re-upload', function () {
     $user = User::factory()->create();
-    joinCustomer($user, $this->customer);
+    joinWorkspace($user, $this->workspace);
 
     $this->actingAs($user)
         ->post($this->avatarUrl, ['avatar' => UploadedFile::fake()->image('first.png', 400, 400)])
@@ -50,7 +50,7 @@ it('updates the avatar on re-upload', function () {
 
 it('enforces the upload size ceiling', function () {
     $user = User::factory()->create();
-    joinCustomer($user, $this->customer);
+    joinWorkspace($user, $this->workspace);
 
     $this->actingAs($user)
         ->post($this->avatarUrl, [

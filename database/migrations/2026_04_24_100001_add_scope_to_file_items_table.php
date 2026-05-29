@@ -16,14 +16,14 @@ return new class extends Migration
             // tenant's /files/company tree. parent_id always references the
             // same scope — cross-scope nesting is not allowed.
             $table->string('scope', 16)->default('personal');
-            $table->index(['tenant_id', 'scope', 'parent_id']);
+            $table->index(['workspace_id', 'scope', 'parent_id']);
         });
     }
 
     public function down(): void
     {
         Schema::table('file_items', function (Blueprint $table) {
-            $table->dropIndex(['tenant_id', 'scope', 'parent_id']);
+            $table->dropIndex(['workspace_id', 'scope', 'parent_id']);
             $table->dropColumn('scope');
         });
     }

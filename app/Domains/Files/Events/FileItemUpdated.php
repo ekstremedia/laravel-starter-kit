@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Files\Events;
 
 use App\Domains\Files\Models\FileItem;
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
@@ -17,7 +17,7 @@ use Illuminate\Queue\SerializesModels;
 /**
  * Broadcast whenever a FileItem changes in a way the UI needs to know about —
  * preview conversions finishing, a rename, or a delete. The channel is the
- * owner's private channel: User → user, Tenant → customer.{id}.files,
+ * owner's private channel: User → user, Workspace → workspace.{id}.files,
  * future polymorphic owners can opt in by exposing fileBroadcastChannels().
  */
 class FileItemUpdated implements ShouldBroadcast
@@ -37,8 +37,8 @@ class FileItemUpdated implements ShouldBroadcast
             return [new PrivateChannel('App.Models.User.'.$owner->getKey())];
         }
 
-        if ($owner instanceof Tenant) {
-            return [new PrivateChannel('customer.'.$owner->getKey().'.files')];
+        if ($owner instanceof Workspace) {
+            return [new PrivateChannel('workspace.'.$owner->getKey().'.files')];
         }
 
         // Custom owners can declare their own channel(s) — return empty if

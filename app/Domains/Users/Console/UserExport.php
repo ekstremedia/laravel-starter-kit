@@ -81,9 +81,9 @@ class UserExport extends Command
             ],
             'is_super_admin' => $user->isSuperAdmin(),
             // Console has no team context, so a naive `roles()->pluck('name')`
-            // would come back empty. Build the full per-customer map directly
+            // would come back empty. Build the full per-workspace map directly
             // from `model_has_roles` so the GDPR export is accurate.
-            'customer_roles' => $this->customerRoles($user),
+            'workspace_roles' => $this->workspaceRoles($user),
             'settings' => $user->settings()->resolved(),
             'activity_as_causer' => Activity::query()
                 ->where('causer_type', $user->getMorphClass())
@@ -95,43 +95,42 @@ class UserExport extends Command
     }
 
     /**
-     * @return array<int, array{customer_id:int, customer_slug:string|null, roles:array<int,string>}>
+     * @return array<int, array{workspace_id:int, workspace_slug:string|null, roles:array<int,string>}>
      */
-    private function customerRoles(User $user): array
+    private function workspaceRoles(User $user): array
     {
         $mhr = config('permission.table_names.model_has_roles');
         $rolesTable = config('permission.table_names.roles');
         $teamKey = config('permission.column_names.team_foreign_key');
 
-        // Console has no implicit connection context — pin to central since
-        // `model_has_roles`, `roles`, and `tenants` all live on the landlord
-        // schema and the default connection can be anything in a worker that
-        // previously handled a tenant job.
-        $central = (string) config('tenancy.database.central_connection');
+        // `model_has_roles`, `roles`, and `workspaces` all live in the one
+        // shared database. The explicit central connection is vestigial and
+        // resolves to the default connection.
+        $central = (string) config('workspaces.database.central_connection');
         $rows = DB::connection($central)->table($mhr)
             ->join($rolesTable, "{$rolesTable}.id", '=', "{$mhr}.role_id")
-            ->leftJoin('tenants', 'tenants.id', '=', "{$mhr}.{$teamKey}")
+            ->leftJoin('workspaces', 'workspaces.id', '=', "{$mhr}.{$teamKey}")
             ->where("{$mhr}.model_type", (new User)->getMorphClass())
             ->where("{$mhr}.model_id", $user->id)
             // Defence against a future assignment that lands with a null
-            // `team_id` — we'd otherwise group it under `customer_id: 0`
-            // (the int-cast of null) and the PHPDoc `customer_id:int`
+            // `team_id` — we'd otherwise group it under `workspace_id: 0`
+            // (the int-cast of null) and the PHPDoc `workspace_id:int`
             // would lie to callers.
             ->whereNotNull("{$mhr}.{$teamKey}")
             ->get([
-                "{$mhr}.{$teamKey} as customer_id",
-                'tenants.slug as customer_slug',
+                "{$mhr}.{$teamKey} as workspace_id",
+                'workspaces.slug as workspace_slug',
                 "{$rolesTable}.name as role",
             ]);
 
         $grouped = [];
         foreach ($rows as $row) {
-            $grouped[$row->customer_id] ??= [
-                'customer_id' => (int) $row->customer_id,
-                'customer_slug' => $row->customer_slug,
+            $grouped[$row->workspace_id] ??= [
+                'workspace_id' => (int) $row->workspace_id,
+                'workspace_slug' => $row->workspace_slug,
                 'roles' => [],
             ];
-            $grouped[$row->customer_id]['roles'][] = $row->role;
+            $grouped[$row->workspace_id]['roles'][] = $row->role;
         }
 
         return array_values($grouped);

@@ -26,22 +26,22 @@ it('reads SuperAdmin purely from the is_super_admin column', function () {
 
 it('SuperAdmin check does not depend on current team context', function () {
     $super = makeSuperAdmin(User::factory()->create());
-    $customer = createCustomer();
+    $workspace = createWorkspace();
 
-    app(PermissionRegistrar::class)->setPermissionsTeamId($customer->id);
+    app(PermissionRegistrar::class)->setPermissionsTeamId($workspace->id);
     expect($super->isSuperAdmin())->toBeTrue();
 
     app(PermissionRegistrar::class)->setPermissionsTeamId(null);
     expect($super->isSuperAdmin())->toBeTrue();
 });
 
-it('the same user can hold different roles on different customers', function () {
+it('the same user can hold different roles on different workspaces', function () {
     $user = User::factory()->create();
-    $a = createCustomer('a', 'A');
-    $b = createCustomer('b', 'B');
+    $a = createWorkspace('a', 'A');
+    $b = createWorkspace('b', 'B');
 
-    grantRoleOnCustomer($user, 'Admin', $a);
-    grantRoleOnCustomer($user, 'User', $b);
+    grantRoleOnWorkspace($user, 'Admin', $a);
+    grantRoleOnWorkspace($user, 'User', $b);
 
     $registrar = app(PermissionRegistrar::class);
 
@@ -54,10 +54,10 @@ it('the same user can hold different roles on different customers', function () 
     expect($user->fresh()->hasRole('Admin'))->toBeFalse();
 });
 
-it('InitializeTenancyByPath scopes the permission team id to the active customer during the request', function () {
-    $customer = createCustomer();
+it('ResolveWorkspace scopes the permission team id to the active workspace during the request', function () {
+    $workspace = createWorkspace();
     $user = User::factory()->create();
-    grantRoleOnCustomer($user, 'User', $customer);
+    grantRoleOnWorkspace($user, 'User', $workspace);
 
     // Inertia's shared props resolve against the team id set by the
     // middleware — `roles: ['User']` on the response proves the team
@@ -67,38 +67,38 @@ it('InitializeTenancyByPath scopes the permission team id to the active customer
     app(PermissionRegistrar::class)->setPermissionsTeamId(null);
 
     $this->actingAs($user)
-        ->get(customerUrl($customer, '/dashboard'))
+        ->get(workspaceUrl($workspace, '/dashboard'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('auth.user.roles', ['User']));
 
     expect(app(PermissionRegistrar::class)->getPermissionsTeamId())->toBeNull();
 });
 
-it('lets SuperAdmin enter any customer regardless of membership', function () {
+it('lets SuperAdmin enter any workspace regardless of membership', function () {
     $super = makeSuperAdmin(User::factory()->create());
-    $customer = createCustomer();
+    $workspace = createWorkspace();
 
-    // No membership on the customer; the SuperAdmin flag alone should bypass
-    // the InitializeTenancyByPath membership guard.
+    // No membership on the workspace; the SuperAdmin flag alone should bypass
+    // the ResolveWorkspace membership guard.
     $this->actingAs($super)
-        ->get(customerUrl($customer, '/dashboard'))
+        ->get(workspaceUrl($workspace, '/dashboard'))
         ->assertOk();
 });
 
-it('blocks a non-SuperAdmin from a customer they are not a member of', function () {
+it('blocks a non-SuperAdmin from a workspace they are not a member of', function () {
     $outsider = User::factory()->create();
-    $customer = createCustomer();
+    $workspace = createWorkspace();
 
     $this->actingAs($outsider)
-        ->get(customerUrl($customer, '/dashboard'))
+        ->get(workspaceUrl($workspace, '/dashboard'))
         ->assertForbidden();
 });
 
-it('shares is_super_admin as a prop on customer-scoped pages', function () {
+it('shares is_super_admin as a prop on workspace-scoped pages', function () {
     $super = makeSuperAdmin(User::factory()->create());
-    $customer = createCustomer();
+    $workspace = createWorkspace();
 
     $this->actingAs($super)
-        ->get(customerUrl($customer, '/dashboard'))
+        ->get(workspaceUrl($workspace, '/dashboard'))
         ->assertInertia(fn ($page) => $page->where('auth.user.is_super_admin', true));
 });

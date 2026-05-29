@@ -27,8 +27,7 @@
         "spatie/laravel-activitylog": "^5.0",
         "spatie/laravel-backup": "^10.2",
         "spatie/laravel-medialibrary": "^11.0",
-        "spatie/laravel-permission": "^7.3",
-        "stancl/tenancy": "^3.10"
+        "spatie/laravel-permission": "^7.3"
     },
     "require-dev": {
         "barryvdh/laravel-ide-helper": "^3.7",

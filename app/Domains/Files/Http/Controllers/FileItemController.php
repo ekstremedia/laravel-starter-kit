@@ -20,8 +20,8 @@ use App\Domains\Files\Support\CompanyFilesCache;
 use App\Domains\Files\Support\OwnerResolver;
 use App\Domains\Files\Support\UploadLimits;
 use App\Domains\Settings\Models\AppSetting;
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
 use App\Http\Controllers\Controller;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
@@ -39,15 +39,15 @@ class FileItemController extends Controller
 
     public function index(Request $request, ?FileItem $folder = null): Response
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertFeatureAvailable($request, $tenant);
+        $this->assertFeatureAvailable($request, $workspace);
 
         $owner = $this->resolveOwner($request, $user);
-        $this->authorizeOwnerAccess($user, $owner, $tenant, view: true);
+        $this->authorizeOwnerAccess($user, $owner, $workspace, view: true);
 
         if ($folder !== null && $folder->exists) {
-            Gate::forUser($user)->authorize('view', [$folder, $tenant]);
+            Gate::forUser($user)->authorize('view', [$folder, $workspace]);
             if (! $folder->isFolder()) {
                 abort(404);
             }
@@ -56,7 +56,7 @@ class FileItemController extends Controller
         $parentId = $folder?->id;
 
         $query = FileItem::query()
-            ->where('tenant_id', $tenant->id)
+            ->where('workspace_id', $workspace->id)
             ->forOwner($owner)
             ->where('parent_id', $parentId)
             ->with(['media', 'companyLink']);
@@ -72,10 +72,10 @@ class FileItemController extends Controller
             ->orderBy('name')
             ->get();
 
-        $usedBytes = $this->usage->usedBytesForOwnerInTenant($owner, $tenant);
+        $usedBytes = $this->usage->usedBytesForOwnerInTenant($owner, $workspace);
 
         $trashedCount = FileItem::onlyTrashed()
-            ->where('tenant_id', $tenant->id)
+            ->where('workspace_id', $workspace->id)
             ->forOwner($owner)
             ->count();
 
@@ -85,9 +85,9 @@ class FileItemController extends Controller
             'current_folder' => $folder?->only(['id', 'name', 'uuid']),
             'usage' => [
                 'used_bytes' => $usedBytes,
-                'quota_bytes' => $this->usage->effectiveQuota($owner, $tenant),
+                'quota_bytes' => $this->usage->effectiveQuota($owner, $workspace),
                 'percent' => $owner instanceof User
-                    ? $this->usage->percentUsedInTenant($owner, $tenant)
+                    ? $this->usage->percentUsedInTenant($owner, $workspace)
                     : 0.0,
             ],
             'trashed_count' => $trashedCount,
@@ -98,12 +98,12 @@ class FileItemController extends Controller
 
     public function storeFolder(Request $request): RedirectResponse
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertFeatureAvailable($request, $tenant);
+        $this->assertFeatureAvailable($request, $workspace);
 
         $owner = $this->resolveOwner($request, $user);
-        Gate::forUser($user)->authorize('createFolderFor', [FileItem::class, $owner, $tenant]);
+        Gate::forUser($user)->authorize('createFolderFor', [FileItem::class, $owner, $workspace]);
 
         $data = $request->validate([
             'name' => 'required|string|max:255',
@@ -112,21 +112,21 @@ class FileItemController extends Controller
 
         if (isset($data['parent_id'])) {
             $parent = FileItem::findOrFail($data['parent_id']);
-            Gate::forUser($user)->authorize('update', [$parent, $tenant]);
+            Gate::forUser($user)->authorize('update', [$parent, $workspace]);
             if (! $parent->isFolder()) {
                 abort(422, 'Parent must be a folder.');
             }
         }
 
         $folder = FileItem::create([
-            'tenant_id' => $tenant->id,
+            'workspace_id' => $workspace->id,
             'user_id' => $user->id,
             'owner_type' => $owner->getMorphClass(),
             'owner_id' => $owner->getKey(),
             'parent_id' => $data['parent_id'] ?? null,
             'type' => FileItem::TYPE_FOLDER,
             'scope' => $this->scopeFor($owner),
-            'name' => $this->uniqueName($tenant->id, $owner, $data['parent_id'] ?? null, $data['name']),
+            'name' => $this->uniqueName($workspace->id, $owner, $data['parent_id'] ?? null, $data['name']),
         ]);
 
         return back()->with('success', __('files.folder_created', ['name' => $folder->name]));
@@ -134,12 +134,12 @@ class FileItemController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertFeatureAvailable($request, $tenant);
+        $this->assertFeatureAvailable($request, $workspace);
 
         $owner = $this->resolveOwner($request, $user);
-        Gate::forUser($user)->authorize('uploadTo', [FileItem::class, $owner, $tenant]);
+        Gate::forUser($user)->authorize('uploadTo', [FileItem::class, $owner, $workspace]);
 
         $request->validate([
             'files' => 'required|array|min:1',
@@ -150,7 +150,7 @@ class FileItemController extends Controller
         $parentId = $request->integer('parent_id') ?: null;
         if ($parentId !== null) {
             $parent = FileItem::findOrFail($parentId);
-            Gate::forUser($user)->authorize('update', [$parent, $tenant]);
+            Gate::forUser($user)->authorize('update', [$parent, $workspace]);
             if (! $parent->isFolder()) {
                 abort(422, 'Parent must be a folder.');
             }
@@ -161,12 +161,12 @@ class FileItemController extends Controller
         $videoTargets = [];
         $imageTargets = [];
         $allTargets = [];
-        DB::connection((string) config('tenancy.database.central_connection'))->transaction(function () use ($request, $tenant, $user, $owner, $parentId, &$created, &$previewTargets, &$videoTargets, &$imageTargets, &$allTargets): void {
+        DB::connection((string) config('workspaces.database.central_connection'))->transaction(function () use ($request, $workspace, $user, $owner, $parentId, &$created, &$previewTargets, &$videoTargets, &$imageTargets, &$allTargets): void {
             foreach ($request->file('files', []) as $file) {
-                $name = $this->uniqueName($tenant->id, $owner, $parentId, $file->getClientOriginalName());
+                $name = $this->uniqueName($workspace->id, $owner, $parentId, $file->getClientOriginalName());
                 $size = $file->getSize();
                 $item = FileItem::create([
-                    'tenant_id' => $tenant->id,
+                    'workspace_id' => $workspace->id,
                     'user_id' => $user->id,
                     'owner_type' => $owner->getMorphClass(),
                     'owner_id' => $owner->getKey(),
@@ -221,7 +221,7 @@ class FileItemController extends Controller
         // threshold alerts (only meaningful for User owners today).
         $this->usage->recomputeForOwner($owner);
         if ($owner instanceof User) {
-            $this->usage->checkAndNotifyThresholds($owner->fresh(), $tenant);
+            $this->usage->checkAndNotifyThresholds($owner->fresh(), $workspace);
         }
 
         return back()->with('success', __('files.upload_success', ['count' => $created]));
@@ -229,10 +229,10 @@ class FileItemController extends Controller
 
     public function update(Request $request, FileItem $file): RedirectResponse
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertFeatureAvailable($request, $tenant);
-        Gate::forUser($user)->authorize('update', [$file, $tenant]);
+        $this->assertFeatureAvailable($request, $workspace);
+        Gate::forUser($user)->authorize('update', [$file, $workspace]);
 
         $data = $request->validate([
             'name' => 'sometimes|string|min:1|max:255',
@@ -245,7 +245,7 @@ class FileItemController extends Controller
                     abort(422, 'Cannot set an item as its own parent.');
                 }
                 $parent = FileItem::findOrFail($data['parent_id']);
-                Gate::forUser($user)->authorize('update', [$parent, $tenant]);
+                Gate::forUser($user)->authorize('update', [$parent, $workspace]);
                 if (! $parent->isFolder()) {
                     abort(422, 'Destination must be a folder.');
                 }
@@ -257,7 +257,7 @@ class FileItemController extends Controller
         }
 
         if (array_key_exists('name', $data) && $data['name'] !== '') {
-            $file->name = $this->uniqueNameForItem($tenant->id, $file, $data['name']);
+            $file->name = $this->uniqueNameForItem($workspace->id, $file, $data['name']);
         }
 
         $file->save();
@@ -267,10 +267,10 @@ class FileItemController extends Controller
 
     public function destroy(Request $request, FileItem $file): RedirectResponse
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertFeatureAvailable($request, $tenant);
-        Gate::forUser($user)->authorize('delete', [$file, $tenant]);
+        $this->assertFeatureAvailable($request, $workspace);
+        Gate::forUser($user)->authorize('delete', [$file, $workspace]);
 
         $file->delete();
         $this->usage->recomputeForOwner($file->owner ?? $user);
@@ -279,17 +279,17 @@ class FileItemController extends Controller
     }
 
     /**
-     * Share an owned personal file to the active customer's company tree.
+     * Share an owned personal file to the active workspace's company tree.
      */
     public function share(Request $request, FileItem $file): RedirectResponse
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertFeatureAvailable($request, $tenant);
-        Gate::forUser($user)->authorize('share', [$file, $tenant]);
+        $this->assertFeatureAvailable($request, $workspace);
+        Gate::forUser($user)->authorize('share', [$file, $workspace]);
 
         abort_unless(
-            $tenant->company_files_enabled,
+            $workspace->company_files_enabled,
             404,
             __('files.company_not_enabled'),
         );
@@ -307,7 +307,7 @@ class FileItemController extends Controller
         if ($parentId !== null) {
             $parent = FileItem::findOrFail($parentId);
             if (
-                $parent->tenant_id !== $tenant->id
+                $parent->workspace_id !== $workspace->id
                 || $parent->scope !== FileItem::SCOPE_COMPANY
                 || ! $parent->isFolder()
             ) {
@@ -316,10 +316,10 @@ class FileItemController extends Controller
         }
 
         if ($file->isFolder()) {
-            CompanyFilesCache::bump($tenant->id, 'folder_share_started', $parentId);
+            CompanyFilesCache::bump($workspace->id, 'folder_share_started', $parentId);
             ShareFolderToCompany::dispatch(
                 personalFolderId: $file->id,
-                tenantId: $tenant->id,
+                workspaceId: $workspace->id,
                 actingUserId: $user->id,
                 companyParentId: $parentId,
             );
@@ -327,58 +327,58 @@ class FileItemController extends Controller
             return back()->with('success', __('files.shared_to_company_queued'));
         }
 
-        DB::connection((string) config('tenancy.database.central_connection'))
-            ->transaction(function () use ($file, $tenant, $user, $parentId): void {
+        DB::connection((string) config('workspaces.database.central_connection'))
+            ->transaction(function () use ($file, $workspace, $user, $parentId): void {
                 CompanyFileLink::updateOrCreate(
-                    ['tenant_id' => $tenant->id, 'file_item_id' => $file->id],
+                    ['workspace_id' => $workspace->id, 'file_item_id' => $file->id],
                     ['company_parent_id' => $parentId, 'shared_by_user_id' => $user->id],
                 );
             });
 
-        $this->usage->recomputeForTenant($tenant);
-        CompanyFilesCache::bump($tenant->id, 'file_shared', $parentId);
+        $this->usage->recomputeForTenant($workspace);
+        CompanyFilesCache::bump($workspace->id, 'file_shared', $parentId);
 
         return back()->with('success', __('files.shared_to_company'));
     }
 
     public function unshare(Request $request, FileItem $file): RedirectResponse
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertFeatureAvailable($request, $tenant);
-        Gate::forUser($user)->authorize('share', [$file, $tenant]);
+        $this->assertFeatureAvailable($request, $workspace);
+        Gate::forUser($user)->authorize('share', [$file, $workspace]);
 
         if ($file->scope !== FileItem::SCOPE_PERSONAL) {
             abort(422, __('files.cannot_unshare_non_personal'));
         }
 
-        DB::connection((string) config('tenancy.database.central_connection'))
-            ->transaction(function () use ($file, $tenant): void {
+        DB::connection((string) config('workspaces.database.central_connection'))
+            ->transaction(function () use ($file, $workspace): void {
                 if ($file->isFolder()) {
-                    $this->unshareFolderFromCompany($file, $tenant);
+                    $this->unshareFolderFromCompany($file, $workspace);
                 } else {
                     CompanyFileLink::query()
-                        ->where('tenant_id', $tenant->id)
+                        ->where('workspace_id', $workspace->id)
                         ->where('file_item_id', $file->id)
                         ->delete();
                 }
             });
 
-        $this->usage->recomputeForTenant($tenant);
-        CompanyFilesCache::bump($tenant->id, 'unshared');
+        $this->usage->recomputeForTenant($workspace);
+        CompanyFilesCache::bump($workspace->id, 'unshared');
 
         return back()->with('success', __('files.unshared_from_company'));
     }
 
-    private function unshareFolderFromCompany(FileItem $personalFolder, Tenant $tenant): void
+    private function unshareFolderFromCompany(FileItem $personalFolder, Workspace $workspace): void
     {
         foreach ($personalFolder->children()->get() as $child) {
             /** @var FileItem $child */
             if ($child->isFolder()) {
-                $this->unshareFolderFromCompany($child, $tenant);
+                $this->unshareFolderFromCompany($child, $workspace);
             } else {
                 CompanyFileLink::query()
-                    ->where('tenant_id', $tenant->id)
+                    ->where('workspace_id', $workspace->id)
                     ->where('file_item_id', $child->id)
                     ->delete();
             }
@@ -387,10 +387,10 @@ class FileItemController extends Controller
 
     public function download(Request $request, FileItem $file): BinaryFileResponse
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertFeatureAvailable($request, $tenant);
-        Gate::forUser($user)->authorize('download', [$file, $tenant]);
+        $this->assertFeatureAvailable($request, $workspace);
+        Gate::forUser($user)->authorize('download', [$file, $workspace]);
 
         if ($file->isFolder()) {
             abort(404);
@@ -433,10 +433,10 @@ class FileItemController extends Controller
      */
     public function details(Request $request, FileItem $file, FileMetadataExtractor $extractor): JsonResponse
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertFeatureAvailable($request, $tenant);
-        Gate::forUser($user)->authorize('view', [$file, $tenant]);
+        $this->assertFeatureAvailable($request, $workspace);
+        Gate::forUser($user)->authorize('view', [$file, $workspace]);
 
         if ($file->isFolder()) {
             abort(404);
@@ -472,10 +472,10 @@ class FileItemController extends Controller
      */
     public function text(Request $request, FileItem $file): JsonResponse
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertFeatureAvailable($request, $tenant);
-        Gate::forUser($user)->authorize('view', [$file, $tenant]);
+        $this->assertFeatureAvailable($request, $workspace);
+        Gate::forUser($user)->authorize('view', [$file, $workspace]);
 
         if ($file->isFolder() || ! $file->isTextPreviewable()) {
             abort(404);
@@ -510,15 +510,15 @@ class FileItemController extends Controller
      */
     public function folders(Request $request): JsonResponse
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertFeatureAvailable($request, $tenant);
+        $this->assertFeatureAvailable($request, $workspace);
 
         $owner = $this->resolveOwner($request, $user);
-        $this->authorizeOwnerAccess($user, $owner, $tenant, view: true);
+        $this->authorizeOwnerAccess($user, $owner, $workspace, view: true);
 
         $folders = FileItem::query()
-            ->where('tenant_id', $tenant->id)
+            ->where('workspace_id', $workspace->id)
             ->forOwner($owner)
             ->where('type', FileItem::TYPE_FOLDER)
             ->orderBy('name')
@@ -533,9 +533,9 @@ class FileItemController extends Controller
      */
     public function bulkDelete(Request $request): RedirectResponse
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertFeatureAvailable($request, $tenant);
+        $this->assertFeatureAvailable($request, $workspace);
 
         $data = $request->validate([
             'ids' => ['required', 'array', 'min:1'],
@@ -544,7 +544,7 @@ class FileItemController extends Controller
 
         $items = FileItem::query()->with('owner')->whereIn('id', $data['ids'])->get();
         foreach ($items as $item) {
-            Gate::forUser($user)->authorize('delete', [$item, $tenant]);
+            Gate::forUser($user)->authorize('delete', [$item, $workspace]);
         }
         $owner = $user;
         foreach ($items as $item) {
@@ -562,9 +562,9 @@ class FileItemController extends Controller
      */
     public function bulkMove(Request $request): RedirectResponse
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertFeatureAvailable($request, $tenant);
+        $this->assertFeatureAvailable($request, $workspace);
 
         $data = $request->validate([
             'ids' => ['required', 'array', 'min:1'],
@@ -575,7 +575,7 @@ class FileItemController extends Controller
         $destId = $data['parent_id'] ?? null;
         if ($destId !== null) {
             $dest = FileItem::findOrFail($destId);
-            Gate::forUser($user)->authorize('update', [$dest, $tenant]);
+            Gate::forUser($user)->authorize('update', [$dest, $workspace]);
             if (! $dest->isFolder()) {
                 abort(422, __('files.invalid_company_folder'));
             }
@@ -583,10 +583,10 @@ class FileItemController extends Controller
 
         $items = FileItem::query()->with('owner')->whereIn('id', $data['ids'])->get();
         foreach ($items as $item) {
-            Gate::forUser($user)->authorize('update', [$item, $tenant]);
+            Gate::forUser($user)->authorize('update', [$item, $workspace]);
         }
 
-        DB::connection((string) config('tenancy.database.central_connection'))->transaction(function () use ($items, $destId, $tenant): void {
+        DB::connection((string) config('workspaces.database.central_connection'))->transaction(function () use ($items, $destId, $workspace): void {
             foreach ($items as $item) {
                 if ((int) $item->id === (int) $destId) {
                     continue; // can't move into itself
@@ -598,7 +598,7 @@ class FileItemController extends Controller
                     }
                 }
                 $item->parent_id = $destId;
-                $item->name = $this->uniqueNameForItem($tenant->id, $item, $item->name);
+                $item->name = $this->uniqueNameForItem($workspace->id, $item, $item->name);
                 $item->save();
             }
         });
@@ -613,9 +613,9 @@ class FileItemController extends Controller
      */
     public function bulkZip(Request $request): BinaryFileResponse
     {
-        $tenant = $this->currentTenant($request);
+        $workspace = $this->currentTenant($request);
         $user = $request->user();
-        $this->assertFeatureAvailable($request, $tenant);
+        $this->assertFeatureAvailable($request, $workspace);
 
         $ids = collect(explode(',', $request->string('ids')->toString()))
             ->map(fn ($v) => (int) trim($v))
@@ -626,7 +626,7 @@ class FileItemController extends Controller
 
         $items = FileItem::query()->with(['owner', 'media'])->whereIn('id', $ids)->get();
         foreach ($items as $item) {
-            Gate::forUser($user)->authorize('download', [$item, $tenant]);
+            Gate::forUser($user)->authorize('download', [$item, $workspace]);
         }
 
         $zipPath = sys_get_temp_dir().'/files-'.uniqid('', true).'.zip';
@@ -690,15 +690,15 @@ class FileItemController extends Controller
      * files. Mirrors FileTrashController so a crafted owner_type/owner_id
      * pair on the index endpoint can't expose another owner's tree.
      */
-    private function authorizeOwnerAccess(User $user, Model $owner, Tenant $tenant, bool $view): void
+    private function authorizeOwnerAccess(User $user, Model $owner, Workspace $workspace, bool $view): void
     {
         if (! $owner instanceof FileOwner) {
             abort(403, __('files.permission_denied'));
         }
 
         $allowed = $view
-            ? $owner->canViewFiles($user, $tenant)
-            : $owner->canManageFiles($user, $tenant);
+            ? $owner->canViewFiles($user, $workspace)
+            : $owner->canManageFiles($user, $workspace);
 
         abort_unless($allowed, 403, __('files.permission_denied'));
     }
@@ -716,19 +716,19 @@ class FileItemController extends Controller
 
     private function scopeFor(Model $owner): string
     {
-        return $owner instanceof Tenant ? FileItem::SCOPE_COMPANY : FileItem::SCOPE_PERSONAL;
+        return $owner instanceof Workspace ? FileItem::SCOPE_COMPANY : FileItem::SCOPE_PERSONAL;
     }
 
-    private function currentTenant(Request $request): Tenant
+    private function currentTenant(Request $request): Workspace
     {
-        $tenant = $request->attributes->get('customer');
+        $workspace = $request->attributes->get('workspace');
 
-        if ($tenant instanceof Tenant) {
-            return $tenant;
+        if ($workspace instanceof Workspace) {
+            return $workspace;
         }
 
-        $slug = config('tenancy.default_customer_slug');
-        $fallback = $slug ? Tenant::query()->where('slug', $slug)->first() : null;
+        $slug = config('workspaces.default_workspace_slug');
+        $fallback = $slug ? Workspace::query()->where('slug', $slug)->first() : null;
 
         if (! $fallback) {
             abort(404);
@@ -749,7 +749,7 @@ class FileItemController extends Controller
         };
     }
 
-    private function assertFeatureAvailable(Request $request, Tenant $tenant): void
+    private function assertFeatureAvailable(Request $request, Workspace $workspace): void
     {
         if (! AppSetting::current()->files_feature_enabled) {
             abort(404);
@@ -758,7 +758,7 @@ class FileItemController extends Controller
         $user = $request->user();
         $settings = $user->settings()->resolved();
 
-        if (! $tenant->files_feature_enabled) {
+        if (! $workspace->files_feature_enabled) {
             abort(404);
         }
 
@@ -766,7 +766,7 @@ class FileItemController extends Controller
             abort(403, __('files.not_enabled'));
         }
 
-        if ($this->usage->effectivePersonalQuota($user, $tenant) === 0) {
+        if ($this->usage->effectivePersonalQuota($user, $workspace) === 0) {
             abort(403, __('files.quota_disabled'));
         }
     }
@@ -792,10 +792,10 @@ class FileItemController extends Controller
      * folder. Operates on owner_type/owner_id so company and personal files
      * have independent name spaces even when they share a tenant + parent.
      */
-    private function uniqueName(int $tenantId, Model $owner, ?int $parentId, string $name, ?int $ignoreId = null): string
+    private function uniqueName(int $workspaceId, Model $owner, ?int $parentId, string $name, ?int $ignoreId = null): string
     {
         return $this->uniqueNameByColumns(
-            $tenantId,
+            $workspaceId,
             $owner->getMorphClass(),
             (int) $owner->getKey(),
             $parentId,
@@ -810,10 +810,10 @@ class FileItemController extends Controller
      * we don't depend on owner being eagerly loadable — a deleted owner row
      * still has stable stored ids and we want the rename to succeed.
      */
-    private function uniqueNameForItem(int $tenantId, FileItem $item, string $name): string
+    private function uniqueNameForItem(int $workspaceId, FileItem $item, string $name): string
     {
         return $this->uniqueNameByColumns(
-            $tenantId,
+            $workspaceId,
             (string) $item->owner_type,
             (int) $item->owner_id,
             $item->parent_id,
@@ -822,12 +822,12 @@ class FileItemController extends Controller
         );
     }
 
-    private function uniqueNameByColumns(int $tenantId, string $ownerType, int $ownerId, ?int $parentId, string $name, ?int $ignoreId): string
+    private function uniqueNameByColumns(int $workspaceId, string $ownerType, int $ownerId, ?int $parentId, string $name, ?int $ignoreId): string
     {
         $base = $name;
         $i = 1;
         while (FileItem::query()
-            ->where('tenant_id', $tenantId)
+            ->where('workspace_id', $workspaceId)
             ->where('owner_type', $ownerType)
             ->where('owner_id', $ownerId)
             ->where('parent_id', $parentId)

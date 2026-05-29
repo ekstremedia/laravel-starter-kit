@@ -11,7 +11,7 @@ import FileBrowser from '@/Components/Files/FileBrowser.vue';
 import type { PageProps } from '@/types';
 import type { FileBrowserItem } from '@/types/files';
 import { useCommandToasts } from '@/composables/useCommandToasts';
-import { useCustomer } from '@/composables/useCustomer';
+import { useWorkspace } from '@/composables/useWorkspace';
 
 defineOptions({ layout: CommandLayout });
 
@@ -29,7 +29,7 @@ const props = defineProps<{
 }>();
 
 const { t } = useI18n();
-const { customerUrl, customer } = useCustomer();
+const { workspaceUrl, workspace } = useWorkspace();
 const { push } = useCommandToasts();
 const page = usePage<PageProps>();
 
@@ -43,7 +43,7 @@ function setViewMode(m: 'grid' | 'list') {
 
 const searchQuery = ref(props.search ?? '');
 function onSearch() {
-    router.get(customerUrl(parentId.value ? `/files/company/${parentId.value}` : '/files/company'), {
+    router.get(workspaceUrl(parentId.value ? `/files/company/${parentId.value}` : '/files/company'), {
         q: searchQuery.value || undefined,
     }, { preserveState: true, preserveScroll: true, replace: true, only: ['items', 'realtime_version'] });
 }
@@ -68,7 +68,7 @@ const browserPermissions = computed(() => ({
 // ── Websocket live updates ───────────────────────────────────────────
 let lastVersion = 0;
 let channelName: string | null = null;
-function handleRealtime(payload: { tenant_id: number; reason: string; version: number; folder_id: number | null }) {
+function handleRealtime(payload: { workspace_id: number; reason: string; version: number; folder_id: number | null }) {
     if (payload.version <= lastVersion) return;
     lastVersion = payload.version;
     if (payload.folder_id !== null && payload.folder_id !== parentId.value) return;
@@ -76,10 +76,10 @@ function handleRealtime(payload: { tenant_id: number; reason: string; version: n
 }
 onMounted(() => {
     lastVersion = props.realtime_version ?? 0;
-    const tenantId = customer.value?.id;
+    const workspaceId = workspace.value?.id;
     const echo = (window as { Echo?: { private: (name: string) => { listen: (e: string, cb: (p: unknown) => void) => void } } }).Echo;
-    if (!tenantId || !echo) return;
-    channelName = `customer.${tenantId}.files`;
+    if (!workspaceId || !echo) return;
+    channelName = `workspace.${workspaceId}.files`;
     echo.private(channelName).listen('.CompanyFilesChanged', handleRealtime as unknown as (p: unknown) => void);
 });
 onUnmounted(() => {
@@ -94,7 +94,7 @@ const newFolderOpen = ref(false);
 const newFolderName = ref('');
 function createFolder() {
     if (!newFolderName.value.trim()) return;
-    router.post(customerUrl('/files/company/folder'), {
+    router.post(workspaceUrl('/files/company/folder'), {
         name: newFolderName.value.trim(),
         parent_id: parentId.value,
     }, {
@@ -133,8 +133,8 @@ function confirmDelete() {
     const item = deleteDialogItem.value;
     if (!item) return;
     const endpoint = item.linked && item.link_id
-        ? customerUrl(`/files/company/links/${item.link_id}`)
-        : customerUrl(`/files/company/${item.id}`);
+        ? workspaceUrl(`/files/company/links/${item.link_id}`)
+        : workspaceUrl(`/files/company/${item.id}`);
     const showNotify = props.can_manage && !!item.owner && !selfIsOwner(item);
     const payload: Record<string, boolean> = showNotify
         ? { notify_in_app: notifyInApp.value, notify_email: notifyByEmail.value }

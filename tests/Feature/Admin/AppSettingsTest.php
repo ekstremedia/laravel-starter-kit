@@ -7,11 +7,11 @@ use Database\Seeders\RoleAndPermissionSeeder;
 beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
 
-    $this->customer = createCustomer();
+    $this->workspace = createWorkspace();
 
     $this->admin = User::factory()->create();
     $this->admin->forceFill(['is_super_admin' => true])->save();
-    joinCustomer($this->admin, $this->customer);
+    joinWorkspace($this->admin, $this->workspace);
 });
 
 it('renders the app settings page with current values', function () {
@@ -53,10 +53,10 @@ it('shows maintenance page to non-admins when site is down', function () {
     AppSetting::current()->update(['site_up' => false]);
 
     $user = User::factory()->create();
-    joinCustomer($user, $this->customer);
+    joinWorkspace($user, $this->workspace);
 
     $this->actingAs($user)
-        ->get(customerUrl($this->customer, '/dashboard'))
+        ->get(workspaceUrl($this->workspace, '/dashboard'))
         ->assertStatus(503)
         ->assertInertia(fn ($page) => $page->component('Maintenance'));
 });
@@ -65,7 +65,7 @@ it('lets admins bypass maintenance mode', function () {
     AppSetting::current()->update(['site_up' => false]);
 
     $this->actingAs($this->admin)
-        ->get(customerUrl($this->customer, '/dashboard'))
+        ->get(workspaceUrl($this->workspace, '/dashboard'))
         ->assertOk();
 });
 

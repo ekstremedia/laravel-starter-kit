@@ -28,7 +28,7 @@ vi.mock('@/composables/useSidebarItems', () => ({
             value: [
                 { id: 'home', href: '/home', label: 'Home', icon: 'home', match: (p: string) => p === '/home' },
                 { separator: true, key: 'workspace', label: 'Workspace' },
-                { id: 'my-dashboard', href: '/c/acme/dashboard', label: 'Dashboard', icon: 'home', match: (p: string) => p.includes('/dashboard') },
+                { id: 'my-dashboard', href: '/w/acme/dashboard', label: 'Dashboard', icon: 'home', match: (p: string) => p.includes('/dashboard') },
             ],
         },
         adminVisible: {
@@ -55,7 +55,7 @@ describe('Command/Rail — app mode', () => {
     it('renders the app items plus brand and profile, and no admin items', () => {
         const hrefs = mount(Rail).findAll('a').map((a) => a.attributes('href'));
         expect(hrefs).toContain('/home');
-        expect(hrefs).toContain('/c/acme/dashboard');
+        expect(hrefs).toContain('/w/acme/dashboard');
         expect(hrefs).toContain('/profile');
         expect(hrefs).not.toContain('/admin/users');
     });
@@ -85,7 +85,7 @@ describe('Command/Rail — admin mode', () => {
         // Back-to-app link points at /home.
         expect(hrefs).toContain('/home');
         // App workspace items are gone in admin mode.
-        expect(hrefs).not.toContain('/c/acme/dashboard');
+        expect(hrefs).not.toContain('/w/acme/dashboard');
     });
 
     it('shows the Administration brand label and the back-to-app label when expanded', () => {

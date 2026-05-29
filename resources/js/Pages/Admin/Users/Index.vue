@@ -10,7 +10,7 @@ import { useCommandToasts } from '@/composables/useCommandToasts';
 
 defineOptions({ layout: CommandLayout });
 
-interface CustomerRoleCell { id: number; name: string; slug: string; roles: string[] }
+interface WorkspaceRoleCell { id: number; name: string; slug: string; roles: string[] }
 interface UserRow {
     id: number;
     first_name: string;
@@ -20,7 +20,7 @@ interface UserRow {
     last_login_at?: string | null;
     avatar_thumb_url: string | null;
     is_super_admin?: boolean;
-    customer_roles: CustomerRoleCell[];
+    workspace_roles: WorkspaceRoleCell[];
     storage_used_bytes: number;
     // Raw user override. null = inherit, -1 = explicit unlimited,
     // 0 = blocked, N>0 = cap. Resolution happens server-side for the
@@ -56,7 +56,7 @@ function sortBy(key: 'first_name' | 'email' | 'storage_used_bytes') {
 }
 const selected = ref<Set<number>>(new Set());
 const hoverId = ref<number | null>(null);
-const hoverCustomerKey = ref<string | null>(null);
+const hoverWorkspaceKey = ref<string | null>(null);
 // Data is always pre-rendered by Inertia (and the controller caches the
 // payload), so no client-side loading state is needed — the skeleton shimmer
 // was purely cosmetic and added a 700ms stutter on every reload.
@@ -498,7 +498,7 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
                         }"
                     >SUPER</span>
                     <span
-                        v-for="c in u.customer_roles"
+                        v-for="c in u.workspace_roles"
                         :key="c.id"
                         tabindex="0"
                         class="cmd-mono"
@@ -513,15 +513,15 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
                             cursor: 'default',
                             outline: 'none',
                         }"
-                        @mouseenter="hoverCustomerKey = `${u.id}-${c.id}`"
-                        @mouseleave="hoverCustomerKey = null"
-                        @focus="hoverCustomerKey = `${u.id}-${c.id}`"
-                        @blur="hoverCustomerKey = null"
+                        @mouseenter="hoverWorkspaceKey = `${u.id}-${c.id}`"
+                        @mouseleave="hoverWorkspaceKey = null"
+                        @focus="hoverWorkspaceKey = `${u.id}-${c.id}`"
+                        @blur="hoverWorkspaceKey = null"
                     >
                         {{ c.name }}
-                        <!-- Hover tooltip: per-customer roles for this user. -->
+                        <!-- Hover tooltip: per-workspace roles for this user. -->
                         <span
-                            v-if="hoverCustomerKey === `${u.id}-${c.id}`"
+                            v-if="hoverWorkspaceKey === `${u.id}-${c.id}`"
                             role="tooltip"
                             :style="{
                                 position: 'absolute',
@@ -544,7 +544,7 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
                             <div
                                 class="cmd-mono cmd-uc"
                                 :style="{ fontSize: '9.5px', color: 'var(--fg-mute)', letterSpacing: '0.06em', marginBottom: '4px' }"
-                            >{{ c.name }} · /c/{{ c.slug }}</div>
+                            >{{ c.name }} · /w/{{ c.slug }}</div>
                             <div v-if="c.roles.length" :style="{ display: 'flex', flexWrap: 'wrap', gap: '4px' }">
                                 <span
                                     v-for="r in c.roles"
@@ -563,11 +563,11 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
                             <span
                                 v-else
                                 :style="{ fontStyle: 'italic', color: 'var(--fg-mute)' }"
-                            >{{ t('admin.users.no_roles_on_customer', 'Ingen rolle') }}</span>
+                            >{{ t('admin.users.no_roles_on_workspace', 'Ingen rolle') }}</span>
                         </span>
                     </span>
                     <span
-                        v-if="!u.is_super_admin && u.customer_roles.length === 0"
+                        v-if="!u.is_super_admin && u.workspace_roles.length === 0"
                         :style="{ fontSize: '11px', color: 'var(--fg-mute)', fontStyle: 'italic' }"
                     >—</span>
                 </div>
@@ -686,13 +686,13 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
                         :style="{ fontSize: '9.5px', padding: '2px 6px', borderRadius: '3px', color: roleToneColor('SuperAdmin'), background: roleToneBg('SuperAdmin'), border: `1px solid ${roleToneBorder('SuperAdmin')}` }"
                     >SUPER</span>
                     <span
-                        v-for="c in u.customer_roles"
+                        v-for="c in u.workspace_roles"
                         :key="c.id"
                         class="cmd-mono"
                         :style="{ fontSize: '10.5px', padding: '2px 7px', borderRadius: '3px', background: 'var(--panel2)', color: 'var(--fg-dim)', border: '1px solid var(--border)' }"
                     >{{ c.name }}</span>
                     <span
-                        v-if="!u.is_super_admin && u.customer_roles.length === 0"
+                        v-if="!u.is_super_admin && u.workspace_roles.length === 0"
                         :style="{ fontSize: '11px', color: 'var(--fg-mute)', fontStyle: 'italic' }"
                     >—</span>
                 </span>
