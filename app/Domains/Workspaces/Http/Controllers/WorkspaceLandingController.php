@@ -52,6 +52,16 @@ class WorkspaceLandingController extends Controller
             ? Workspace::query()->where('status', 'active')->orderBy('name')->get()
             : $user->workspaces()->where('status', 'active')->orderBy('name')->get();
 
+        // Self-serve sign-up (create_own) with no workspace yet → send them to
+        // the onboarding form to create their own. Invitees were already routed
+        // to their workspace above; SuperAdmins see every workspace so aren't
+        // empty here. join_default users have auto-joined the default workspace.
+        if (config('workspaces.registration_mode') === 'create_own'
+            && ! $user->isSuperAdmin()
+            && $workspaces->isEmpty()) {
+            return redirect()->route('workspaces.onboarding.show');
+        }
+
         if ($workspaces->count() === 1) {
             /** @var Workspace $only */
             $only = $workspaces->first();

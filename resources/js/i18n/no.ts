@@ -529,6 +529,14 @@ export default {
         subtitle: 'Kontoen din har tilgang til følgende. Velg en for å fortsette.',
         empty: 'Du er ikke medlem noe sted ennå. Be en administrator om å legge deg til.',
     },
+    onboarding: {
+        workspace: {
+            title: 'Opprett arbeidsområdet ditt',
+            description: 'Et arbeidsområde er ditt eget rom for filer, medlemmer og data. Du blir administrator og kan invitere andre senere.',
+            name_label: 'Navn på arbeidsområde',
+            submit: 'Opprett arbeidsområde',
+        },
+    },
     maintenance: {
         title: 'Vi er straks tilbake',
     },

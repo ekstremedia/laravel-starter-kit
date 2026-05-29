@@ -5,7 +5,6 @@ namespace App\Domains\Auth\Actions;
 use App\Domains\Notifications\Notifications\WelcomeNotification;
 use App\Domains\Settings\Models\AppSetting;
 use App\Domains\Users\Models\User;
-use App\Domains\Workspaces\Actions\CreateWorkspace;
 use App\Domains\Workspaces\Models\Workspace;
 use App\Domains\Workspaces\Support\WorkspaceMembership;
 use Illuminate\Support\Facades\Log;
@@ -49,24 +48,16 @@ class CreateNewUser implements CreatesNewUsers
         // How the new user gets a workspace. In single-tenant mode (tenancy
         // off) everyone shares the one default workspace, so create_own is
         // ignored. In multi-tenant mode the configured registration_mode
-        // decides between self-serve space creation and auto-join.
-        if (config('workspaces.enabled') && config('workspaces.registration_mode') === 'create_own') {
-            app(CreateWorkspace::class)->forOwner($user, $this->defaultWorkspaceName($user));
-        } else {
+        // decides: create_own leaves the user with NO workspace and defers to
+        // the self-serve onboarding form — WorkspaceLandingController routes a
+        // zero-workspace create_own user to `workspaces.onboarding.show`, where
+        // they name and create their own space. join_default auto-joins the
+        // shared default workspace below.
+        if (! (config('workspaces.enabled') && config('workspaces.registration_mode') === 'create_own')) {
             $this->attachToDefaultWorkspace($user, $settings->default_role ?? 'User');
         }
 
         return $user;
-    }
-
-    /**
-     * Name for the workspace a self-serve sign-up creates, e.g. "Ada's space".
-     */
-    private function defaultWorkspaceName(User $user): string
-    {
-        $first = trim((string) $user->first_name);
-
-        return $first !== '' ? "{$first}'s space" : 'My space';
     }
 
     /**

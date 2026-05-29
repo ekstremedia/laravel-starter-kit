@@ -42,7 +42,8 @@ it('registers a new user', function () {
     expect($user->hasVerifiedEmail())->toBeFalse();
 });
 
-it('creates the user their own workspace in create_own mode', function () {
+it('leaves a create_own sign-up with no workspace and sends them to onboarding', function () {
+    config()->set('workspaces.enabled', true);
     config()->set('workspaces.registration_mode', 'create_own');
 
     $this->post('/register', [
@@ -56,20 +57,16 @@ it('creates the user their own workspace in create_own mode', function () {
     $user = User::where('email', 'ada@example.com')->first();
     expect($user)->not->toBeNull();
 
-    // A brand-new workspace was created and the user is its admin — not the
-    // shared default workspace.
-    $workspace = Workspace::where('name', "Ada's space")->first();
-    expect($workspace)->not->toBeNull();
-    expect($workspace->slug)->not->toBe(config('workspaces.default_workspace_slug', 'default'));
-    expect($user->workspaces()->whereKey($workspace->id)->exists())->toBeTrue();
+    // No workspace is auto-created in create_own mode — creation is deferred to
+    // the self-serve onboarding form — and they did NOT auto-join the default.
+    expect($user->workspaces()->count())->toBe(0);
+    expect(Workspace::where('name', "Ada's space")->exists())->toBeFalse();
 
-    app(PermissionRegistrar::class)->setPermissionsTeamId($workspace->id);
-    $user->unsetRelation('roles');
-    expect($user->hasRole('Admin'))->toBeTrue();
-
-    // They did NOT auto-join the shared default workspace in this mode.
-    $default = Workspace::where('slug', config('workspaces.default_workspace_slug', 'default'))->first();
-    expect($user->workspaces()->whereKey($default->id)->exists())->toBeFalse();
+    // Once verified, the landing router sends them to the create-workspace form.
+    $user->forceFill(['email_verified_at' => now()])->save();
+    $this->actingAs($user)
+        ->get('/app')
+        ->assertRedirect(route('workspaces.onboarding.show'));
 });
 
 it('requires first name to register', function () {

@@ -20,6 +20,18 @@ use Illuminate\Support\Str;
  */
 class CreateWorkspace
 {
+    /**
+     * Suggested name to prefill the self-serve "create your space" form with,
+     * e.g. "Ada's space". The single source of truth for the default name a
+     * new owner's workspace gets.
+     */
+    public static function suggestedNameFor(User $owner): string
+    {
+        $first = trim((string) $owner->first_name);
+
+        return $first !== '' ? "{$first}'s space" : 'My space';
+    }
+
     public function forOwner(User $owner, string $name): Workspace
     {
         return DB::connection((string) config('workspaces.database.central_connection'))->transaction(function () use ($owner, $name): Workspace {

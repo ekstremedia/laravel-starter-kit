@@ -28,6 +28,7 @@ use App\Domains\Users\Http\Controllers\UserProfileController;
 use App\Domains\Workspaces\Http\Controllers\WorkspaceController;
 use App\Domains\Workspaces\Http\Controllers\WorkspaceInvitationController;
 use App\Domains\Workspaces\Http\Controllers\WorkspaceLandingController;
+use App\Domains\Workspaces\Http\Controllers\WorkspaceOnboardingController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -133,6 +134,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Command-design "Min side" — user overview inside the CommandLayout shell.
     Route::get('/home', [HomeController::class, 'index'])->name('home.me');
+
+    // Self-serve workspace onboarding (multi-tenant create_own mode). Central
+    // route — a brand-new user has no membership yet, so this can't live under
+    // the /w/{workspace} group (ResolveWorkspace would reject them).
+    Route::get('/onboarding/workspace', [WorkspaceOnboardingController::class, 'show'])->name('workspaces.onboarding.show');
+    Route::post('/onboarding/workspace', [WorkspaceOnboardingController::class, 'store'])->name('workspaces.onboarding.store');
 });
 
 // Admin routes (system super-user — spans all tenants)

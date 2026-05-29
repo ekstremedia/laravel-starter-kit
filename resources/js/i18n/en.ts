@@ -529,6 +529,14 @@ export default {
         subtitle: 'Your account has access to the following. Pick one to continue.',
         empty: 'You aren\'t a member anywhere yet. Ask an administrator to add you.',
     },
+    onboarding: {
+        workspace: {
+            title: 'Create your workspace',
+            description: 'A workspace is your own space for files, members and data. You\'ll be its admin and can invite others later.',
+            name_label: 'Workspace name',
+            submit: 'Create workspace',
+        },
+    },
     maintenance: {
         title: 'We\'ll be right back',
     },
