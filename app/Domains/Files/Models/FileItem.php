@@ -84,7 +84,7 @@ class FileItem extends Model implements HasMedia
     ];
 
     /**
-     * Audit create/update/delete/restore on FileItems so Customer Admins can
+     * Audit create/update/delete/restore on FileItems so Workspace Admins can
      * see "who uploaded this folder" or "who renamed that file". We log a
      * compact attribute set — the full media blob doesn't belong in an audit
      * trail, and a bare timestamp change (Eloquent's updated_at touch after
@@ -134,7 +134,7 @@ class FileItem extends Model implements HasMedia
 
     /**
      * Polymorphic owner: the model that owns this file (User for personal,
-     * Workspace for company, future Building/Customer/etc.). Can be null when
+     * Workspace for company, future Building/Workspace/etc.). Can be null when
      * the related row was hard-deleted out from under the morph.
      *
      * @return MorphTo<Model, $this>

@@ -144,7 +144,7 @@ class FileShareController extends Controller
 
     private function currentTenant(Request $request): Workspace
     {
-        $workspace = $request->attributes->get('customer');
+        $workspace = $request->attributes->get('workspace');
         if ($workspace instanceof Workspace) {
             return $workspace;
         }
@@ -162,7 +162,7 @@ class FileShareController extends Controller
      *     what the original `assertOwns` enforced and the default branch
      *     below preserves it.
      *   - Native company file: the file's uploader (`user_id`) OR a
-     *     customer admin can create/revoke. Sharing externally is an
+     *     workspace admin can create/revoke. Sharing externally is an
      *     admin-level action — we don't want any ordinary member
      *     exposing another member's upload publicly.
      *   - Linked personal file (a personal file surfaced via

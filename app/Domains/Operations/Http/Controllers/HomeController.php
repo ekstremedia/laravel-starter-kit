@@ -42,11 +42,11 @@ class HomeController extends Controller
                 'email_verified_at' => $user->email_verified_at?->toIso8601String(),
                 'two_factor_enabled' => (bool) $user->two_factor_confirmed_at,
                 'is_super_admin' => $user->isSuperAdmin(),
-                // `/home` is a central route (no active customer), so a plain
+                // `/home` is a central route (no active workspace), so a plain
                 // `getRoleNames()` call would resolve against a null team id
                 // and always come back empty — the meaningful answer is the
-                // user's per-customer role map.
-                'customer_roles' => $this->customerRolesFor($user),
+                // user's per-workspace role map.
+                'workspace_roles' => $this->workspaceRolesFor($user),
                 'created_at' => $user->created_at?->toIso8601String(),
             ],
             'activity' => $activity,
@@ -56,11 +56,11 @@ class HomeController extends Controller
     /**
      * @return array<int, array{id:int, name:string, slug:string, roles:array<int,string>}>
      */
-    private function customerRolesFor(User $user): array
+    private function workspaceRolesFor(User $user): array
     {
-        /** @var array<int, Workspace> $customers */
-        $customers = $user->customers()->orderBy('name')->get(['workspaces.id', 'name', 'slug'])->all();
-        if ($customers === []) {
+        /** @var array<int, Workspace> $workspaces */
+        $workspaces = $user->workspaces()->orderBy('name')->get(['workspaces.id', 'name', 'slug'])->all();
+        if ($workspaces === []) {
             return [];
         }
 
@@ -73,7 +73,7 @@ class HomeController extends Controller
             ->join($rolesTable, "{$rolesTable}.id", '=', "{$mhr}.role_id")
             ->where("{$mhr}.model_type", (new User)->getMorphClass())
             ->where("{$mhr}.model_id", $user->getKey())
-            ->whereIn("{$mhr}.{$teamKey}", array_map(fn (Workspace $c) => $c->id, $customers))
+            ->whereIn("{$mhr}.{$teamKey}", array_map(fn (Workspace $c) => $c->id, $workspaces))
             ->get([$mhr.'.'.$teamKey.' as team_id', $rolesTable.'.name as name']);
 
         $rolesByTeam = [];
@@ -86,6 +86,6 @@ class HomeController extends Controller
             'name' => $c->name,
             'slug' => $c->slug,
             'roles' => array_values(array_unique($rolesByTeam[$c->id] ?? [])),
-        ], $customers);
+        ], $workspaces);
     }
 }

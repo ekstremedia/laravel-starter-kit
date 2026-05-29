@@ -24,8 +24,8 @@ class ApproachingStorageLimitNotification extends Notification implements Should
         public int $thresholdPercent,
         public int $usedBytes,
         public int $quotaBytes,
-        public ?int $tenantId = null,
-        public ?string $tenantName = null,
+        public ?int $workspaceId = null,
+        public ?string $workspaceName = null,
     ) {}
 
     /**
@@ -54,7 +54,7 @@ class ApproachingStorageLimitNotification extends Notification implements Should
             'threshold_percent' => (string) $this->thresholdPercent,
             'used_display' => $this->humanBytes($this->usedBytes),
             'quota_display' => $this->humanBytes($this->quotaBytes),
-            'tenant_name' => (string) ($this->tenantName ?? ''),
+            'tenant_name' => (string) ($this->workspaceName ?? ''),
             'app_name' => (string) config('app.name'),
             'app_url' => (string) config('app.url'),
         ]);
@@ -69,15 +69,15 @@ class ApproachingStorageLimitNotification extends Notification implements Should
 
         // If we know which company this alert is for, include its name in the
         // title/message so the user knows which bucket is filling up.
-        if ($this->tenantName !== null && $this->tenantName !== '') {
+        if ($this->workspaceName !== null && $this->workspaceName !== '') {
             $title = __('files.storage_alert_title_tenant', [
                 'percent' => $this->thresholdPercent,
-                'tenant' => $this->tenantName,
+                'workspace' => $this->workspaceName,
             ], $locale);
             $message = __('files.storage_alert_body_tenant', [
                 'used' => $this->humanBytes($this->usedBytes),
                 'quota' => $this->humanBytes($this->quotaBytes),
-                'tenant' => $this->tenantName,
+                'workspace' => $this->workspaceName,
             ], $locale);
         } else {
             $title = __('files.storage_alert_title', ['percent' => $this->thresholdPercent], $locale);
@@ -92,7 +92,7 @@ class ApproachingStorageLimitNotification extends Notification implements Should
             'message' => $message,
             'icon' => 'pi-database',
             'threshold' => $this->thresholdPercent,
-            'workspace_id' => $this->tenantId,
+            'workspace_id' => $this->workspaceId,
         ];
     }
 

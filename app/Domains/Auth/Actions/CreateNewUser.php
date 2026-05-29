@@ -53,7 +53,7 @@ class CreateNewUser implements CreatesNewUsers
         if (config('workspaces.enabled') && config('workspaces.registration_mode') === 'create_own') {
             app(CreateWorkspace::class)->forOwner($user, $this->defaultWorkspaceName($user));
         } else {
-            $this->attachToDefaultCustomer($user, $settings->default_role ?? 'User');
+            $this->attachToDefaultWorkspace($user, $settings->default_role ?? 'User');
         }
 
         return $user;
@@ -70,22 +70,22 @@ class CreateNewUser implements CreatesNewUsers
     }
 
     /**
-     * New sign-ups auto-join the default customer configured in
+     * New sign-ups auto-join the default workspace configured in
      * `tenancy.default_workspace_slug` (env: `WORKSPACES_DEFAULT_WORKSPACE`) with the
-     * platform-configured default role. Roles are always customer-scoped, so we
+     * platform-configured default role. Roles are always workspace-scoped, so we
      * go through `WorkspaceMembership` to keep the pivot + role assignment in
      * sync. When the configured slug doesn't resolve we log a warning — the
      * user would land on the picker with nowhere to go until an admin attaches
      * them, which is worth surfacing.
      */
-    private function attachToDefaultCustomer(User $user, string $defaultRole): void
+    private function attachToDefaultWorkspace(User $user, string $defaultRole): void
     {
         $slug = config('workspaces.default_workspace_slug', 'default');
 
-        $customer = Workspace::query()->where('slug', $slug)->first();
+        $workspace = Workspace::query()->where('slug', $slug)->first();
 
-        if ($customer === null) {
-            Log::warning('Default customer not found for new user; skipping auto-join.', [
+        if ($workspace === null) {
+            Log::warning('Default workspace not found for new user; skipping auto-join.', [
                 'slug' => $slug,
                 'user_id' => $user->id,
             ]);
@@ -102,9 +102,9 @@ class CreateNewUser implements CreatesNewUsers
             : 'User';
 
         try {
-            WorkspaceMembership::attach($user, $customer, [$role]);
+            WorkspaceMembership::attach($user, $workspace, [$role]);
         } catch (RoleDoesNotExist) {
-            $user->customers()->syncWithoutDetaching([$customer->id]);
+            $user->workspaces()->syncWithoutDetaching([$workspace->id]);
         }
     }
 }

@@ -43,7 +43,7 @@ beforeEach(function () {
     $this->service = app(StorageUsageService::class);
     $this->workspace = Workspace::factory()->create();
     $this->user = User::factory()->create();
-    $this->user->customers()->attach($this->workspace);
+    $this->user->workspaces()->attach($this->workspace);
     // The production default now seeds a 5 GB global personal quota,
     // but these tests assume a blank slate (or configure their own
     // override). Reset the app default so "unlimited" really means
@@ -96,7 +96,7 @@ it('billable total excludes chat attachments and user avatars', function () {
 
 it('scopes billable bytes per-tenant — files in one tenant do not count in another', function () {
     $other = Workspace::factory()->create();
-    $this->user->customers()->attach($other);
+    $this->user->workspaces()->attach($other);
 
     $hereItem = FileItem::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -160,7 +160,7 @@ it('fires a notification when crossing the 80% threshold in a tenant', function 
     $this->service->checkAndNotifyThresholds($this->user->fresh(), $this->workspace);
 
     Notification::assertSentTo($this->user, ApproachingStorageLimitNotification::class,
-        fn ($n) => $n->thresholdPercent === 80 && $n->tenantId === $this->workspace->id);
+        fn ($n) => $n->thresholdPercent === 80 && $n->workspaceId === $this->workspace->id);
 });
 
 it('does not re-fire the same threshold twice in the same tenant', function () {
@@ -184,7 +184,7 @@ it('fires independent threshold alerts per tenant', function () {
     Notification::fake();
 
     $other = Workspace::factory()->create();
-    $this->user->customers()->attach($other);
+    $this->user->workspaces()->attach($other);
     $this->user->settings()->merge(['storage_quota_override' => 10_000]);
 
     $a = FileItem::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
@@ -201,7 +201,7 @@ it('fires independent threshold alerts per tenant', function () {
 
 it('recomputes the denormalized storage_used_bytes as billable across all tenants', function () {
     $other = Workspace::factory()->create();
-    $this->user->customers()->attach($other);
+    $this->user->workspaces()->attach($other);
 
     $a = FileItem::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
     $b = FileItem::factory()->create(['workspace_id' => $other->id, 'user_id' => $this->user->id]);

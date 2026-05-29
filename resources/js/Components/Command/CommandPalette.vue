@@ -22,11 +22,11 @@ const { push } = useCommandToasts();
 const page = usePage<PageProps>();
 const isAdmin = computed(() => page.props.auth?.user?.is_super_admin === true);
 const chatEnabled = computed(() => page.props.chat?.enabled ?? false);
-const customerSlug = computed(() => page.props.customer?.slug ?? null);
+const workspaceSlug = computed(() => page.props.workspace?.slug ?? null);
 const globalFilesEnabled = computed(() => page.props.app_settings?.files_feature_enabled ?? false);
 const filesTarget = computed(() => {
-    if (page.props.customer?.files_feature_enabled) return page.props.customer;
-    return (page.props.available_customers ?? []).find((c) => c.files_feature_enabled) ?? null;
+    if (page.props.workspace?.files_feature_enabled) return page.props.workspace;
+    return (page.props.available_workspaces ?? []).find((c) => c.files_feature_enabled) ?? null;
 });
 
 interface Cmd {
@@ -48,11 +48,11 @@ const commands = computed<Cmd[]>(() => {
         { id: 'go-notif', label: t('palette.go_notification_settings'), group: gNav, fn: () => router.visit('/settings/notifications') },
         { id: 'go-tokens', label: t('palette.go_api_tokens'), group: gNav, fn: () => router.visit('/settings/tokens') },
     ];
-    if (customerSlug.value) {
-        nav.push({ id: 'go-cdash', label: t('palette.go_dashboard'), group: gNav, fn: () => router.visit(`/c/${customerSlug.value}/dashboard`) });
+    if (workspaceSlug.value) {
+        nav.push({ id: 'go-cdash', label: t('palette.go_dashboard'), group: gNav, fn: () => router.visit(`/w/${workspaceSlug.value}/dashboard`) });
     }
     if (globalFilesEnabled.value && filesTarget.value) {
-        nav.push({ id: 'go-files', label: t('palette.go_files'), group: gNav, fn: () => router.visit(`/c/${filesTarget.value!.slug}/files`) });
+        nav.push({ id: 'go-files', label: t('palette.go_files'), group: gNav, fn: () => router.visit(`/w/${filesTarget.value!.slug}/files`) });
     }
     if (chatEnabled.value) nav.push({ id: 'go-chat', label: t('palette.go_chat'), group: gNav, fn: () => router.visit('/chat') });
 

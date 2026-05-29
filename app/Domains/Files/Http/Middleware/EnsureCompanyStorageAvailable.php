@@ -24,7 +24,7 @@ class EnsureCompanyStorageAvailable
 
     public function handle(Request $request, Closure $next): Response
     {
-        $workspace = $request->attributes->get('customer');
+        $workspace = $request->attributes->get('workspace');
         if (! $workspace instanceof Workspace) {
             return $next($request);
         }

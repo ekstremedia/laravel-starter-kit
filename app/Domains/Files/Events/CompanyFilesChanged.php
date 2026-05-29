@@ -29,7 +29,7 @@ class CompanyFilesChanged implements ShouldBroadcast
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public function __construct(
-        public int $tenantId,
+        public int $workspaceId,
         public string $reason,
         public int $version,
         public ?int $folderId = null,
@@ -40,7 +40,7 @@ class CompanyFilesChanged implements ShouldBroadcast
      */
     public function broadcastOn(): array
     {
-        return [new PrivateChannel('customer.'.$this->tenantId.'.files')];
+        return [new PrivateChannel('workspace.'.$this->workspaceId.'.files')];
     }
 
     public function broadcastAs(): string
@@ -54,7 +54,7 @@ class CompanyFilesChanged implements ShouldBroadcast
     public function broadcastWith(): array
     {
         return [
-            'workspace_id' => $this->tenantId,
+            'workspace_id' => $this->workspaceId,
             'reason' => $this->reason,
             'version' => $this->version,
             'folder_id' => $this->folderId,

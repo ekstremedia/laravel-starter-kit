@@ -20,15 +20,15 @@ use Inertia\Inertia;
 
 /*
 |--------------------------------------------------------------------------
-| Customer-scoped routes (shared between single- and multi-tenant modes)
+| Workspace-scoped routes (shared between single- and multi-tenant modes)
 |--------------------------------------------------------------------------
 |
-| This file lists the routes that a logged-in user owns inside a customer.
+| This file lists the routes that a logged-in user owns inside a workspace.
 | It's mounted from `bootstrap/app.php` in one of two shapes depending on
 | `config('workspaces.enabled')`:
 |
-|   - enabled  → prefix `/c/{customer}`, middleware auth+verified+ResolveWorkspace,
-|                name prefix `customer.`
+|   - enabled  → prefix `/w/{workspace}`, middleware auth+verified+ResolveWorkspace,
+|                name prefix `workspace.`
 |   - disabled → root paths, middleware auth+verified, no name prefix
 |
 | Keep this file as a flat list of route definitions only — no `prefix()`,
@@ -41,8 +41,8 @@ Route::get('/profile', fn () => Inertia::render('Profile'))->name('profile');
 Route::post('/profile/avatar', [AvatarController::class, 'store'])->name('profile.avatar.store');
 Route::delete('/profile/avatar', [AvatarController::class, 'destroy'])->name('profile.avatar.destroy');
 
-// Customer "About" — the company's own profile card. View is open to any
-// member; edit is gated to customer Admins (and SuperAdmins) by the
+// Workspace "About" — the company's own profile card. View is open to any
+// member; edit is gated to workspace Admins (and SuperAdmins) by the
 // WorkspaceProfilePolicy inside the controller.
 Route::get('/about', [WorkspaceProfileController::class, 'show'])->name('about.show');
 Route::get('/about/edit', [WorkspaceProfileController::class, 'edit'])->name('about.edit');
@@ -95,7 +95,7 @@ Route::delete('/files/company/links/{link}', [CompanyFileController::class, 'unl
     ->whereNumber('link')
     ->name('files.company.links.destroy');
 
-// Share/unshare a personal file to the customer's company tree.
+// Share/unshare a personal file to the workspace's company tree.
 Route::post('/files/{file}/share-to-company', [FileItemController::class, 'share'])
     ->whereNumber('file')
     ->name('files.shareToCompany');
@@ -170,10 +170,10 @@ if (config('assets.enabled')) {
     Route::delete('/assets/{asset}', [AssetController::class, 'destroy'])->whereNumber('asset')->name('assets.destroy');
 }
 
-// Customer-Admin — manage the members of the active customer. `role:Admin`
+// Workspace-Admin — manage the members of the active workspace. `role:Admin`
 // resolves against the team id set by ResolveWorkspace, so it means
-// "Admin on THIS customer" (not platform admin).
-Route::middleware('customer.admin')->prefix('members')->name('members.')->group(function () {
+// "Admin on THIS workspace" (not platform admin).
+Route::middleware('workspace.admin')->prefix('members')->name('members.')->group(function () {
     Route::get('/', [WorkspaceMembersController::class, 'index'])->name('index');
     Route::post('/', [WorkspaceMembersController::class, 'store'])->name('store');
     Route::patch('/{user}/role', [WorkspaceMembersController::class, 'setRole'])->name('setRole');

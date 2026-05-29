@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Generalize file ownership from per-user to polymorphic so any model
- * (Building, Customer, etc.) can own a file tree. The old `user_id` column
+ * (Building, Workspace, etc.) can own a file tree. The old `user_id` column
  * stays in place as the "uploaded by" relationship — semantically distinct
  * from "owned by" — and `scope` stays for back-compat with code paths that
  * still filter on it.

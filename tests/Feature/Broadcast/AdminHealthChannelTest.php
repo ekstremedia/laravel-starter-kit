@@ -7,7 +7,7 @@ use App\Domains\Users\Models\User;
 // The `admin.health` private broadcast channel in routes/channels.php gates
 // on `$user->isSuperAdmin()` — these two tests lock that contract in so a
 // future refactor of `isSuperAdmin` or a stray `hasRole('Admin')` regression
-// can't silently open the channel to customer-level admins.
+// can't silently open the channel to workspace-level admins.
 
 // Laravel's `/broadcasting/auth` returns a proper 403 only when called with
 // JSON headers (otherwise it falls through to the HTML renderer). Use

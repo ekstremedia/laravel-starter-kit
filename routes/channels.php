@@ -14,11 +14,11 @@ Broadcast::channel('chat.conversation.{conversationId}', function ($user, $conve
     return $user->conversations()->whereKey((int) $conversationId)->exists();
 });
 
-// Per-customer live feed for company-shared files. Every member of the
+// Per-workspace live feed for company-shared files. Every member of the
 // tenant gets auth'd; super admins are allowed through for support /
 // debugging. Presence isn't exposed — clients only see "tree changed"
 // pings carrying a version number, not the names of other connected users.
-Broadcast::channel('customer.{tenantId}.files', function ($user, $tenantId) {
+Broadcast::channel('workspace.{workspaceId}.files', function ($user, $workspaceId) {
     if ($user === null) {
         return false;
     }
@@ -26,5 +26,5 @@ Broadcast::channel('customer.{tenantId}.files', function ($user, $tenantId) {
         return true;
     }
 
-    return $user->customers()->where('workspaces.id', (int) $tenantId)->exists();
+    return $user->workspaces()->where('workspaces.id', (int) $workspaceId)->exists();
 });

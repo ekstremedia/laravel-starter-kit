@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 /**
  * Implemented by any model that can own a FileItem tree (User personal files,
- * Workspace company files, future Building/Customer files). The HasFiles trait
+ * Workspace company files, future Building/Workspace files). The HasFiles trait
  * provides the standard implementation; bespoke implementations only need to
  * override hooks where their semantics diverge.
  */
@@ -26,7 +26,7 @@ interface FileOwner
      * owned by this model. Called by FileItemPolicy when the cross-cutting
      * "manage all files" permission isn't present.
      *
-     * The $workspace scopes the question to one customer — relevant for
+     * The $workspace scopes the question to one workspace — relevant for
      * tenant-owned trees and per-tenant role assignments.
      */
     public function canManageFiles(User $user, ?Workspace $workspace = null): bool;

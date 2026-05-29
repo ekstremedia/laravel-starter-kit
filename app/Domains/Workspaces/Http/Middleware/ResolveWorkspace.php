@@ -14,15 +14,15 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * Resolves the {customer} route parameter (a slug) into a Workspace (our Customer),
+ * Resolves the {workspace} route parameter (a slug) into a Workspace (our Workspace),
  * verifies the authenticated user belongs to it, boots tenancy (PG
  * search_path → tenant<id>), and sets the Spatie permission team id to the
- * customer so every downstream `hasRole`/`can` call auto-scopes.
+ * workspace so every downstream `hasRole`/`can` call auto-scopes.
  *
- * SuperAdmins bypass the membership check — they can enter any customer.
+ * SuperAdmins bypass the membership check — they can enter any workspace.
  *
  * Class name mentions "WorkspaceContext" because stancl/tenancy is the underlying
- * mechanism; at the app layer we surface everything as "customer".
+ * mechanism; at the app layer we surface everything as "workspace".
  */
 class ResolveWorkspace
 {
@@ -36,39 +36,39 @@ class ResolveWorkspace
             throw new NotFoundHttpException;
         }
 
-        $slug = $route->parameter('customer');
+        $slug = $route->parameter('workspace');
 
         if (! is_string($slug) || $slug === '') {
             throw new NotFoundHttpException;
         }
 
-        /** @var Workspace|null $customer */
-        $customer = Workspace::query()->where('slug', $slug)->first();
+        /** @var Workspace|null $workspace */
+        $workspace = Workspace::query()->where('slug', $slug)->first();
 
-        if (! $customer) {
-            throw new NotFoundHttpException("Customer [{$slug}] not found.");
+        if (! $workspace) {
+            throw new NotFoundHttpException("Workspace [{$slug}] not found.");
         }
 
-        if ($customer->status !== 'active') {
-            throw new AccessDeniedHttpException("Customer [{$slug}] is not active.");
+        if ($workspace->status !== 'active') {
+            throw new AccessDeniedHttpException("Workspace [{$slug}] is not active.");
         }
 
         $user = Auth::user();
 
-        if (! $user || (! $user->isSuperAdmin() && ! $user->belongsToCustomer($customer))) {
+        if (! $user || (! $user->isSuperAdmin() && ! $user->belongsToWorkspace($workspace))) {
             throw new AccessDeniedHttpException("You are not a member of [{$slug}].");
         }
 
-        $route->forgetParameter('customer');
+        $route->forgetParameter('workspace');
 
-        $request->attributes->set('customer', $customer);
+        $request->attributes->set('workspace', $workspace);
 
-        // Remember the user's most-recent customer so /app can auto-redirect
+        // Remember the user's most-recent workspace so /app can auto-redirect
         // them on their next login. Writes only when it actually changes to
         // avoid hammering the setting row on every request.
         $resolved = $user->settings()->resolved();
-        if (($resolved['last_customer_slug'] ?? null) !== $customer->slug) {
-            $user->settings()->merge(['last_customer_slug' => $customer->slug]);
+        if (($resolved['last_workspace_slug'] ?? null) !== $workspace->slug) {
+            $user->settings()->merge(['last_workspace_slug' => $workspace->slug]);
         }
 
         // Activate the workspace for this request: the resolver holds the
@@ -77,6 +77,6 @@ class ResolveWorkspace
         // global `workspace_id` scope (BelongsToWorkspace) reads the same resolver.
         // runFor() restores the prior context afterwards so a long-lived
         // worker can't leak one workspace into the next request.
-        return $this->tenancy->runFor($customer, fn () => $next($request));
+        return $this->tenancy->runFor($workspace, fn () => $next($request));
     }
 }

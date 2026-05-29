@@ -7,8 +7,8 @@ use Spatie\Permission\PermissionRegistrar;
 
 beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
-    // Fortify's CreateNewUser attaches new sign-ups to the default customer
-    // with the platform's default role, so that customer has to exist.
+    // Fortify's CreateNewUser attaches new sign-ups to the default workspace
+    // with the platform's default role, so that workspace has to exist.
     Workspace::firstOrCreate(
         ['slug' => config('workspaces.default_workspace_slug', 'default')],
         ['name' => 'Default', 'status' => 'active'],
@@ -36,8 +36,8 @@ it('registers a new user', function () {
     expect($user)->not->toBeNull();
     expect($user->first_name)->toBe('John');
     expect($user->last_name)->toBe('Doe');
-    $defaultCustomer = Workspace::where('slug', config('workspaces.default_workspace_slug', 'default'))->first();
-    app(PermissionRegistrar::class)->setPermissionsTeamId($defaultCustomer->id);
+    $defaultWorkspace = Workspace::where('slug', config('workspaces.default_workspace_slug', 'default'))->first();
+    app(PermissionRegistrar::class)->setPermissionsTeamId($defaultWorkspace->id);
     expect($user->hasRole('User'))->toBeTrue();
     expect($user->hasVerifiedEmail())->toBeFalse();
 });
@@ -61,7 +61,7 @@ it('creates the user their own workspace in create_own mode', function () {
     $workspace = Workspace::where('name', "Ada's space")->first();
     expect($workspace)->not->toBeNull();
     expect($workspace->slug)->not->toBe(config('workspaces.default_workspace_slug', 'default'));
-    expect($user->customers()->whereKey($workspace->id)->exists())->toBeTrue();
+    expect($user->workspaces()->whereKey($workspace->id)->exists())->toBeTrue();
 
     app(PermissionRegistrar::class)->setPermissionsTeamId($workspace->id);
     $user->unsetRelation('roles');
@@ -69,7 +69,7 @@ it('creates the user their own workspace in create_own mode', function () {
 
     // They did NOT auto-join the shared default workspace in this mode.
     $default = Workspace::where('slug', config('workspaces.default_workspace_slug', 'default'))->first();
-    expect($user->customers()->whereKey($default->id)->exists())->toBeFalse();
+    expect($user->workspaces()->whereKey($default->id)->exists())->toBeFalse();
 });
 
 it('requires first name to register', function () {

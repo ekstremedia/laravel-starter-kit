@@ -9,7 +9,7 @@ use App\Domains\Workspaces\Models\Workspace;
 use Illuminate\Database\Seeder;
 
 /**
- * A few demo Assets per customer so the file-owning-entity feature is visible
+ * A few demo Assets per workspace so the file-owning-entity feature is visible
  * on a fresh install. Idempotent (firstOrCreate). Delete this seeder (and its
  * DatabaseSeeder call) together with the rest of the Assets module to drop the
  * demo.

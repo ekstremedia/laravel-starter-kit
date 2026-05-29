@@ -18,9 +18,9 @@ vi.mock('@/composables/useUnreadCounts', () => ({
     }),
 }));
 
-const customerUrl = vi.fn((path: string) => path);
-vi.mock('@/composables/useCustomer', () => ({
-    useCustomer: () => ({ customerUrl }),
+const workspaceUrl = vi.fn((path: string) => path);
+vi.mock('@/composables/useWorkspace', () => ({
+    useWorkspace: () => ({ workspaceUrl }),
 }));
 
 // No real network calls in unit tests.

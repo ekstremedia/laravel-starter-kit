@@ -8,12 +8,12 @@ import CommandDialog from '@/Components/Command/Dialog.vue';
 import CmdButton from '@/Components/Command/Button.vue';
 import Field from '@/Components/Command/Field.vue';
 import Icon from '@/Components/Command/Icon.vue';
-import { useCustomer } from '@/composables/useCustomer';
+import { useWorkspace } from '@/composables/useWorkspace';
 
 defineOptions({ layout: CommandLayout });
 
 const { t } = useI18n();
-const { customerUrl } = useCustomer();
+const { workspaceUrl } = useWorkspace();
 
 interface AssetRow {
     id: number;
@@ -53,7 +53,7 @@ const columns: Column<AssetRow>[] = [
 
 function onSearch(value: string) {
     router.get(
-        customerUrl('/assets'),
+        workspaceUrl('/assets'),
         { q: value || undefined },
         { preserveState: true, preserveScroll: true, replace: true },
     );
@@ -75,7 +75,7 @@ function openCreate() {
 }
 
 function submitCreate() {
-    form.post(customerUrl('/assets'), {
+    form.post(workspaceUrl('/assets'), {
         onSuccess: () => { createOpen.value = false; },
     });
 }
@@ -119,7 +119,7 @@ function submitCreate() {
         >
             <template #cell:name="{ row }">
                 <Link
-                    :href="customerUrl(`/assets/${row.id}`)"
+                    :href="workspaceUrl(`/assets/${row.id}`)"
                     :style="{ fontWeight: 500, color: 'var(--fg)', textDecoration: 'none' }"
                 >{{ row.name }}</Link>
             </template>

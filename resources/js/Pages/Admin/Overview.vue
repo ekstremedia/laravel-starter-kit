@@ -29,7 +29,7 @@ interface RecentActivity {
 interface Metrics {
     generated_at: string;
     users: { total: number; unverified: number; banned: number; new_last_7d: number; trend_30d: TrendPoint[] };
-    customers: { total: number; active: number; suspended: number } | null;
+    workspaces: { total: number; active: number; suspended: number } | null;
     storage: { used_bytes: number; quota_bytes: number };
     queue: { pending: number; failed: number };
     backups: { disk?: string; count: number; last_at: string | null; last_size_bytes: number | null };
@@ -123,8 +123,8 @@ const kpis = computed<Kpi[]>(() => {
     const m = metrics.value;
     return [
         { label: t('admin.overview.kpi_users'), value: m.users.total, delta: t('admin.overview.delta_new_7d', { n: m.users.new_last_7d }), trend: m.users.new_last_7d > 0 ? 'up' : 'flat', animate: true },
-        m.customers
-            ? { label: t('admin.overview.kpi_customers'), value: m.customers.total, delta: t('admin.overview.delta_active', { n: m.customers.active }), trend: 'flat', animate: true }
+        m.workspaces
+            ? { label: t('admin.overview.kpi_workspaces'), value: m.workspaces.total, delta: t('admin.overview.delta_active', { n: m.workspaces.active }), trend: 'flat', animate: true }
             : { label: t('admin.overview.kpi_activity'), value: m.activity.total, delta: t('admin.overview.delta_total'), trend: 'flat', animate: true },
         { label: t('admin.overview.kpi_storage'), value: formatBytes(m.storage.used_bytes), delta: t('admin.overview.delta_stable'), trend: 'flat', animate: false },
         { label: t('admin.overview.kpi_queue'), value: m.queue.pending, delta: m.queue.failed > 0 ? t('admin.overview.delta_failed', { n: m.queue.failed }) : t('admin.overview.delta_all_clear'), trend: m.queue.failed > 0 ? 'down' : 'flat', animate: true },

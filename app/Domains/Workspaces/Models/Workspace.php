@@ -83,7 +83,7 @@ class Workspace extends Model implements FileOwner
     /**
      * Workspace-owned files: a member with the right permission can manage them.
      * Spatie's team scope is set to this tenant before checking so the
-     * permission resolves against the user's role *in this customer*.
+     * permission resolves against the user's role *in this workspace*.
      */
     public function canManageFiles(User $user, ?Workspace $workspace = null): bool
     {
@@ -91,7 +91,7 @@ class Workspace extends Model implements FileOwner
             return true;
         }
 
-        if (! $user->belongsToCustomer($this)) {
+        if (! $user->belongsToWorkspace($this)) {
             return false;
         }
 
@@ -104,7 +104,7 @@ class Workspace extends Model implements FileOwner
             return true;
         }
 
-        if (! $user->belongsToCustomer($this)) {
+        if (! $user->belongsToWorkspace($this)) {
             return false;
         }
 

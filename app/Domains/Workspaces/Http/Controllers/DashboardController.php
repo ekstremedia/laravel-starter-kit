@@ -18,25 +18,25 @@ class DashboardController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        /** @var Workspace|null $customer */
-        $customer = $request->attributes->get('customer') ?? app(WorkspaceContext::class)->current();
+        /** @var Workspace|null $workspace */
+        $workspace = $request->attributes->get('workspace') ?? app(WorkspaceContext::class)->current();
 
-        $memberCount = $customer?->users()->count() ?? 0;
+        $memberCount = $workspace?->users()->count() ?? 0;
 
         $filesStats = null;
-        if ($customer?->files_feature_enabled) {
+        if ($workspace?->files_feature_enabled) {
             // `file_items` carries `workspace_id`. Without that filter a user
-            // who owns files in two customers would see their *combined*
-            // count on each customer's dashboard — surfacing bytes that
-            // belong to another tenant in this customer's UI.
+            // who owns files in two workspaces would see their *combined*
+            // count on each workspace's dashboard — surfacing bytes that
+            // belong to another tenant in this workspace's UI.
             $filesStats = [
                 'count' => FileItem::query()
-                    ->where('workspace_id', $customer->getKey())
+                    ->where('workspace_id', $workspace->getKey())
                     ->where('user_id', $user->getKey())
                     ->where('type', 'file')
                     ->count(),
                 'bytes' => (int) FileItem::query()
-                    ->where('workspace_id', $customer->getKey())
+                    ->where('workspace_id', $workspace->getKey())
                     ->where('user_id', $user->getKey())
                     ->where('type', 'file')
                     ->sum('size'),
@@ -50,7 +50,7 @@ class DashboardController extends Controller
             ];
         }
 
-        // Customer-scoped activity: stamped via the `Activity::creating`
+        // Workspace-scoped activity: stamped via the `Activity::creating`
         // hook in AppServiceProvider, so we filter directly on `workspace_id`.
         // A user who's Admin on A and plain User on B would otherwise
         // surface B's actions on A's dashboard — a causer-id IN (members)
@@ -59,10 +59,10 @@ class DashboardController extends Controller
         // to central since stancl swaps the default connection once
         // tenancy initializes.
         $activity = [];
-        if ($customer !== null) {
+        if ($workspace !== null) {
             $centralConnection = (string) config('workspaces.database.central_connection');
             $activity = Activity::on($centralConnection)
-                ->where('workspace_id', $customer->getKey())
+                ->where('workspace_id', $workspace->getKey())
                 ->latest()
                 ->limit(8)
                 ->get()

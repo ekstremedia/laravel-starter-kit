@@ -9,7 +9,7 @@ use App\Domains\Workspaces\Models\Workspace;
 it('creates a file item scoped to a tenant and user', function () {
     $workspace = Workspace::factory()->create();
     $user = User::factory()->create();
-    $user->customers()->attach($workspace);
+    $user->workspaces()->attach($workspace);
 
     $folder = FileItem::factory()->folder()->create([
         'workspace_id' => $workspace->id,

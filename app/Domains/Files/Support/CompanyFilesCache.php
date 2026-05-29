@@ -28,9 +28,9 @@ final class CompanyFilesCache
 
     private const LIST_TTL_SECONDS = 300;
 
-    public static function version(int $tenantId): int
+    public static function version(int $workspaceId): int
     {
-        return (int) Cache::get(self::versionKey($tenantId), 1);
+        return (int) Cache::get(self::versionKey($workspaceId), 1);
     }
 
     /**
@@ -45,9 +45,9 @@ final class CompanyFilesCache
      * the duplicate version. `add()` seeds the counter when it's missing,
      * then increment returns the new value.
      */
-    public static function bump(int $tenantId, string $reason, ?int $folderId = null): int
+    public static function bump(int $workspaceId, string $reason, ?int $folderId = null): int
     {
-        $key = self::versionKey($tenantId);
+        $key = self::versionKey($workspaceId);
 
         // `add` is atomic-check-and-set: only seeds when absent. Any
         // concurrent caller that seeds first is fine — the following
@@ -59,12 +59,12 @@ final class CompanyFilesCache
         // increment; fall back to a read-modify-write path. Under the
         // array driver this still works within a single request.
         if ($next <= 0) {
-            $next = self::version($tenantId) + 1;
+            $next = self::version($workspaceId) + 1;
             Cache::put($key, $next, now()->addYear());
         }
 
         event(new CompanyFilesChanged(
-            tenantId: $tenantId,
+            workspaceId: $workspaceId,
             reason: $reason,
             version: $next,
             folderId: $folderId,
@@ -83,12 +83,12 @@ final class CompanyFilesCache
      * @param  callable(): T  $builder
      * @return T
      */
-    public static function rememberList(int $tenantId, ?int $folderId, ?string $search, callable $builder)
+    public static function rememberList(int $workspaceId, ?int $folderId, ?string $search, callable $builder)
     {
         $key = sprintf(
             'company_files_list:%d:v%d:f%s:q%s',
-            $tenantId,
-            self::version($tenantId),
+            $workspaceId,
+            self::version($workspaceId),
             $folderId ?? 'root',
             $search === null || $search === '' ? 'x' : md5($search),
         );
@@ -96,8 +96,8 @@ final class CompanyFilesCache
         return Cache::remember($key, self::LIST_TTL_SECONDS, $builder);
     }
 
-    private static function versionKey(int $tenantId): string
+    private static function versionKey(int $workspaceId): string
     {
-        return self::VERSION_KEY_PREFIX.$tenantId;
+        return self::VERSION_KEY_PREFIX.$workspaceId;
     }
 }

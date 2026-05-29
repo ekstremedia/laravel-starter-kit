@@ -8,28 +8,28 @@ use Illuminate\Support\Facades\Notification;
 
 beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
-    $this->customer = createCustomer();
+    $this->workspace = createWorkspace();
 });
 
 it('redirects guests to login', function () {
-    $this->get(customerUrl($this->customer, '/profile'))->assertRedirect('/login');
+    $this->get(workspaceUrl($this->workspace, '/profile'))->assertRedirect('/login');
 });
 
 it('redirects unverified users to verification notice', function () {
     $user = User::factory()->unverified()->create();
-    joinCustomer($user, $this->customer);
+    joinWorkspace($user, $this->workspace);
 
     $this->actingAs($user)
-        ->get(customerUrl($this->customer, '/profile'))
+        ->get(workspaceUrl($this->workspace, '/profile'))
         ->assertRedirect('/email/verify');
 });
 
 it('renders the profile page for verified users', function () {
     $user = User::factory()->create();
-    joinCustomer($user, $this->customer);
+    joinWorkspace($user, $this->workspace);
 
     $this->actingAs($user)
-        ->get(customerUrl($this->customer, '/profile'))
+        ->get(workspaceUrl($this->workspace, '/profile'))
         ->assertStatus(200)
         ->assertInertia(fn ($page) => $page->component('Profile'));
 });

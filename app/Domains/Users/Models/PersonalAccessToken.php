@@ -11,7 +11,7 @@ use Laravel\Sanctum\PersonalAccessToken as SanctumPersonalAccessToken;
  * alongside users. Without this override, Sanctum queries would follow the
  * tenant connection after stancl/tenancy swaps the PDO, failing with
  * "relation personal_access_tokens does not exist" inside any
- * customer-scoped request.
+ * workspace-scoped request.
  */
 class PersonalAccessToken extends SanctumPersonalAccessToken
 {

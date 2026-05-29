@@ -9,21 +9,21 @@ beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
 });
 
-it('exposes each member with their customer-scoped role(s) and a public_id on the admin edit page', function () {
+it('exposes each member with their workspace-scoped role(s) and a public_id on the admin edit page', function () {
     $super = makeSuperAdmin(User::factory()->create());
-    $customer = createCustomer();
+    $workspace = createWorkspace();
 
     $admin = User::factory()->create(['email' => 'admin@example.test']);
     $editor = User::factory()->create(['email' => 'editor@example.test']);
 
-    grantRoleOnCustomer($admin, 'Admin', $customer);
-    grantRoleOnCustomer($editor, 'Editor', $customer);
+    grantRoleOnWorkspace($admin, 'Admin', $workspace);
+    grantRoleOnWorkspace($editor, 'Editor', $workspace);
 
     $this->actingAs($super)
-        ->get(route('admin.customers.edit', $customer))
+        ->get(route('admin.workspaces.edit', $workspace))
         ->assertOk()
         ->assertInertia(function ($page) use ($admin, $editor) {
-            $users = collect($page->toArray()['props']['customer']['users']);
+            $users = collect($page->toArray()['props']['workspace']['users']);
 
             $a = $users->firstWhere('email', $admin->email);
             $e = $users->firstWhere('email', $editor->email);
@@ -37,12 +37,12 @@ it('exposes each member with their customer-scoped role(s) and a public_id on th
         });
 });
 
-it('saves customer profile fields from the admin edit page', function () {
+it('saves workspace profile fields from the admin edit page', function () {
     $super = makeSuperAdmin(User::factory()->create());
-    $customer = createCustomer();
+    $workspace = createWorkspace();
 
     $this->actingAs($super)
-        ->patch(route('admin.customers.update', $customer), [
+        ->patch(route('admin.workspaces.update', $workspace), [
             'name' => 'Updated Co',
             'status' => 'suspended',
             // Whitespace-padded — exercises the trim normalization in
@@ -54,7 +54,7 @@ it('saves customer profile fields from the admin edit page', function () {
         ])
         ->assertSessionHasNoErrors();
 
-    $fresh = $customer->fresh();
+    $fresh = $workspace->fresh();
     expect($fresh->name)->toBe('Updated Co');
     expect($fresh->status)->toBe('suspended');
     expect($fresh->headline)->toBe('tagline');

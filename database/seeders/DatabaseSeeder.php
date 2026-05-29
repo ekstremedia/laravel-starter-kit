@@ -11,7 +11,7 @@ class DatabaseSeeder extends Seeder
      * stancl/tenancy's Workspace model relies on Eloquent `creating`/`created` events
      * (mapped via `$dispatchesEvents`) to fire `TenantCreated`, which in turn runs
      * the schema-creation + migration job pipeline. Silencing model events would
-     * leave freshly-seeded customers without a Postgres schema.
+     * leave freshly-seeded workspaces without a Postgres schema.
      */
     public function run(): void
     {

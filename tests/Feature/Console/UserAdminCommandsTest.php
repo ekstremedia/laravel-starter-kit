@@ -7,8 +7,8 @@ use Spatie\Permission\PermissionRegistrar;
 
 beforeEach(fn () => $this->seed(RoleAndPermissionSeeder::class));
 
-it('creates a user with an explicit password and customer-scoped role', function () {
-    $customer = createCustomer();
+it('creates a user with an explicit password and workspace-scoped role', function () {
+    $workspace = createWorkspace();
 
     $this->artisan('user:create', [
         'email' => 'new@example.test',
@@ -16,7 +16,7 @@ it('creates a user with an explicit password and customer-scoped role', function
         '--last-name' => 'Lovelace',
         '--password' => 'secret-password',
         '--role' => 'Editor',
-        '--customer' => $customer->slug,
+        '--workspace' => $workspace->slug,
         '--verified' => true,
     ])->assertSuccessful();
 
@@ -24,7 +24,7 @@ it('creates a user with an explicit password and customer-scoped role', function
     expect(Hash::check('secret-password', $user->password))->toBeTrue();
     expect($user->email_verified_at)->not->toBeNull();
 
-    app(PermissionRegistrar::class)->setPermissionsTeamId($customer->id);
+    app(PermissionRegistrar::class)->setPermissionsTeamId($workspace->id);
     expect($user->hasRole('Editor'))->toBeTrue();
 });
 
@@ -34,27 +34,27 @@ it('refuses to create a user when the email already exists', function () {
     $this->artisan('user:create', ['email' => 'dup@example.test'])->assertFailed();
 });
 
-it('grants and revokes customer-scoped roles', function () {
-    $customer = createCustomer();
+it('grants and revokes workspace-scoped roles', function () {
+    $workspace = createWorkspace();
     $user = User::factory()->create();
 
     $this->artisan('user:grant-role', [
         'email' => $user->email,
         'role' => 'Editor',
-        '--customer' => $customer->slug,
+        '--workspace' => $workspace->slug,
     ])->assertSuccessful();
 
-    app(PermissionRegistrar::class)->setPermissionsTeamId($customer->id);
+    app(PermissionRegistrar::class)->setPermissionsTeamId($workspace->id);
     expect($user->fresh()->hasRole('Editor'))->toBeTrue();
 
     $this->artisan('user:grant-role', [
         'email' => $user->email,
         'role' => 'Editor',
-        '--customer' => $customer->slug,
+        '--workspace' => $workspace->slug,
         '--revoke' => true,
     ])->assertSuccessful();
 
-    app(PermissionRegistrar::class)->setPermissionsTeamId($customer->id);
+    app(PermissionRegistrar::class)->setPermissionsTeamId($workspace->id);
     expect($user->fresh()->hasRole('Editor'))->toBeFalse();
 });
 
@@ -74,7 +74,7 @@ it('exports user data as JSON', function () {
     /** @var array<string,mixed> $decoded */
     $decoded = json_decode((string) file_get_contents($out), true);
 
-    expect($decoded)->toHaveKeys(['profile', 'customer_roles', 'is_super_admin', 'settings', 'generated_at']);
+    expect($decoded)->toHaveKeys(['profile', 'workspace_roles', 'is_super_admin', 'settings', 'generated_at']);
     expect($decoded['profile']['email'])->toBe('exportme@example.test');
 
     unlink($out);

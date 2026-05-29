@@ -13,15 +13,15 @@ beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
     AppSetting::current()->update(['files_feature_enabled' => true, 'max_share_days' => 7]);
 
-    $this->customer = createCustomer();
-    $this->customer->update(['files_feature_enabled' => true]);
+    $this->workspace = createWorkspace();
+    $this->workspace->update(['files_feature_enabled' => true]);
 
     $this->user = User::factory()->create();
-    joinCustomer($this->user, $this->customer);
+    joinWorkspace($this->user, $this->workspace);
     $this->user->settings()->merge(['files_enabled' => true]);
 
     $this->file = FileItem::factory()->create([
-        'workspace_id' => $this->customer->id,
+        'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
         'type' => 'file',
         'name' => 'doc.txt',
@@ -31,7 +31,7 @@ beforeEach(function () {
 
 it('creates a share link with expiry', function () {
     $this->actingAs($this->user)
-        ->postJson(customerUrl($this->customer, "/files/{$this->file->id}/shares"), [
+        ->postJson(workspaceUrl($this->workspace, "/files/{$this->file->id}/shares"), [
             'expires_in_hours' => 24,
         ])
         ->assertOk()
@@ -44,7 +44,7 @@ it('caps share duration at admin-configured max', function () {
     AppSetting::current()->update(['max_share_days' => 2]);
 
     $this->actingAs($this->user)
-        ->postJson(customerUrl($this->customer, "/files/{$this->file->id}/shares"), [
+        ->postJson(workspaceUrl($this->workspace, "/files/{$this->file->id}/shares"), [
             'expires_in_hours' => 100,
         ])
         ->assertUnprocessable();
@@ -82,11 +82,11 @@ it('returns 410 Gone for expired shares', function () {
 
 it('refuses access to files outside the shared folder', function () {
     $folder = FileItem::factory()->folder()->create([
-        'workspace_id' => $this->customer->id,
+        'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]);
     $outsider = FileItem::factory()->create([
-        'workspace_id' => $this->customer->id,
+        'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
         'name' => 'outsider.jpg',
     ]);
@@ -109,7 +109,7 @@ it('owners can revoke a share', function () {
     ]);
 
     $this->actingAs($this->user)
-        ->delete(customerUrl($this->customer, "/files/shares/{$share->id}"))
+        ->delete(workspaceUrl($this->workspace, "/files/shares/{$share->id}"))
         ->assertRedirect();
 
     expect(FileShare::whereKey($share->id)->exists())->toBeFalse();

@@ -3,11 +3,11 @@ import { Head, Link } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import AppLayout from '@/Layouts/CommandLayout.vue';
 import Icon from '@/Components/Command/Icon.vue';
-import type { Customer } from '@/types';
+import type { Workspace } from '@/types';
 
 const { t } = useI18n();
 
-defineProps<{ customers: Customer[] }>();
+defineProps<{ workspaces: Workspace[] }>();
 </script>
 
 <template>
@@ -23,7 +23,7 @@ defineProps<{ customers: Customer[] }>();
             >{{ t('picker.subtitle') }}</p>
 
             <div
-                v-if="customers.length === 0"
+                v-if="workspaces.length === 0"
                 :style="{
                     padding: '48px 20px',
                     textAlign: 'center',
@@ -33,7 +33,7 @@ defineProps<{ customers: Customer[] }>();
                 }"
             >
                 <div :style="{ display: 'flex', justifyContent: 'center', marginBottom: '12px', color: 'var(--fg-mute)' }">
-                    <Icon name="customer" :size="24" />
+                    <Icon name="workspace" :size="24" />
                 </div>
                 <p :style="{ fontSize: '12.5px', color: 'var(--fg-dim)' }">{{ t('picker.empty') }}</p>
             </div>
@@ -53,9 +53,9 @@ defineProps<{ customers: Customer[] }>();
                     margin: 0,
                 }"
             >
-                <li v-for="c in customers" :key="c.id">
+                <li v-for="c in workspaces" :key="c.id">
                     <Link
-                        :href="`/c/${c.slug}/dashboard`"
+                        :href="`/w/${c.slug}/dashboard`"
                         class="cmd-picker-link"
                         :style="{
                             display: 'flex',
@@ -85,7 +85,7 @@ defineProps<{ customers: Customer[] }>();
                         >{{ c.name.slice(0, 2).toUpperCase() }}</div>
                         <div :style="{ minWidth: 0 }">
                             <div :style="{ fontSize: '13px', fontWeight: 500, color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">{{ c.name }}</div>
-                            <div class="cmd-mono" :style="{ fontSize: '11px', color: 'var(--fg-dim)' }">/c/{{ c.slug }}</div>
+                            <div class="cmd-mono" :style="{ fontSize: '11px', color: 'var(--fg-dim)' }">/w/{{ c.slug }}</div>
                         </div>
                     </Link>
                 </li>

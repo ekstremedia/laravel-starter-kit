@@ -17,16 +17,16 @@ beforeEach(function () {
     config()->set('chat.enabled', true);
     config()->set('chat.connection', config('database.default'));
 
-    $this->customer = createCustomer();
+    $this->workspace = createWorkspace();
 
     $this->alice = User::factory()->create(['first_name' => 'Alice', 'last_name' => 'Smith']);
-    joinCustomer($this->alice, $this->customer);
+    joinWorkspace($this->alice, $this->workspace);
 
     $this->bob = User::factory()->create(['first_name' => 'Bob', 'last_name' => 'Jones']);
-    joinCustomer($this->bob, $this->customer);
+    joinWorkspace($this->bob, $this->workspace);
 
     $this->charlie = User::factory()->create(['first_name' => 'Charlie', 'last_name' => 'Brown']);
-    joinCustomer($this->charlie, $this->customer);
+    joinWorkspace($this->charlie, $this->workspace);
 });
 
 function chatUrl(string $path = ''): string
@@ -582,7 +582,7 @@ it('shares unread_messages_count via Inertia', function () {
 
     // Alice sees 1 unread in shared props
     $this->actingAs($this->alice)
-        ->get(customerUrl($this->customer, '/dashboard'))  // dashboard is still customer-scoped
+        ->get(workspaceUrl($this->workspace, '/dashboard'))  // dashboard is still workspace-scoped
         ->assertInertia(fn ($page) => $page->where('auth.user.unread_messages_count', 1));
 });
 

@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import Icon from '@/Components/Command/Icon.vue';
-import { useCustomer } from '@/composables/useCustomer';
+import { useWorkspace } from '@/composables/useWorkspace';
 import type { PageProps } from '@/types';
 
 /**
@@ -12,9 +12,9 @@ import type { PageProps } from '@/types';
  * accent background; the inactive side is a muted link so the user can
  * see both exist without visual noise.
  *
- * Hides the Shared tab when either the customer hasn't enabled the
+ * Hides the Shared tab when either the workspace hasn't enabled the
  * feature or the viewer lacks `view company files`. Super admins always
- * see both tabs on feature-enabled customers.
+ * see both tabs on feature-enabled workspaces.
  */
 const props = defineProps<{
     active: 'private' | 'shared';
@@ -22,15 +22,15 @@ const props = defineProps<{
 }>();
 
 const { t } = useI18n();
-const { customerUrl, customer } = useCustomer();
+const { workspaceUrl, workspace } = useWorkspace();
 const page = usePage<PageProps>();
 
 const showShared = computed<boolean>(() => {
-    // Shared files are a multi-tenant concept — without tenancy there's no
+    // Shared files are a multi-tenant concept — without workspaces there's no
     // "company" to share into, so the tab (and the whole switcher) drops.
-    if (!page.props.tenancy?.enabled) return false;
-    if (!customer.value?.files_feature_enabled) return false;
-    if (!customer.value?.company_files_enabled) return false;
+    if (!page.props.workspaces?.enabled) return false;
+    if (!workspace.value?.files_feature_enabled) return false;
+    if (!workspace.value?.company_files_enabled) return false;
     return props.permissions?.canViewShared ?? false;
 });
 </script>
@@ -53,7 +53,7 @@ const showShared = computed<boolean>(() => {
         }"
     >
         <Link
-            :href="customerUrl('/files')"
+            :href="workspaceUrl('/files')"
             role="tab"
             :aria-selected="active === 'private'"
             :style="{
@@ -76,7 +76,7 @@ const showShared = computed<boolean>(() => {
         </Link>
         <Link
             v-if="showShared"
-            :href="customerUrl('/files/company')"
+            :href="workspaceUrl('/files/company')"
             role="tab"
             :aria-selected="active === 'shared'"
             :style="{
@@ -94,7 +94,7 @@ const showShared = computed<boolean>(() => {
                 transition: 'color .15s, background .15s',
             }"
         >
-            <Icon name="customer" :size="12" />
+            <Icon name="workspace" :size="12" />
             <span>{{ t('files.scope_shared') }}</span>
         </Link>
     </div>

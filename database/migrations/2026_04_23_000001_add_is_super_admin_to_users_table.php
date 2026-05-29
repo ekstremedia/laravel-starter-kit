@@ -7,9 +7,9 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Platform super-user flag. Separate from Spatie roles because Spatie's team
  * schema makes `model_has_roles.team_id` NOT NULL — there's no natural way to
- * represent a "global, not attached to any customer" role assignment.
+ * represent a "global, not attached to any workspace" role assignment.
  *
- * SuperAdmin is truly platform-level (can enter any customer, reaches
+ * SuperAdmin is truly platform-level (can enter any workspace, reaches
  * /admin/*), so a boolean column on `users` is both simpler and closer to
  * what it actually is.
  */

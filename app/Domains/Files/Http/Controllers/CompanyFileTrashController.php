@@ -23,7 +23,7 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 /**
  * Trash for the company-shared file area. Mirrors FileTrashController but
  * scopes to native company items (scope = company). Restore permissions:
- * the item's owner always qualifies; customer admins + super admins can
+ * the item's owner always qualifies; workspace admins + super admins can
  * restore or hard-delete anyone's item. Linked personal files don't have a
  * trash here — deleting a link is immediate and the owner still has the
  * file in their own /files/trash if they ever hard-delete the original.
@@ -40,7 +40,7 @@ class CompanyFileTrashController extends Controller
 
         $canManage = $this->canManageCompanyFiles($user);
 
-        // Customer admins see every trashed company item in this tenant;
+        // Workspace admins see every trashed company item in this tenant;
         // non-admins see only their own trashed contributions.
         $query = FileItem::onlyTrashed()
             ->where('workspace_id', $workspace->id)
@@ -160,7 +160,7 @@ class CompanyFileTrashController extends Controller
 
     private function currentTenant(Request $request): Workspace
     {
-        $workspace = $request->attributes->get('customer');
+        $workspace = $request->attributes->get('workspace');
         if ($workspace instanceof Workspace) {
             return $workspace;
         }
@@ -176,7 +176,7 @@ class CompanyFileTrashController extends Controller
     private function assertFeatureAvailable(Workspace $workspace, User $user): void
     {
         // Company trash follows the same rules as the main company area:
-        // master kill switch at the app level, independent per-customer
+        // master kill switch at the app level, independent per-workspace
         // toggle via `company_files_enabled`.
         if (! AppSetting::current()->files_feature_enabled) {
             abort(404);
@@ -207,7 +207,7 @@ class CompanyFileTrashController extends Controller
     private function canManageCompanyFiles(User $user): bool
     {
         // $workspace isn't needed — the tenancy middleware has already set the
-        // PermissionRegistrar team id to the active customer, so `can()`
+        // PermissionRegistrar team id to the active workspace, so `can()`
         // auto-scopes to that tenant's permission assignments.
         return $user->isSuperAdmin() || (bool) $user->can('manage company files');
     }

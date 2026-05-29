@@ -15,7 +15,7 @@ class WorkspaceMemberAddedNotification extends Notification
     use Queueable;
     use UsesEmailTemplate;
 
-    public function __construct(public Workspace $customer) {}
+    public function __construct(public Workspace $workspace) {}
 
     /**
      * @return array<int, string>
@@ -27,8 +27,8 @@ class WorkspaceMemberAddedNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        return $this->renderTemplate('customer-member-added', $notifiable, [
-            'customer_name' => $this->customer->name,
+        return $this->renderTemplate('workspace-member-added', $notifiable, [
+            'workspace_name' => $this->workspace->name,
             'app_url' => config('app.url'),
         ]);
     }
@@ -39,8 +39,8 @@ class WorkspaceMemberAddedNotification extends Notification
     public function toArray(object $notifiable): array
     {
         return [
-            'title' => "Added to {$this->customer->name}",
-            'message' => "You have been added as a member of {$this->customer->name}.",
+            'title' => "Added to {$this->workspace->name}",
+            'message' => "You have been added as a member of {$this->workspace->name}.",
             'icon' => 'pi-building',
         ];
     }

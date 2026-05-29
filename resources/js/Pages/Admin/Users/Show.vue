@@ -16,7 +16,7 @@ import { useConfirm } from 'primevue/useconfirm';
 defineOptions({ layout: AdminLayout });
 
 interface ActivityItem { id: number; log_name: string | null; description: string; event: string | null; created_at: string }
-interface CustomerMembership { id: number; name: string; slug: string; roles: string[] }
+interface WorkspaceMembership { id: number; name: string; slug: string; roles: string[] }
 interface Props {
     user: {
         id: number; first_name: string; last_name: string; full_name: string; email: string;
@@ -25,7 +25,7 @@ interface Props {
         is_super_admin: boolean; avatar_url: string | null; avatar_thumb_url: string | null;
         unread_notifications_count: number;
         platform_permissions: string[];
-        customers: CustomerMembership[];
+        workspaces: WorkspaceMembership[];
     };
     assignable_roles: string[];
     activity: ActivityItem[];
@@ -37,20 +37,20 @@ const isAdmin = props.user.is_super_admin;
 const confirm = useConfirm();
 const roleUpdating = ref<number | null>(null);
 
-// Local editable copy of each customer's roles — separate from the server
+// Local editable copy of each workspace's roles — separate from the server
 // prop so opening the dropdown doesn't flicker while the PATCH is in flight.
 const editableRoles = ref<Record<number, string[]>>(
-    Object.fromEntries(props.user.customers.map((c) => [c.id, [...c.roles]])),
+    Object.fromEntries(props.user.workspaces.map((c) => [c.id, [...c.roles]])),
 );
 
-function syncCustomerRoles(customer: CustomerMembership) {
-    const roles = editableRoles.value[customer.id] ?? [];
-    const unchanged = roles.length === customer.roles.length
-        && roles.every((r) => customer.roles.includes(r));
+function syncWorkspaceRoles(workspace: WorkspaceMembership) {
+    const roles = editableRoles.value[workspace.id] ?? [];
+    const unchanged = roles.length === workspace.roles.length
+        && roles.every((r) => workspace.roles.includes(r));
     if (unchanged) return;
-    roleUpdating.value = customer.id;
+    roleUpdating.value = workspace.id;
     router.patch(
-        `/admin/users/${props.user.id}/customers/${customer.id}/role`,
+        `/admin/users/${props.user.id}/workspaces/${workspace.id}/role`,
         { roles },
         {
             preserveScroll: true,
@@ -448,14 +448,14 @@ function chipStyle(tone: Tone) {
                 </div>
             </section>
 
-            <!-- Customer memberships with per-customer role -->
+            <!-- Workspace memberships with per-workspace role -->
             <section
                 class="cmd-card"
                 :style="{ padding: '16px', gridColumn: 'span 3' }"
             >
                 <div :style="{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }">
                     <h2 :style="{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--fg)' }">
-                        {{ t('admin.users.customer_memberships') }} ({{ user.customers.length }})
+                        {{ t('admin.users.workspace_memberships') }} ({{ user.workspaces.length }})
                     </h2>
                     <Link
                         :href="`/admin/users/${user.id}/edit`"
@@ -465,18 +465,18 @@ function chipStyle(tone: Tone) {
                     </Link>
                 </div>
                 <div
-                    v-if="user.customers.length"
+                    v-if="user.workspaces.length"
                     :style="{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(260px, 320px)', rowGap: '1px', background: 'var(--border)', border: '1px solid var(--border)', borderRadius: '6px', overflow: 'visible' }"
                 >
-                    <template v-for="c in user.customers" :key="c.id">
+                    <template v-for="c in user.workspaces" :key="c.id">
                         <div :style="{ background: 'var(--bg)', padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '10px' }">
-                            <Icon name="customer" :size="12" />
+                            <Icon name="workspace" :size="12" />
                             <div :style="{ display: 'flex', flexDirection: 'column', minWidth: 0 }">
                                 <Link
-                                    :href="`/admin/customers/${c.id}/edit`"
+                                    :href="`/admin/workspaces/${c.id}/edit`"
                                     :style="{ fontSize: '13px', fontWeight: 500, color: 'var(--fg)', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }"
                                 >{{ c.name }}</Link>
-                                <span class="cmd-mono" :style="{ fontSize: '11px', color: 'var(--fg-mute)' }">/c/{{ c.slug }}</span>
+                                <span class="cmd-mono" :style="{ fontSize: '11px', color: 'var(--fg-mute)' }">/w/{{ c.slug }}</span>
                             </div>
                         </div>
                         <div :style="{ background: 'var(--bg)', padding: '8px 12px', display: 'flex', alignItems: 'center' }">
@@ -488,7 +488,7 @@ function chipStyle(tone: Tone) {
                                 :placeholder="t('admin.users.select_roles', 'Velg roller')"
                                 class="w-full"
                                 :style="{ width: '100%' }"
-                                @hide="syncCustomerRoles(c)"
+                                @hide="syncWorkspaceRoles(c)"
                             />
                         </div>
                     </template>

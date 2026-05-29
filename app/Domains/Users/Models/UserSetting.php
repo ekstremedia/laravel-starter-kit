@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *     files_enabled: bool,
  *     storage_quota_override: int|null,
  *     storage_last_alerted_threshold: array<string, int>|null,
- *     last_customer_slug: string|null,
+ *     last_workspace_slug: string|null,
  * }
  */
 class UserSetting extends Model
@@ -56,7 +56,7 @@ class UserSetting extends Model
         'notification_system_alerts' => true,
         'notification_storage_alerts' => true,
         // Per-user opt-OUT for the personal file system. Defaults to true so
-        // anyone who's a member of a customer with files_feature_enabled
+        // anyone who's a member of a workspace with files_feature_enabled
         // sees /files automatically. Power users can flip this off via the
         // settings API; most never will.
         'files_enabled' => true,
@@ -69,9 +69,9 @@ class UserSetting extends Model
         // Highest threshold (80/95/100) we've already notified about, so we
         // don't spam the same warning every upload. Reset to null on delete.
         'storage_last_alerted_threshold' => null,
-        // Most recently visited customer slug — used by WorkspaceLandingController
+        // Most recently visited workspace slug — used by WorkspaceLandingController
         // to auto-redirect returning users instead of forcing them through the picker.
-        'last_customer_slug' => null,
+        'last_workspace_slug' => null,
     ];
 
     public function user(): BelongsTo

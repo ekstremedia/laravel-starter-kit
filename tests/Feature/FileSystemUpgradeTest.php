@@ -16,11 +16,11 @@ beforeEach(function () {
     Storage::fake('public');
     AppSetting::current()->update(['files_feature_enabled' => true]);
 
-    $this->customer = createCustomer();
-    $this->customer->update(['files_feature_enabled' => true]);
+    $this->workspace = createWorkspace();
+    $this->workspace->update(['files_feature_enabled' => true]);
 
     $this->user = User::factory()->create();
-    joinCustomer($this->user, $this->customer);
+    joinWorkspace($this->user, $this->workspace);
     $this->user->settings()->merge([
         'files_enabled' => true,
         'storage_quota_override' => 50_000_000,
@@ -33,7 +33,7 @@ it('rejects an upload larger than the configured max_upload_bytes', function () 
     AppSetting::current()->update(['max_upload_bytes' => 1024]); // 1 KB cap
 
     $this->actingAs($this->user)
-        ->post(customerUrl($this->customer, '/files'), [
+        ->post(workspaceUrl($this->workspace, '/files'), [
             'files' => [UploadedFile::fake()->create('big.bin', 5)], // 5 KB
         ])
         ->assertSessionHasErrors('files.0');
@@ -45,7 +45,7 @@ it('accepts an upload within the configured max_upload_bytes', function () {
     AppSetting::current()->update(['max_upload_bytes' => 10 * 1024 * 1024]);
 
     $this->actingAs($this->user)
-        ->post(customerUrl($this->customer, '/files'), [
+        ->post(workspaceUrl($this->workspace, '/files'), [
             'files' => [UploadedFile::fake()->create('small.bin', 4)],
         ])
         ->assertRedirect();
@@ -84,11 +84,11 @@ it('returns details with on-demand metadata extraction for legacy files', functi
         ]);
     });
 
-    $file = uploadFile($this->user, $this->customer, UploadedFile::fake()->image('p.jpg', 100, 80));
+    $file = uploadFile($this->user, $this->workspace, UploadedFile::fake()->image('p.jpg', 100, 80));
     $file->update(['metadata' => null]); // simulate a pre-feature row
 
     $res = $this->actingAs($this->user)
-        ->getJson(customerUrl($this->customer, "/files/{$file->id}/details"))
+        ->getJson(workspaceUrl($this->workspace, "/files/{$file->id}/details"))
         ->assertOk()
         ->assertJsonPath('metadata.gps.lat', 60.39)
         ->assertJsonPath('metadata.dimensions.width', 100);
@@ -99,25 +99,25 @@ it('returns details with on-demand metadata extraction for legacy files', functi
 
 it('denies details for another user\'s file', function () {
     $other = User::factory()->create();
-    joinCustomer($other, $this->customer);
-    $file = uploadFile($other, $this->customer, UploadedFile::fake()->image('secret.jpg'));
+    joinWorkspace($other, $this->workspace);
+    $file = uploadFile($other, $this->workspace, UploadedFile::fake()->image('secret.jpg'));
 
     $this->actingAs($this->user)
-        ->getJson(customerUrl($this->customer, "/files/{$file->id}/details"))
+        ->getJson(workspaceUrl($this->workspace, "/files/{$file->id}/details"))
         ->assertForbidden();
 });
 
 // ── C: RAW/TIFF detection + resource flags ──────────────────────────
 
 it('flags RAW files as needing an image preview and as images', function () {
-    $file = uploadFile($this->user, $this->customer, UploadedFile::fake()->create('shot.arw', 20));
+    $file = uploadFile($this->user, $this->workspace, UploadedFile::fake()->create('shot.arw', 20));
 
     expect($file->needsImagePreview())->toBeTrue()
         ->and($file->isPreviewableImage())->toBeTrue();
 });
 
 it('treats ordinary documents as neither image nor text-previewable images', function () {
-    $file = uploadFile($this->user, $this->customer, UploadedFile::fake()->create('a.bin', 5));
+    $file = uploadFile($this->user, $this->workspace, UploadedFile::fake()->create('a.bin', 5));
 
     expect($file->needsImagePreview())->toBeFalse();
 });
@@ -125,20 +125,20 @@ it('treats ordinary documents as neither image nor text-previewable images', fun
 // ── E: text preview ─────────────────────────────────────────────────
 
 it('streams text file contents for inline preview', function () {
-    $file = uploadFile($this->user, $this->customer, UploadedFile::fake()->createWithContent('notes.txt', "hello world\nline two"));
+    $file = uploadFile($this->user, $this->workspace, UploadedFile::fake()->createWithContent('notes.txt', "hello world\nline two"));
 
     $this->actingAs($this->user)
-        ->getJson(customerUrl($this->customer, "/files/{$file->id}/text"))
+        ->getJson(workspaceUrl($this->workspace, "/files/{$file->id}/text"))
         ->assertOk()
         ->assertJsonPath('content', "hello world\nline two")
         ->assertJsonPath('is_markdown', false);
 });
 
 it('marks markdown files for formatted rendering', function () {
-    $file = uploadFile($this->user, $this->customer, UploadedFile::fake()->createWithContent('readme.md', '# Title'));
+    $file = uploadFile($this->user, $this->workspace, UploadedFile::fake()->createWithContent('readme.md', '# Title'));
 
     $this->actingAs($this->user)
-        ->getJson(customerUrl($this->customer, "/files/{$file->id}/text"))
+        ->getJson(workspaceUrl($this->workspace, "/files/{$file->id}/text"))
         ->assertOk()
         ->assertJsonPath('is_markdown', true);
 });
@@ -146,11 +146,11 @@ it('marks markdown files for formatted rendering', function () {
 // ── E: bulk actions ─────────────────────────────────────────────────
 
 it('bulk-deletes selected files', function () {
-    $a = uploadFile($this->user, $this->customer, UploadedFile::fake()->image('a.jpg'));
-    $b = uploadFile($this->user, $this->customer, UploadedFile::fake()->image('b.jpg'));
+    $a = uploadFile($this->user, $this->workspace, UploadedFile::fake()->image('a.jpg'));
+    $b = uploadFile($this->user, $this->workspace, UploadedFile::fake()->image('b.jpg'));
 
     $this->actingAs($this->user)
-        ->post(customerUrl($this->customer, '/files/bulk/delete'), ['ids' => [$a->id, $b->id]])
+        ->post(workspaceUrl($this->workspace, '/files/bulk/delete'), ['ids' => [$a->id, $b->id]])
         ->assertRedirect();
 
     expect(FileItem::whereIn('id', [$a->id, $b->id])->count())->toBe(0)
@@ -159,25 +159,25 @@ it('bulk-deletes selected files', function () {
 
 it('bulk-moves selected files into a folder', function () {
     $folder = FileItem::create([
-        'workspace_id' => $this->customer->id, 'user_id' => $this->user->id,
+        'workspace_id' => $this->workspace->id, 'user_id' => $this->user->id,
         'owner_type' => $this->user->getMorphClass(), 'owner_id' => $this->user->id,
         'type' => 'folder', 'scope' => 'personal', 'name' => 'Dest',
     ]);
-    $a = uploadFile($this->user, $this->customer, UploadedFile::fake()->image('a.jpg'));
+    $a = uploadFile($this->user, $this->workspace, UploadedFile::fake()->image('a.jpg'));
 
     $this->actingAs($this->user)
-        ->post(customerUrl($this->customer, '/files/bulk/move'), ['ids' => [$a->id], 'parent_id' => $folder->id])
+        ->post(workspaceUrl($this->workspace, '/files/bulk/move'), ['ids' => [$a->id], 'parent_id' => $folder->id])
         ->assertRedirect();
 
     expect($a->fresh()->parent_id)->toBe($folder->id);
 });
 
 it('bulk-zips selected files', function () {
-    $a = uploadFile($this->user, $this->customer, UploadedFile::fake()->image('a.jpg'));
-    $b = uploadFile($this->user, $this->customer, UploadedFile::fake()->image('b.jpg'));
+    $a = uploadFile($this->user, $this->workspace, UploadedFile::fake()->image('a.jpg'));
+    $b = uploadFile($this->user, $this->workspace, UploadedFile::fake()->image('b.jpg'));
 
     $res = $this->actingAs($this->user)
-        ->get(customerUrl($this->customer, "/files/bulk/zip?ids={$a->id},{$b->id}"));
+        ->get(workspaceUrl($this->workspace, "/files/bulk/zip?ids={$a->id},{$b->id}"));
 
     $res->assertOk();
     expect($res->headers->get('content-type'))->toContain('zip');
@@ -185,22 +185,22 @@ it('bulk-zips selected files', function () {
 
 it('denies bulk-zip when a file belongs to another user', function () {
     $other = User::factory()->create();
-    joinCustomer($other, $this->customer);
-    $mine = uploadFile($this->user, $this->customer, UploadedFile::fake()->image('mine.jpg'));
-    $theirs = uploadFile($other, $this->customer, UploadedFile::fake()->image('theirs.jpg'));
+    joinWorkspace($other, $this->workspace);
+    $mine = uploadFile($this->user, $this->workspace, UploadedFile::fake()->image('mine.jpg'));
+    $theirs = uploadFile($other, $this->workspace, UploadedFile::fake()->image('theirs.jpg'));
 
     $this->actingAs($this->user)
-        ->get(customerUrl($this->customer, "/files/bulk/zip?ids={$mine->id},{$theirs->id}"))
+        ->get(workspaceUrl($this->workspace, "/files/bulk/zip?ids={$mine->id},{$theirs->id}"))
         ->assertForbidden();
 });
 
 /**
  * Upload a file as the given user and return the created FileItem.
  */
-function uploadFile(User $user, $customer, UploadedFile $file): FileItem
+function uploadFile(User $user, $workspace, UploadedFile $file): FileItem
 {
     test()->actingAs($user)
-        ->post(customerUrl($customer, '/files'), ['files' => [$file]])
+        ->post(workspaceUrl($workspace, '/files'), ['files' => [$file]])
         ->assertRedirect();
 
     return FileItem::where('user_id', $user->id)->where('name', $file->getClientOriginalName())->firstOrFail();

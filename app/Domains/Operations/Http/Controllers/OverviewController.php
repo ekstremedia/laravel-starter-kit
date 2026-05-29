@@ -41,7 +41,7 @@ class OverviewController extends Controller
         return [
             'generated_at' => $now->toIso8601String(),
             'users' => $this->userMetrics($now, $sevenDaysAgo, $thirtyDaysAgo),
-            'customers' => $this->customerMetrics(),
+            'workspaces' => $this->workspaceMetrics(),
             'storage' => $this->storageMetrics(),
             'queue' => $this->queueMetrics(),
             'backups' => $this->backupMetrics(),
@@ -75,7 +75,7 @@ class OverviewController extends Controller
         ];
     }
 
-    private function customerMetrics(): ?array
+    private function workspaceMetrics(): ?array
     {
         if (! config('workspaces.enabled')) {
             return null;

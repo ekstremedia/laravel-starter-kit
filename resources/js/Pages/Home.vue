@@ -10,7 +10,7 @@ import { useCommandToasts } from '@/composables/useCommandToasts';
 
 defineOptions({ layout: CommandLayout });
 
-interface CustomerRoleCell {
+interface WorkspaceRoleCell {
     id: number;
     name: string;
     slug: string;
@@ -25,7 +25,7 @@ interface UserDetail {
     email_verified_at: string | null;
     two_factor_enabled: boolean;
     is_super_admin: boolean;
-    customer_roles: CustomerRoleCell[];
+    workspace_roles: WorkspaceRoleCell[];
     created_at: string | null;
 }
 
@@ -47,10 +47,10 @@ const { push } = useCommandToasts();
 const { t } = useI18n();
 
 // "Primary" role surfaces SuperAdmin first (platform-level), then the first
-// customer-scoped role we know about (Admin on any customer beats Editor on
-// any customer, beats User). The match is on the raw identifier; the return
+// workspace-scoped role we know about (Admin on any workspace beats Editor on
+// any workspace, beats User). The match is on the raw identifier; the return
 // is a translated label so the badge respects the user's locale. Falls back
-// to `home.role_fallback` for accounts with no customer role yet.
+// to `home.role_fallback` for accounts with no workspace role yet.
 const primaryRole = computed(() => {
     if (props.userDetail.is_super_admin) return t('roles.super_admin');
     const ranking: Array<['Admin' | 'Editor' | 'User', string]> = [
@@ -59,7 +59,7 @@ const primaryRole = computed(() => {
         ['User', 'roles.user'],
     ];
     for (const [id, key] of ranking) {
-        if (props.userDetail.customer_roles.some((c) => c.roles.includes(id))) return t(key);
+        if (props.userDetail.workspace_roles.some((c) => c.roles.includes(id))) return t(key);
     }
     return t('home.role_fallback');
 });

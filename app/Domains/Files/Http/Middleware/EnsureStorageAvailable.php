@@ -33,11 +33,11 @@ class EnsureStorageAvailable
             return $next($request);
         }
 
-        // Quota is applied per-tenant. On customer-scoped routes
+        // Quota is applied per-tenant. On workspace-scoped routes
         // `ResolveWorkspace` stashes the tenant in request attributes.
-        // If this middleware is ever hit outside a customer route (shouldn't
+        // If this middleware is ever hit outside a workspace route (shouldn't
         // happen in practice), skip — there's nothing to scope against.
-        $workspace = $request->attributes->get('customer');
+        $workspace = $request->attributes->get('workspace');
         if (! $workspace instanceof Workspace) {
             return $next($request);
         }

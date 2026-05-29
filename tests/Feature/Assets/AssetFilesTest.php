@@ -19,13 +19,13 @@ use Spatie\Permission\PermissionRegistrar;
  */
 beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
-    $this->customer = createCustomer();
-    $this->asset = Asset::factory()->create(['workspace_id' => $this->customer->id]);
+    $this->workspace = createWorkspace();
+    $this->asset = Asset::factory()->create(['workspace_id' => $this->workspace->id]);
 });
 
 it('owns a polymorphic file tree', function () {
     FileItem::factory()->count(3)->ownedBy($this->asset)->create([
-        'workspace_id' => $this->customer->id,
+        'workspace_id' => $this->workspace->id,
         'user_id' => User::factory()->create()->id,
     ]);
 
@@ -42,19 +42,19 @@ it('resolves quota: per-row override → app default → unlimited', function ()
     AppSetting::current()->update(['default_entity_storage_bytes' => null]);
 
     // No override, no app default → unlimited.
-    expect($service->effectiveQuota($this->asset, $this->customer))->toBeNull();
+    expect($service->effectiveQuota($this->asset, $this->workspace))->toBeNull();
 
     // App default applies when no per-row override.
     AppSetting::current()->update(['default_entity_storage_bytes' => 5000]);
-    expect($service->effectiveQuota($this->asset->fresh(), $this->customer))->toBe(5000);
+    expect($service->effectiveQuota($this->asset->fresh(), $this->workspace))->toBe(5000);
 
     // Per-row override wins over the app default.
     $this->asset->update(['file_quota_bytes' => 1000]);
-    expect($service->effectiveQuota($this->asset->fresh(), $this->customer))->toBe(1000);
+    expect($service->effectiveQuota($this->asset->fresh(), $this->workspace))->toBe(1000);
 
     // -1 = explicit unlimited, overriding the app default.
     $this->asset->update(['file_quota_bytes' => -1]);
-    expect($service->effectiveQuota($this->asset->fresh(), $this->customer))->toBeNull();
+    expect($service->effectiveQuota($this->asset->fresh(), $this->workspace))->toBeNull();
 });
 
 it('denormalizes storage_used_bytes on recompute', function () {
@@ -64,32 +64,32 @@ it('denormalizes storage_used_bytes on recompute', function () {
         ->and($this->asset->fresh()->storage_used_bytes)->toBe(0);
 });
 
-it('delegates file permissions to the owning customer', function () {
+it('delegates file permissions to the owning workspace', function () {
     $admin = User::factory()->create();
-    joinCustomer($admin, $this->customer, 'Admin');
+    joinWorkspace($admin, $this->workspace, 'Admin');
 
-    // Scope permission resolution to the customer team *after* membership
-    // exists — joinCustomer() resets the team id to null when it returns.
-    app(PermissionRegistrar::class)->setPermissionsTeamId($this->customer->id);
+    // Scope permission resolution to the workspace team *after* membership
+    // exists — joinWorkspace() resets the team id to null when it returns.
+    app(PermissionRegistrar::class)->setPermissionsTeamId($this->workspace->id);
 
     $stranger = User::factory()->create();
 
-    expect($this->asset->canManageFiles($admin, $this->customer))->toBeTrue()
-        ->and($this->asset->canViewFiles($admin, $this->customer))->toBeTrue()
-        ->and($this->asset->canManageFiles($stranger, $this->customer))->toBeFalse();
+    expect($this->asset->canManageFiles($admin, $this->workspace))->toBeTrue()
+        ->and($this->asset->canViewFiles($admin, $this->workspace))->toBeTrue()
+        ->and($this->asset->canManageFiles($stranger, $this->workspace))->toBeFalse();
 });
 
 it('authorizes asset-owned files through FileItemPolicy', function () {
     $admin = User::factory()->create();
-    joinCustomer($admin, $this->customer, 'Admin');
+    joinWorkspace($admin, $this->workspace, 'Admin');
     // Match the request lifecycle: team scope is set after membership exists.
-    app(PermissionRegistrar::class)->setPermissionsTeamId($this->customer->id);
+    app(PermissionRegistrar::class)->setPermissionsTeamId($this->workspace->id);
 
     $item = FileItem::factory()->ownedBy($this->asset)->create([
-        'workspace_id' => $this->customer->id,
+        'workspace_id' => $this->workspace->id,
         'user_id' => $admin->id,
     ]);
 
-    expect(Gate::forUser($admin)->check('view', [$item, $this->customer]))->toBeTrue()
-        ->and(Gate::forUser($admin)->check('update', [$item, $this->customer]))->toBeTrue();
+    expect(Gate::forUser($admin)->check('view', [$item, $this->workspace]))->toBeTrue()
+        ->and(Gate::forUser($admin)->check('update', [$item, $this->workspace]))->toBeTrue();
 });

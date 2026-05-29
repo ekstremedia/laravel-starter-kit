@@ -7,15 +7,15 @@ import AppLayout from '@/Layouts/CommandLayout.vue';
 import Field from '@/Components/Command/Field.vue';
 import Icon from '@/Components/Command/Icon.vue';
 import Dot from '@/Components/Command/Dot.vue';
-import { useCustomer } from '@/composables/useCustomer';
+import { useWorkspace } from '@/composables/useWorkspace';
 import type { PageProps } from '@/types';
 
 const { t } = useI18n();
 const toast = useToast();
 const page = usePage<PageProps>();
 const user = computed(() => page.props.auth.user!);
-const { customerUrl } = useCustomer();
-const avatarUrl = computed(() => customerUrl('/profile/avatar'));
+const { workspaceUrl } = useWorkspace();
+const avatarUrl = computed(() => workspaceUrl('/profile/avatar'));
 
 // --- Avatar ---
 const avatarInput = ref<HTMLInputElement | null>(null);

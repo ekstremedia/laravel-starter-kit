@@ -5,13 +5,13 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Stamp every activity_log row with the customer (tenant) that was active
- * when the activity fired. Without this, customer-scoped dashboards that
- * filter activity by "members of this customer" leak rows from other
- * customers the same user also belongs to.
+ * Stamp every activity_log row with the workspace (tenant) that was active
+ * when the activity fired. Without this, workspace-scoped dashboards that
+ * filter activity by "members of this workspace" leak rows from other
+ * workspaces the same user also belongs to.
  *
  * Nullable: central-only activities (registering, password reset, profile
- * edit from the picker page) genuinely have no customer context, and we
+ * edit from the picker page) genuinely have no workspace context, and we
  * want to preserve that distinction rather than backfill with a guess.
  */
 return new class extends Migration

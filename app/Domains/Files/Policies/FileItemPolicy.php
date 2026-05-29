@@ -19,7 +19,7 @@ use Illuminate\Database\Eloquent\Model;
  *      (SuperAdmin already passes via Gate::before in AppServiceProvider).
  *   2. The item's polymorphic owner's own rules — User-owned items defer to
  *      "is the user the owner", Workspace-owned items defer to membership +
- *      `manage company files` permission, future owners (Building, Customer)
+ *      `manage company files` permission, future owners (Building, Workspace)
  *      implement the FileOwner contract to opt in.
  *   3. Per-action capability permissions (`upload files`, `delete files`, …)
  *      gate the action on top of ownership — a member of a tenant who can

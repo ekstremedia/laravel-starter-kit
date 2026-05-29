@@ -5,28 +5,28 @@ use Database\Seeders\RoleAndPermissionSeeder;
 
 beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
-    $this->customer = createCustomer();
+    $this->workspace = createWorkspace();
 });
 
 it('redirects guests to login', function () {
-    $this->get(customerUrl($this->customer, '/dashboard'))->assertRedirect('/login');
+    $this->get(workspaceUrl($this->workspace, '/dashboard'))->assertRedirect('/login');
 });
 
 it('redirects unverified users to verification notice', function () {
     $user = User::factory()->unverified()->create();
-    joinCustomer($user, $this->customer);
+    joinWorkspace($user, $this->workspace);
 
     $this->actingAs($user)
-        ->get(customerUrl($this->customer, '/dashboard'))
+        ->get(workspaceUrl($this->workspace, '/dashboard'))
         ->assertRedirect('/email/verify');
 });
 
 it('renders the dashboard for verified users', function () {
     $user = User::factory()->create();
-    joinCustomer($user, $this->customer);
+    joinWorkspace($user, $this->workspace);
 
     $this->actingAs($user)
-        ->get(customerUrl($this->customer, '/dashboard'))
+        ->get(workspaceUrl($this->workspace, '/dashboard'))
         ->assertStatus(200)
         ->assertInertia(fn ($page) => $page
             ->component('Dashboard')
@@ -37,10 +37,10 @@ it('renders the dashboard for verified users', function () {
         );
 });
 
-it('403s for users not a member of the customer', function () {
+it('403s for users not a member of the workspace', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->get(customerUrl($this->customer, '/dashboard'))
+        ->get(workspaceUrl($this->workspace, '/dashboard'))
         ->assertForbidden();
 });

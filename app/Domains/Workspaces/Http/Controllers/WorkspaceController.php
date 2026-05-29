@@ -21,10 +21,10 @@ use Inertia\Response;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Landlord CRUD for customers.
+ * Landlord CRUD for workspaces.
  *
  * NOTE: the underlying model is `App\Domains\Workspaces\Models\Workspace` (extending stancl/tenancy's
- * base `Workspace` model). "Customer" is our user-facing name for the same row.
+ * base `Workspace` model). "Workspace" is our user-facing name for the same row.
  */
 class WorkspaceController extends Controller
 {
@@ -32,7 +32,7 @@ class WorkspaceController extends Controller
     {
         $search = $request->string('search')->toString();
 
-        $customers = Workspace::query()
+        $workspaces = Workspace::query()
             ->withCount('users')
             ->when($search !== '', function ($q) use ($search) {
                 $escaped = addcslashes(mb_strtolower($search), '%_\\');
@@ -46,15 +46,15 @@ class WorkspaceController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        return Inertia::render('Admin/Customers/Index', [
-            'customers' => $customers,
+        return Inertia::render('Admin/Workspaces/Index', [
+            'workspaces' => $workspaces,
             'filters' => ['search' => $search],
         ]);
     }
 
     public function create(): Response
     {
-        return Inertia::render('Admin/Customers/Create');
+        return Inertia::render('Admin/Workspaces/Create');
     }
 
     public function store(Request $request): RedirectResponse
@@ -69,7 +69,7 @@ class WorkspaceController extends Controller
         // The request-level rules above only fire when the client sent a slug.
         // When we fall back to `Str::slug($name)` an odd name can produce an
         // empty string, an over-length value, or collide with an existing
-        // customer — re-run the same rules against the resolved slug so the
+        // workspace — re-run the same rules against the resolved slug so the
         // auto-generated branch can't bypass them.
         Validator::make(['slug' => $slug], [
             'slug' => ['required', 'string', 'max:63', 'regex:/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/', Rule::unique('workspaces', 'slug')],
@@ -77,21 +77,21 @@ class WorkspaceController extends Controller
             'slug.*' => 'Could not derive a valid slug from the name; please provide one explicitly.',
         ])->validate();
 
-        $customer = Workspace::create([
+        $workspace = Workspace::create([
             'name' => $data['name'],
             'slug' => $slug,
             'status' => 'active',
         ]);
 
         return redirect()
-            ->route('admin.customers.edit', $customer)
-            ->with('success', __('flash.customers.created', ['name' => $customer->name]));
+            ->route('admin.workspaces.edit', $workspace)
+            ->with('success', __('flash.workspaces.created', ['name' => $workspace->name]));
     }
 
-    public function edit(Workspace $customer, StorageUsageService $usage): Response
+    public function edit(Workspace $workspace, StorageUsageService $usage): Response
     {
         // Same eager-load pattern as WorkspaceMembersController@index — pull
-        // the customer-scoped roles in a single JOIN keyed on
+        // the workspace-scoped roles in a single JOIN keyed on
         // `model_has_roles.team_id` so we can show each member's role(s)
         // without an N+1 storm of WorkspaceMembership::rolesOn calls.
         // Unlike that controller, this is a central /admin route, so
@@ -104,11 +104,11 @@ class WorkspaceController extends Controller
         $previousTeamId = $registrar->getPermissionsTeamId();
 
         try {
-            $registrar->setPermissionsTeamId($customer->id);
+            $registrar->setPermissionsTeamId($workspace->id);
 
-            $members = $customer->users()
+            $members = $workspace->users()
                 ->with([
-                    'roles' => fn ($q) => $q->where("{$mhrTable}.{$teamKey}", $customer->id),
+                    'roles' => fn ($q) => $q->where("{$mhrTable}.{$teamKey}", $workspace->id),
                     'media',
                 ])
                 ->orderBy('users.email')
@@ -120,27 +120,27 @@ class WorkspaceController extends Controller
         // Live usage for the "Used: X GB of Y" caption on the admin edit
         // page. Cheap per-page query; surface the fresh number rather than
         // the denormalized column in case it drifted.
-        $companyUsed = $usage->usedBytesForTenantCompany($customer);
+        $companyUsed = $usage->usedBytesForTenantCompany($workspace);
 
         // Fetch app settings once — `current()` does firstOrCreate on each
         // call, and we need two fields below.
         $appSettings = AppSetting::current();
 
-        return Inertia::render('Admin/Customers/Edit', [
-            'customer' => [
-                'id' => $customer->id,
-                'slug' => $customer->slug,
-                'name' => $customer->name,
-                'headline' => $customer->headline,
-                'about' => $customer->about,
-                'location' => $customer->location,
-                'website' => $customer->website,
-                'status' => $customer->status,
-                'files_feature_enabled' => (bool) $customer->files_feature_enabled,
-                'company_files_enabled' => (bool) $customer->company_files_enabled,
-                'storage_quota_bytes' => $customer->storage_quota_bytes,
+        return Inertia::render('Admin/Workspaces/Edit', [
+            'workspace' => [
+                'id' => $workspace->id,
+                'slug' => $workspace->slug,
+                'name' => $workspace->name,
+                'headline' => $workspace->headline,
+                'about' => $workspace->about,
+                'location' => $workspace->location,
+                'website' => $workspace->website,
+                'status' => $workspace->status,
+                'files_feature_enabled' => (bool) $workspace->files_feature_enabled,
+                'company_files_enabled' => (bool) $workspace->company_files_enabled,
+                'storage_quota_bytes' => $workspace->storage_quota_bytes,
                 'storage_used_bytes' => $companyUsed,
-                'default_member_storage_bytes' => $customer->default_member_storage_bytes,
+                'default_member_storage_bytes' => $workspace->default_member_storage_bytes,
                 'users' => $members->map(fn (User $user) => [
                     'id' => $user->id,
                     'public_id' => $user->public_id,
@@ -162,7 +162,7 @@ class WorkspaceController extends Controller
         ]);
     }
 
-    public function update(Request $request, Workspace $customer): RedirectResponse
+    public function update(Request $request, Workspace $workspace): RedirectResponse
     {
         $globalFilesEnabled = (bool) AppSetting::current()->files_feature_enabled;
 
@@ -185,7 +185,7 @@ class WorkspaceController extends Controller
             'files_feature_enabled' => ['sometimes', 'boolean', $requiresGlobalFiles],
             // Company files is the master kill switch for the shared
             // workspace; personal and company are otherwise independent
-            // per-customer toggles, both gated only on the global flag.
+            // per-workspace toggles, both gated only on the global flag.
             'company_files_enabled' => ['sometimes', 'boolean', $requiresGlobalFiles],
             // -1 = explicit unlimited, null = unlimited (no cap set),
             // 0 = blocked, N>0 = byte cap. Capped at 2^53-1 so Inertia
@@ -202,42 +202,42 @@ class WorkspaceController extends Controller
         }
 
         // Personal and company-shared files are independent toggles: a
-        // customer can run with one, the other, or both. The global
+        // workspace can run with one, the other, or both. The global
         // `AppSetting::files_feature_enabled` is still the master kill
-        // switch (enforced below) — but at the per-customer level, an
+        // switch (enforced below) — but at the per-workspace level, an
         // admin can e.g. disable personal Files while keeping the shared
         // workspace available.
 
-        $customer->update($data);
+        $workspace->update($data);
 
-        return back()->with('success', __('flash.customers.updated'));
+        return back()->with('success', __('flash.workspaces.updated'));
     }
 
-    public function destroy(Workspace $customer): RedirectResponse
+    public function destroy(Workspace $workspace): RedirectResponse
     {
-        $name = $customer->name;
+        $name = $workspace->name;
 
-        // Customer (team) scoped role/permission assignments live in the
+        // Workspace (team) scoped role/permission assignments live in the
         // central model_has_* tables keyed by team_id. Dropping the tenant
         // schema doesn't touch them, so clean them up here to avoid orphaned
-        // rows that would otherwise leak onto a future customer reusing the id.
+        // rows that would otherwise leak onto a future workspace reusing the id.
         // Pin the central connection explicitly — this runs from /admin where
         // tenancy isn't bootstrapped today, but a tenant-initialized caller
         // would otherwise send these deletes to the wrong schema.
         $teamKey = config('permission.column_names.team_foreign_key', 'team_id');
         $central = config('workspaces.database.central_connection');
-        DB::connection($central)->table(config('permission.table_names.model_has_roles'))->where($teamKey, $customer->id)->delete();
-        DB::connection($central)->table(config('permission.table_names.model_has_permissions'))->where($teamKey, $customer->id)->delete();
+        DB::connection($central)->table(config('permission.table_names.model_has_roles'))->where($teamKey, $workspace->id)->delete();
+        DB::connection($central)->table(config('permission.table_names.model_has_permissions'))->where($teamKey, $workspace->id)->delete();
 
         // Triggers the TenantDeleted job pipeline → drops the tenant<id> schema.
-        $customer->delete();
+        $workspace->delete();
 
         return redirect()
-            ->route('admin.customers.index')
-            ->with('success', __('flash.customers.deleted', ['name' => $name]));
+            ->route('admin.workspaces.index')
+            ->with('success', __('flash.workspaces.deleted', ['name' => $name]));
     }
 
-    public function attachMember(Request $request, Workspace $customer): RedirectResponse
+    public function attachMember(Request $request, Workspace $workspace): RedirectResponse
     {
         $data = $request->validate([
             'email' => ['required', 'email', 'exists:users,email'],
@@ -247,15 +247,15 @@ class WorkspaceController extends Controller
 
         $user = User::query()->where('email', $data['email'])->firstOrFail();
 
-        WorkspaceMembership::attach($user, $customer, $data['roles']);
+        WorkspaceMembership::attach($user, $workspace, $data['roles']);
 
-        return back()->with('success', __('flash.customers.member_added', ['email' => $user->email, 'name' => $customer->name]));
+        return back()->with('success', __('flash.workspaces.member_added', ['email' => $user->email, 'name' => $workspace->name]));
     }
 
-    public function detachMember(Workspace $customer, User $user): RedirectResponse
+    public function detachMember(Workspace $workspace, User $user): RedirectResponse
     {
-        WorkspaceMembership::detach($user, $customer);
+        WorkspaceMembership::detach($user, $workspace);
 
-        return back()->with('success', __('flash.customers.member_removed', ['email' => $user->email, 'name' => $customer->name]));
+        return back()->with('success', __('flash.workspaces.member_removed', ['email' => $user->email, 'name' => $workspace->name]));
     }
 }

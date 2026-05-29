@@ -17,7 +17,7 @@ use Illuminate\Queue\SerializesModels;
 /**
  * Broadcast whenever a FileItem changes in a way the UI needs to know about —
  * preview conversions finishing, a rename, or a delete. The channel is the
- * owner's private channel: User → user, Workspace → customer.{id}.files,
+ * owner's private channel: User → user, Workspace → workspace.{id}.files,
  * future polymorphic owners can opt in by exposing fileBroadcastChannels().
  */
 class FileItemUpdated implements ShouldBroadcast
@@ -38,7 +38,7 @@ class FileItemUpdated implements ShouldBroadcast
         }
 
         if ($owner instanceof Workspace) {
-            return [new PrivateChannel('customer.'.$owner->getKey().'.files')];
+            return [new PrivateChannel('workspace.'.$owner->getKey().'.files')];
         }
 
         // Custom owners can declare their own channel(s) — return empty if

@@ -13,14 +13,14 @@ import Icon from '@/Components/Command/Icon.vue';
 
 defineOptions({ layout: AdminLayout });
 
-interface CustomerItem { id: number; name: string; slug: string; roles?: string[] }
+interface WorkspaceItem { id: number; name: string; slug: string; roles?: string[] }
 interface Props {
     user: {
         id: number; first_name: string; last_name: string; email: string;
-        customers: CustomerItem[];
+        workspaces: WorkspaceItem[];
     };
     assignable_roles: string[];
-    all_customers: CustomerItem[];
+    all_workspaces: WorkspaceItem[];
 }
 const props = defineProps<Props>();
 const { t } = useI18n();
@@ -56,59 +56,59 @@ function roleToneBorder(r: string): string {
     return 'var(--accent-border)';
 }
 
-const addCustomerDialog = ref(false);
-const selectedCustomerIds = ref<number[]>([]);
+const addWorkspaceDialog = ref(false);
+const selectedWorkspaceIds = ref<number[]>([]);
 const selectedRoles = ref<string[]>(['User']);
 const notifyOnAdd = ref(true);
 const notifyOnRemove = ref(true);
 const removeDialog = ref(false);
-const removingCustomer = ref<CustomerItem | null>(null);
-const addingCustomer = ref(false);
-const removingCustomerRequest = ref(false);
+const removingWorkspace = ref<WorkspaceItem | null>(null);
+const addingWorkspace = ref(false);
+const removingWorkspaceRequest = ref(false);
 
-const availableCustomers = () => {
-    const currentIds = new Set(props.user.customers.map(c => c.id));
-    return props.all_customers.filter(c => !currentIds.has(c.id));
+const availableWorkspaces = () => {
+    const currentIds = new Set(props.user.workspaces.map(c => c.id));
+    return props.all_workspaces.filter(c => !currentIds.has(c.id));
 };
 
 function openAddDialog() {
-    selectedCustomerIds.value = [];
+    selectedWorkspaceIds.value = [];
     selectedRoles.value = ['User'];
     notifyOnAdd.value = true;
-    addCustomerDialog.value = true;
+    addWorkspaceDialog.value = true;
 }
 
 function confirmAdd() {
-    if (!selectedCustomerIds.value.length || !selectedRoles.value.length) return;
-    addingCustomer.value = true;
-    router.post(`/admin/users/${props.user.id}/customers`, {
-        customer_ids: selectedCustomerIds.value,
+    if (!selectedWorkspaceIds.value.length || !selectedRoles.value.length) return;
+    addingWorkspace.value = true;
+    router.post(`/admin/users/${props.user.id}/workspaces`, {
+        workspace_ids: selectedWorkspaceIds.value,
         roles: selectedRoles.value,
         notify: notifyOnAdd.value,
     }, {
         preserveScroll: true,
-        onSuccess: () => { addCustomerDialog.value = false; },
-        onFinish: () => { addingCustomer.value = false; },
+        onSuccess: () => { addWorkspaceDialog.value = false; },
+        onFinish: () => { addingWorkspace.value = false; },
     });
 }
 
-function openRemoveDialog(customer: CustomerItem) {
-    removingCustomer.value = customer;
+function openRemoveDialog(workspace: WorkspaceItem) {
+    removingWorkspace.value = workspace;
     notifyOnRemove.value = true;
     removeDialog.value = true;
 }
 
 function confirmRemove() {
-    if (!removingCustomer.value) return;
-    removingCustomerRequest.value = true;
-    router.delete(`/admin/users/${props.user.id}/customers/${removingCustomer.value.id}`, {
+    if (!removingWorkspace.value) return;
+    removingWorkspaceRequest.value = true;
+    router.delete(`/admin/users/${props.user.id}/workspaces/${removingWorkspace.value.id}`, {
         data: { notify: notifyOnRemove.value },
         preserveScroll: true,
         onSuccess: () => {
             removeDialog.value = false;
-            removingCustomer.value = null;
+            removingWorkspace.value = null;
         },
-        onFinish: () => { removingCustomerRequest.value = false; },
+        onFinish: () => { removingWorkspaceRequest.value = false; },
     });
 }
 </script>
@@ -117,10 +117,10 @@ function confirmRemove() {
     <div :style="{ padding: '24px 32px', maxWidth: '1100px', margin: '0 auto' }">
         <Head :title="`Edit ${user.email} · Admin`" />
 
-        <!-- Add customer dialog -->
+        <!-- Add workspace dialog -->
         <CommandDialog
-            v-model:visible="addCustomerDialog"
-            :title="t('admin.users.add_to_customer')"
+            v-model:visible="addWorkspaceDialog"
+            :title="t('admin.users.add_to_workspace')"
             width="460px"
         >
             <div :style="{ display: 'flex', flexDirection: 'column', gap: '14px' }">
@@ -128,13 +128,13 @@ function confirmRemove() {
                     <label
                         class="cmd-mono cmd-uc"
                         :style="{ display: 'block', fontSize: '10px', color: 'var(--fg-mute)', marginBottom: '6px', letterSpacing: '0.06em', fontWeight: 500 }"
-                    >{{ t('admin.customers.title') }}</label>
+                    >{{ t('admin.workspaces.title') }}</label>
                     <MultiSelect
-                        v-model="selectedCustomerIds"
-                        :options="availableCustomers()"
+                        v-model="selectedWorkspaceIds"
+                        :options="availableWorkspaces()"
                         optionLabel="name"
                         optionValue="id"
-                        :placeholder="t('admin.users.select_customer')"
+                        :placeholder="t('admin.users.select_workspace')"
                         :filter="true"
                         :filterPlaceholder="t('common.search')"
                         display="chip"
@@ -160,14 +160,14 @@ function confirmRemove() {
                 </label>
             </div>
             <template #footer>
-                <CmdButton variant="ghost" size="sm" @click="addCustomerDialog = false">
+                <CmdButton variant="ghost" size="sm" @click="addWorkspaceDialog = false">
                     {{ t('common.cancel') }}
                 </CmdButton>
                 <CmdButton
                     variant="primary"
                     size="sm"
-                    :disabled="!selectedCustomerIds.length || !selectedRoles.length"
-                    :loading="addingCustomer"
+                    :disabled="!selectedWorkspaceIds.length || !selectedRoles.length"
+                    :loading="addingWorkspace"
                     @click="confirmAdd"
                 >
                     {{ t('common.add') }}
@@ -175,17 +175,17 @@ function confirmRemove() {
             </template>
         </CommandDialog>
 
-        <!-- Remove customer dialog -->
+        <!-- Remove workspace dialog -->
         <CommandDialog
             v-model:visible="removeDialog"
-            :title="t('admin.users.remove_from_customer')"
+            :title="t('admin.users.remove_from_workspace')"
             width="440px"
         >
             <p
                 :style="{ margin: '0 0 14px', fontSize: '13px', color: 'var(--fg-dim)', lineHeight: 1.5 }"
-                v-html="t('admin.users.confirm_remove_from_customer_html', {
+                v-html="t('admin.users.confirm_remove_from_workspace_html', {
                     email: user.email,
-                    customer: removingCustomer?.name ?? '',
+                    workspace: removingWorkspace?.name ?? '',
                 })"
             />
             <label :style="{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12.5px', color: 'var(--fg)', cursor: 'pointer' }">
@@ -199,7 +199,7 @@ function confirmRemove() {
                 <CmdButton
                     variant="danger"
                     size="sm"
-                    :loading="removingCustomerRequest"
+                    :loading="removingWorkspaceRequest"
                     @click="confirmRemove"
                 >
                     {{ t('common.delete') }}
@@ -265,7 +265,7 @@ function confirmRemove() {
                     </div>
                 </div>
                 <p :style="{ fontSize: '11.5px', color: 'var(--fg-mute)', margin: 0, lineHeight: 1.45 }">
-                    {{ t('admin.users.roles_are_customer_scoped') }}
+                    {{ t('admin.users.roles_are_workspace_scoped') }}
                 </p>
                 <div :style="{ display: 'flex', gap: '8px', marginTop: '4px' }">
                     <CmdButton type="submit" variant="primary" size="md" :loading="form.processing">
@@ -288,12 +288,12 @@ function confirmRemove() {
             >
                 <div :style="{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }">
                     <h2 :style="{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--fg)' }">
-                        {{ t('admin.users.customer_memberships') }} ({{ user.customers.length }})
+                        {{ t('admin.users.workspace_memberships') }} ({{ user.workspaces.length }})
                     </h2>
                     <CmdButton
                         variant="primary"
                         size="sm"
-                        :disabled="availableCustomers().length === 0"
+                        :disabled="availableWorkspaces().length === 0"
                         @click="openAddDialog"
                     >
                         {{ t('common.add') }}
@@ -301,12 +301,12 @@ function confirmRemove() {
                 </div>
 
                 <ul
-                    v-if="user.customers.length"
+                    v-if="user.workspaces.length"
                     :style="{ listStyle: 'none', padding: 0, margin: 0 }"
                 >
                     <li
-                        v-for="(customer, i) in user.customers"
-                        :key="customer.id"
+                        v-for="(workspace, i) in user.workspaces"
+                        :key="workspace.id"
                         :style="{
                             display: 'flex',
                             alignItems: 'center',
@@ -318,20 +318,20 @@ function confirmRemove() {
                     >
                         <div :style="{ minWidth: 0 }">
                             <Link
-                                :href="`/admin/customers/${customer.id}/edit`"
+                                :href="`/admin/workspaces/${workspace.id}/edit`"
                                 :style="{ fontSize: '13px', fontWeight: 500, color: 'var(--fg)', textDecoration: 'none' }"
                             >
-                                {{ customer.name }}
+                                {{ workspace.name }}
                             </Link>
                             <p class="cmd-mono" :style="{ margin: '2px 0 0', fontSize: '11px', color: 'var(--fg-mute)' }">
-                                /c/{{ customer.slug }}
+                                /w/{{ workspace.slug }}
                             </p>
                             <div
-                                v-if="customer.roles && customer.roles.length"
+                                v-if="workspace.roles && workspace.roles.length"
                                 :style="{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px' }"
                             >
                                 <span
-                                    v-for="r in customer.roles"
+                                    v-for="r in workspace.roles"
                                     :key="r"
                                     class="cmd-mono"
                                     :style="{
@@ -350,8 +350,8 @@ function confirmRemove() {
                             >{{ t('admin.users.no_roles') }}</span>
                         </div>
                         <div :style="{ display: 'flex', gap: '4px', flexShrink: 0 }">
-                            <!-- Roles are assigned per-customer on the Show page's
-                                 customer-memberships MultiSelect. The Edit page
+                            <!-- Roles are assigned per-workspace on the Show page's
+                                 workspace-memberships MultiSelect. The Edit page
                                  only adds/removes the membership itself. -->
                             <Link
                                 :href="`/admin/users/${user.id}`"
@@ -360,8 +360,8 @@ function confirmRemove() {
                             <CmdButton
                                 variant="ghost"
                                 size="sm"
-                                :aria-label="t('admin.users.remove_from_customer_aria', { customer: customer.name })"
-                                @click="openRemoveDialog(customer)"
+                                :aria-label="t('admin.users.remove_from_workspace_aria', { workspace: workspace.name })"
+                                @click="openRemoveDialog(workspace)"
                             >
                                 {{ t('common.remove') }}
                             </CmdButton>

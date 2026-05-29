@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Model;
  * leak rows across workspaces by forgetting a `where('workspace_id', …)`.
  *
  * The scope is **active only when a workspace context is set** (i.e. inside a
- * `/c/{workspace}/…` route, where ResolveWorkspace populated the
+ * `/w/{workspace}/…` route, where ResolveWorkspace populated the
  * WorkspaceContext resolver). On central/admin routes — where there is no current
  * workspace — it is inert, so platform admins keep querying across all
  * workspaces exactly as before. Bypass explicitly with

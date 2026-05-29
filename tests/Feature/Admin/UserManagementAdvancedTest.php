@@ -11,14 +11,14 @@ use Illuminate\Support\Facades\Password;
 beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
 
-    $this->customer = createCustomer();
+    $this->workspace = createWorkspace();
 
     $this->admin = User::factory()->create();
     $this->admin->forceFill(['is_super_admin' => true])->save();
-    joinCustomer($this->admin, $this->customer);
+    joinWorkspace($this->admin, $this->workspace);
 
     $this->target = User::factory()->create(['email_verified_at' => now()]);
-    joinCustomer($this->target, $this->customer);
+    joinWorkspace($this->target, $this->workspace);
 });
 
 it('shows the user dashboard', function () {
@@ -89,7 +89,7 @@ it('unbans a user', function () {
 });
 
 it('logs out a banned user on the next request', function () {
-    $url = customerUrl($this->customer, '/dashboard');
+    $url = workspaceUrl($this->workspace, '/dashboard');
 
     $this->actingAs($this->target)
         ->get($url)

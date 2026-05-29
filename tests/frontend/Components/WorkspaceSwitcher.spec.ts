@@ -11,64 +11,64 @@ vi.mock('@inertiajs/vue3', async () => {
     };
 });
 
-import CustomerSwitcher from '@/Components/Command/CustomerSwitcher.vue';
+import WorkspaceSwitcher from '@/Components/Command/WorkspaceSwitcher.vue';
 
 function setPage(
-    customers: Array<{ id: number; slug: string; name: string }>,
+    workspaces: Array<{ id: number; slug: string; name: string }>,
     current: { id: number; slug: string; name: string } | null = null,
     tenancyEnabled = true,
 ) {
     pageProps.props = {
-        tenancy: { enabled: tenancyEnabled },
-        available_customers: customers,
-        customer: current,
+        workspaces: { enabled: tenancyEnabled },
+        available_workspaces: workspaces,
+        workspace: current,
     };
 }
 
-describe('CustomerSwitcher', () => {
+describe('WorkspaceSwitcher', () => {
     beforeEach(() => {
         pageProps.props = {};
     });
 
-    it('renders nothing when tenancy is disabled', () => {
+    it('renders nothing when workspaces is disabled', () => {
         setPage([{ id: 1, slug: 'a', name: 'A' }], null, false);
-        const wrapper = mount(CustomerSwitcher);
+        const wrapper = mount(WorkspaceSwitcher);
 
         expect(wrapper.find('button').exists()).toBe(false);
     });
 
     it('renders nothing when the user has no memberships', () => {
         setPage([], null, true);
-        const wrapper = mount(CustomerSwitcher);
+        const wrapper = mount(WorkspaceSwitcher);
 
         expect(wrapper.find('button').exists()).toBe(false);
     });
 
-    it('renders a real link for a single customer even when the user is already inside it', () => {
+    it('renders a real link for a single workspace even when the user is already inside it', () => {
         // A disabled "you're already here" badge was confusing — clicks on
         // the navbar chip now always navigate somewhere.
         setPage([{ id: 1, slug: 'acme', name: 'Acme' }], { id: 1, slug: 'acme', name: 'Acme' });
-        const wrapper = mount(CustomerSwitcher);
+        const wrapper = mount(WorkspaceSwitcher);
 
         expect(wrapper.find('button').exists()).toBe(false);
         const link = wrapper.get('a');
-        expect(link.attributes('href')).toBe('/c/acme/dashboard');
+        expect(link.attributes('href')).toBe('/w/acme/dashboard');
         expect(link.text()).toContain('Acme');
     });
 
-    it('renders a link to the sole membership when no customer is active yet', () => {
+    it('renders a link to the sole membership when no workspace is active yet', () => {
         setPage([{ id: 1, slug: 'acme', name: 'Acme' }], null);
-        const wrapper = mount(CustomerSwitcher);
+        const wrapper = mount(WorkspaceSwitcher);
 
-        // A link — not a disabled "Pick a customer" button — so the welcome
+        // A link — not a disabled "Pick a workspace" button — so the welcome
         // page actually gets the user somewhere.
         expect(wrapper.find('button').exists()).toBe(false);
         const link = wrapper.get('a');
-        expect(link.attributes('href')).toBe('/c/acme/dashboard');
+        expect(link.attributes('href')).toBe('/w/acme/dashboard');
         expect(link.text()).toContain('Acme');
     });
 
-    it('opens the dropdown when there are multiple customers', async () => {
+    it('opens the dropdown when there are multiple workspaces', async () => {
         setPage(
             [
                 { id: 1, slug: 'acme', name: 'Acme' },
@@ -77,13 +77,13 @@ describe('CustomerSwitcher', () => {
             { id: 1, slug: 'acme', name: 'Acme' },
         );
 
-        const wrapper = mount(CustomerSwitcher);
+        const wrapper = mount(WorkspaceSwitcher);
         await wrapper.get('button').trigger('click');
 
         expect(wrapper.text()).toContain('Widgets');
     });
 
-    it('links each item to the customer dashboard', async () => {
+    it('links each item to the workspace dashboard', async () => {
         setPage(
             [
                 { id: 1, slug: 'acme', name: 'Acme' },
@@ -92,11 +92,11 @@ describe('CustomerSwitcher', () => {
             { id: 1, slug: 'acme', name: 'Acme' },
         );
 
-        const wrapper = mount(CustomerSwitcher);
+        const wrapper = mount(WorkspaceSwitcher);
         await wrapper.get('button').trigger('click');
 
         const links = wrapper.findAll('a').map((a) => a.attributes('href'));
-        expect(links).toContain('/c/acme/dashboard');
-        expect(links).toContain('/c/widgets/dashboard');
+        expect(links).toContain('/w/acme/dashboard');
+        expect(links).toContain('/w/widgets/dashboard');
     });
 });

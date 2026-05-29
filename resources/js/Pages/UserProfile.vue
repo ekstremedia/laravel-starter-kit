@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /*
  * Public-ish profile for any user the viewer is allowed to see (i.e. they
- * share a customer with the profile owner). Shows avatar, name, headline,
- * bio, location, a link to website, and the customers the viewer + profile
+ * share a workspace with the profile owner). Shows avatar, name, headline,
+ * bio, location, a link to website, and the workspaces the viewer + profile
  * owner share.
  */
 import { Head, Link, usePage } from '@inertiajs/vue3';
@@ -26,7 +26,7 @@ interface ProfilePayload {
     created_at: string | null;
 }
 
-interface SharedCustomer {
+interface SharedWorkspace {
     id: number;
     slug: string;
     name: string;
@@ -34,7 +34,7 @@ interface SharedCustomer {
 
 interface Props {
     profile: ProfilePayload;
-    shared_customers: SharedCustomer[];
+    shared_workspaces: SharedWorkspace[];
     is_self: boolean;
 }
 
@@ -140,7 +140,7 @@ const websiteHostname = computed(() => {
                 <p :style="{ margin: 0, fontSize: '13px', lineHeight: 1.55, color: 'var(--fg-dim)', whiteSpace: 'pre-wrap' }">{{ profile.bio }}</p>
             </div>
 
-            <!-- Sidebar-style facts: website + shared customers -->
+            <!-- Sidebar-style facts: website + shared workspaces -->
             <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }">
                 <div v-if="websiteHref" class="cmd-card" :style="{ padding: '16px' }">
                     <h2 :style="{ margin: '0 0 8px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600, color: 'var(--fg-mute)' }">{{ t('user_profile.website') }}</h2>
@@ -155,15 +155,15 @@ const websiteHostname = computed(() => {
                     </a>
                 </div>
 
-                <div v-if="shared_customers.length" class="cmd-card" :style="{ padding: '16px' }">
-                    <h2 :style="{ margin: '0 0 8px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600, color: 'var(--fg-mute)' }">{{ t('user_profile.shared_customers') }}</h2>
+                <div v-if="shared_workspaces.length" class="cmd-card" :style="{ padding: '16px' }">
+                    <h2 :style="{ margin: '0 0 8px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600, color: 'var(--fg-mute)' }">{{ t('user_profile.shared_workspaces') }}</h2>
                     <ul :style="{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '4px' }">
-                        <li v-for="c in shared_customers" :key="c.id">
+                        <li v-for="c in shared_workspaces" :key="c.id">
                             <Link
-                                :href="`/c/${c.slug}/about`"
+                                :href="`/w/${c.slug}/about`"
                                 :style="{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', color: 'var(--fg)', textDecoration: 'none' }"
                             >
-                                <Icon name="customer" :size="12" />
+                                <Icon name="workspace" :size="12" />
                                 <span>{{ c.name }}</span>
                             </Link>
                         </li>
@@ -172,7 +172,7 @@ const websiteHostname = computed(() => {
             </div>
 
             <p
-                v-if="!profile.bio && !profile.website && !shared_customers.length"
+                v-if="!profile.bio && !profile.website && !shared_workspaces.length"
                 :style="{ textAlign: 'center', fontSize: '12px', color: 'var(--fg-mute)', padding: '20px' }"
             >{{ t('user_profile.empty') }}</p>
         </div>

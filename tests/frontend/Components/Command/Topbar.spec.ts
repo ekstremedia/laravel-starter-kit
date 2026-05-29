@@ -6,7 +6,7 @@ const m = vi.hoisted(() => ({ post: vi.fn(), setTheme: vi.fn() }));
 vi.mock('@inertiajs/vue3', () => ({
     usePage: () => ({
         url: '/admin/users',
-        props: { auth: { user: { first_name: 'Ada', last_name: 'Lovelace', full_name: 'Ada Lovelace', email: 'ada@test.dev' } }, customer: null },
+        props: { auth: { user: { first_name: 'Ada', last_name: 'Lovelace', full_name: 'Ada Lovelace', email: 'ada@test.dev' } }, workspace: null },
     }),
     router: { post: m.post },
     Link: { name: 'Link', props: ['href'], template: '<a :href="href"><slot /></a>' },
@@ -22,7 +22,7 @@ const mountTopbar = (onOpenPalette = vi.fn()) =>
     mount(Topbar, {
         props: { onOpenPalette },
         // Child widgets have their own specs; stub them to isolate the topbar.
-        global: { stubs: { CustomerSwitcher: true, NotificationBell: true } },
+        global: { stubs: { WorkspaceSwitcher: true, NotificationBell: true } },
     });
 
 describe('Command/Topbar', () => {

@@ -9,11 +9,11 @@ use Database\Seeders\RoleAndPermissionSeeder;
 beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
 
-    $this->customer = createCustomer();
-    $this->customer->update(['files_feature_enabled' => true]);
+    $this->workspace = createWorkspace();
+    $this->workspace->update(['files_feature_enabled' => true]);
 
     $this->user = User::factory()->create();
-    joinCustomer($this->user, $this->customer);
+    joinWorkspace($this->user, $this->workspace);
     $this->user->settings()->merge(['files_enabled' => true]);
 });
 
@@ -21,7 +21,7 @@ it('returns 404 when the global app setting is off', function () {
     AppSetting::current()->update(['files_feature_enabled' => false]);
 
     $this->actingAs($this->user)
-        ->get(customerUrl($this->customer, '/files'))
+        ->get(workspaceUrl($this->workspace, '/files'))
         ->assertNotFound();
 });
 
@@ -29,7 +29,7 @@ it('returns OK when all three flags are on', function () {
     AppSetting::current()->update(['files_feature_enabled' => true]);
 
     $this->actingAs($this->user)
-        ->get(customerUrl($this->customer, '/files'))
+        ->get(workspaceUrl($this->workspace, '/files'))
         ->assertOk();
 });
 

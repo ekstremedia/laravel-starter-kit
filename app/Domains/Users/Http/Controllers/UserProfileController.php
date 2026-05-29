@@ -14,7 +14,7 @@ use Inertia\Response;
 
 /**
  * Public-ish profile page for any user. The viewer must share at least one
- * customer with the profile owner (super admins bypass) — see
+ * workspace with the profile owner (super admins bypass) — see
  * UserProfilePolicy@view. URLs use the user's UUID `public_id` rather than
  * the auto-increment `id`, so profile pages can't be enumerated by guessing
  * 1..N.
@@ -26,16 +26,16 @@ class UserProfileController extends Controller
         $viewer = $request->user();
         abort_unless($viewer && (new UserProfilePolicy)->view($viewer, $user), 403);
 
-        // Customers the *viewer* is allowed to know about: only their own,
+        // Workspaces the *viewer* is allowed to know about: only their own,
         // unless they're a super admin. Intersected with the profile
-        // owner's memberships so we never reveal customers the viewer
+        // owner's memberships so we never reveal workspaces the viewer
         // wouldn't otherwise see.
-        $query = $user->customers()->where('status', 'active');
+        $query = $user->workspaces()->where('status', 'active');
         if (! $viewer->isSuperAdmin()) {
             // Subquery instead of pluck() — the inner SELECT runs as part of
             // the same SQL statement, avoiding a second round-trip and a
             // potentially large WHERE IN payload.
-            $query->whereIn('workspaces.id', $viewer->customers()->select('workspaces.id'));
+            $query->whereIn('workspaces.id', $viewer->workspaces()->select('workspaces.id'));
         }
         /** @var array<int, Workspace> $shared */
         $shared = $query->orderBy('name')->get(['workspaces.id', 'workspaces.slug', 'workspaces.name'])->all();
@@ -54,7 +54,7 @@ class UserProfileController extends Controller
                 'avatar_thumb_url' => $user->avatarUrl('thumb'),
                 'created_at' => $user->created_at,
             ],
-            'shared_customers' => array_map(fn (Workspace $c) => [
+            'shared_workspaces' => array_map(fn (Workspace $c) => [
                 'id' => $c->id,
                 'slug' => $c->slug,
                 'name' => $c->name,

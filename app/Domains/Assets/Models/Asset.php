@@ -18,7 +18,7 @@ use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
 /**
- * Demo file-owning entity. Each Asset belongs to a customer (Workspace) and owns
+ * Demo file-owning entity. Each Asset belongs to a workspace (Workspace) and owns
  * its own FileItem document tree via the polymorphic FileOwner contract —
  * the same mechanism that powers personal (User) and company (Workspace) files.
  *
@@ -101,7 +101,7 @@ class Asset extends Model implements FileOwner
 
     /**
      * File access mirrors company-file semantics: a member of the asset's
-     * customer with the right role (or a super-admin / "manage all files"
+     * workspace with the right role (or a super-admin / "manage all files"
      * holder) can manage the asset's documents. Delegating to the Workspace
      * reuses its team-scoped permission resolution.
      */

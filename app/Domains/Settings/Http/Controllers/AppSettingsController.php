@@ -29,7 +29,7 @@ class AppSettingsController extends Controller
             // settings UI can show the admin what they can't exceed (and why a
             // larger value is rejected).
             'php_upload_ceiling_bytes' => UploadLimits::phpCeilingBytes(),
-            // Only customer-scoped roles are valid as a Fortify default — the
+            // Only workspace-scoped roles are valid as a Fortify default — the
             // registration flow hands the new user off to `WorkspaceMembership`,
             // which would reject SuperAdmin (a platform flag, not a role).
             'roles' => WorkspaceMembership::assignableRoles(),

@@ -11,7 +11,7 @@ class UserProfilePolicy
 {
     /**
      * A user can view another user's public profile when they share at least
-     * one customer membership. Super admins bypass the check, and any user
+     * one workspace membership. Super admins bypass the check, and any user
      * can always view their own profile.
      */
     public function view(User $viewer, User $profile): bool

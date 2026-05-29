@@ -13,7 +13,7 @@ defineOptions({ layout: CommandLayout });
 const { t } = useI18n();
 const confirmer = useConfirm();
 
-interface CustomerRow {
+interface WorkspaceRow {
     id: number;
     slug: string;
     name: string;
@@ -31,31 +31,31 @@ interface Paginated<T> {
     links: Array<{ url: string | null; label: string; active: boolean }>;
 }
 
-const props = defineProps<{ customers: Paginated<CustomerRow> }>();
+const props = defineProps<{ workspaces: Paginated<WorkspaceRow> }>();
 
 const search = ref('');
 const sortKey = ref<string>('name');
 const sortDir = ref<'asc' | 'desc'>('asc');
 
-const columns: Column<CustomerRow>[] = [
+const columns: Column<WorkspaceRow>[] = [
     { key: 'name', label: t('common.name'), sortable: true },
-    { key: 'slug', label: t('admin.customers.slug'), sortable: true, mono: true },
+    { key: 'slug', label: t('admin.workspaces.slug'), sortable: true, mono: true },
     { key: 'status', label: t('common.status'), sortable: true, width: '120px' },
-    { key: 'users_count', label: t('admin.customers.members'), sortable: true, width: '100px', align: 'right', mono: true },
+    { key: 'users_count', label: t('admin.workspaces.members'), sortable: true, width: '100px', align: 'right', mono: true },
 ];
 
-function destroy(c: CustomerRow) {
+function destroy(c: WorkspaceRow) {
     confirmer.require({
         group: 'command',
-        message: t('admin.customers.confirm_delete', { name: c.name }),
+        message: t('admin.workspaces.confirm_delete', { name: c.name }),
         header: t('common.delete'),
         icon: 'pi pi-exclamation-triangle',
         acceptClass: 'p-button-danger',
         acceptLabel: t('common.delete'),
         rejectLabel: t('common.cancel'),
         accept: () => {
-            // Server flashes flash.customers.deleted via useFlashToast.
-            router.delete(`/admin/customers/${c.id}`);
+            // Server flashes flash.workspaces.deleted via useFlashToast.
+            router.delete(`/admin/workspaces/${c.id}`);
         },
     });
 }
@@ -63,20 +63,20 @@ function destroy(c: CustomerRow) {
 
 <template>
     <div>
-    <Head :title="t('admin.customers.head_title')" />
+    <Head :title="t('admin.workspaces.head_title')" />
 
     <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '14px' }">
         <div>
             <h1 :style="{ margin: 0, fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--fg)' }">
-                {{ t('admin.customers.title') }}
+                {{ t('admin.workspaces.title') }}
             </h1>
             <div
                 class="cmd-mono"
                 :style="{ marginTop: '3px', fontSize: '11.5px', color: 'var(--fg-mute)' }"
-            >{{ props.customers.total }} {{ t('admin.customers.title').toLowerCase() }}</div>
+            >{{ props.workspaces.total }} {{ t('admin.workspaces.title').toLowerCase() }}</div>
         </div>
         <Link
-            href="/admin/customers/create"
+            href="/admin/workspaces/create"
             :style="{
                 background: 'var(--accent)',
                 color: '#fff',
@@ -92,22 +92,22 @@ function destroy(c: CustomerRow) {
             }"
         >
             <Icon name="plus" :size="12" />
-            {{ t('admin.customers.new_customer') }}
+            {{ t('admin.workspaces.new_workspace') }}
         </Link>
     </div>
 
     <CmdDataTable
-        :rows="customers"
+        :rows="workspaces"
         :columns="columns"
         v-model:search="search"
         v-model:sort-key="sortKey"
         v-model:sort-dir="sortDir"
-        :search-placeholder="t('admin.customers.filter')"
+        :search-placeholder="t('admin.workspaces.filter')"
         :search-keys="['name', 'slug']"
     >
         <template #cell:name="{ row }">
             <Link
-                :href="`/admin/customers/${row.id}/edit`"
+                :href="`/admin/workspaces/${row.id}/edit`"
                 :style="{ fontWeight: 500, color: 'var(--fg)', textDecoration: 'none' }"
             >{{ row.name }}</Link>
         </template>
@@ -123,7 +123,7 @@ function destroy(c: CustomerRow) {
                     borderRadius: '3px',
                     color: 'var(--fg-dim)',
                 }"
-            >/c/{{ row.slug }}</code>
+            >/w/{{ row.slug }}</code>
         </template>
 
         <template #cell:status="{ row }">
@@ -140,7 +140,7 @@ function destroy(c: CustomerRow) {
 
         <template #actions="{ row }">
             <Link
-                :href="`/admin/customers/${row.id}/edit`"
+                :href="`/admin/workspaces/${row.id}/edit`"
                 :title="t('common.edit')"
                 :style="{ background: 'transparent', border: 'none', color: 'var(--fg-dim)', cursor: 'pointer', padding: '4px', borderRadius: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }"
             >

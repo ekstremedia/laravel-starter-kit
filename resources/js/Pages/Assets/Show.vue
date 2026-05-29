@@ -10,7 +10,7 @@ import CmdButton from '@/Components/Command/Button.vue';
 import Field from '@/Components/Command/Field.vue';
 import Icon from '@/Components/Command/Icon.vue';
 import EntityFiles, { type FileRow } from '@/Components/Files/EntityFiles.vue';
-import { useCustomer } from '@/composables/useCustomer';
+import { useWorkspace } from '@/composables/useWorkspace';
 
 defineOptions({ layout: CommandLayout });
 
@@ -34,13 +34,13 @@ const props = defineProps<{
 }>();
 
 const { t } = useI18n();
-const { customerUrl } = useCustomer();
+const { workspaceUrl } = useWorkspace();
 const confirm = useConfirm();
 
 function folderUrl(folderId: number | null): string {
     return folderId === null
-        ? customerUrl(`/assets/${props.asset.id}`)
-        : customerUrl(`/assets/${props.asset.id}/folders/${folderId}`);
+        ? workspaceUrl(`/assets/${props.asset.id}`)
+        : workspaceUrl(`/assets/${props.asset.id}/folders/${folderId}`);
 }
 
 const editOpen = ref(false);
@@ -63,7 +63,7 @@ function openEdit() {
 }
 
 function submitEdit() {
-    form.put(customerUrl(`/assets/${props.asset.id}`), {
+    form.put(workspaceUrl(`/assets/${props.asset.id}`), {
         preserveScroll: true,
         onSuccess: () => { editOpen.value = false; },
     });
@@ -78,7 +78,7 @@ function confirmDelete() {
         acceptLabel: t('assets.delete'),
         rejectLabel: t('common.cancel'),
         acceptProps: { severity: 'danger' },
-        accept: () => router.delete(customerUrl(`/assets/${props.asset.id}`)),
+        accept: () => router.delete(workspaceUrl(`/assets/${props.asset.id}`)),
     });
 }
 </script>
@@ -90,7 +90,7 @@ function confirmDelete() {
 
         <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '6px' }">
             <Link
-                :href="customerUrl('/assets')"
+                :href="workspaceUrl('/assets')"
                 :style="{ fontSize: '11.5px', color: 'var(--fg-dim)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px' }"
             >
                 <Icon name="chevR" :size="10" :style="{ transform: 'rotate(180deg)' }" />

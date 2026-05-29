@@ -1,27 +1,27 @@
 <script setup lang="ts">
 /*
- * Command-styled customer switcher. Drops into the topbar between the
- * command button and the bell when tenancy is enabled and the user has at
+ * Command-styled workspace switcher. Drops into the topbar between the
+ * command button and the bell when workspaces is enabled and the user has at
  * least one membership.
  *
  * - 0 memberships → hidden (no bare chip)
  * - 1 membership  → Link pill (always clickable even when already scoped)
  * - N memberships → button + dropdown with accent-soft highlight on current
  *
- * All navigation targets `/c/{slug}/dashboard`, which triggers
+ * All navigation targets `/w/{slug}/dashboard`, which triggers
  * InitializeTenancyByPath server-side to swap the schema.
  */
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
-import type { Customer, PageProps } from '@/types';
+import type { Workspace, PageProps } from '@/types';
 import Icon from './Icon.vue';
 
 const { t } = useI18n();
 const page = usePage<PageProps>();
 
-const current = computed<Customer | null>(() => page.props.customer ?? null);
-const list = computed<Customer[]>(() => page.props.available_customers ?? []);
+const current = computed<Workspace | null>(() => page.props.workspace ?? null);
+const list = computed<Workspace[]>(() => page.props.available_workspaces ?? []);
 
 const open = ref(false);
 const rootRef = ref<HTMLElement | null>(null);
@@ -39,18 +39,18 @@ function onDocClick(e: MouseEvent) {
 onMounted(() => document.addEventListener('click', onDocClick));
 onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
 
-const visible = computed(() => Boolean(page.props.tenancy?.enabled) && list.value.length > 0);
+const visible = computed(() => Boolean(page.props.workspaces?.enabled) && list.value.length > 0);
 const hasMany = computed(() => list.value.length > 1);
-const soleCustomer = computed<Customer | null>(() => (list.value.length === 1 ? list.value[0] : null));
+const soleWorkspace = computed<Workspace | null>(() => (list.value.length === 1 ? list.value[0] : null));
 
 const triggerLabel = computed<string>(() => {
     if (current.value) return current.value.name;
-    if (soleCustomer.value) return soleCustomer.value.name;
-    return t('customer_switcher.pick');
+    if (soleWorkspace.value) return soleWorkspace.value.name;
+    return t('workspace_switcher.pick');
 });
 
-function urlFor(c: Customer): string {
-    return `/c/${c.slug}/dashboard`;
+function urlFor(c: Workspace): string {
+    return `/w/${c.slug}/dashboard`;
 }
 
 const pillStyle = {
@@ -73,13 +73,13 @@ const pillStyle = {
 <template>
     <div v-if="visible" ref="rootRef" :style="{ position: 'relative' }">
         <Link
-            v-if="soleCustomer"
-            :href="urlFor(soleCustomer)"
+            v-if="soleWorkspace"
+            :href="urlFor(soleWorkspace)"
             :style="pillStyle"
         >
-            <Icon name="customer" :size="12" :style="{ color: 'var(--accent)' }" />
+            <Icon name="workspace" :size="12" :style="{ color: 'var(--accent)' }" />
             <span class="cmd-cust-name" :style="{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">
-                {{ soleCustomer.name }}
+                {{ soleWorkspace.name }}
             </span>
         </Link>
 
@@ -90,7 +90,7 @@ const pillStyle = {
             @click="toggle"
             :style="pillStyle"
         >
-            <Icon name="customer" :size="12" :style="{ color: 'var(--accent)' }" />
+            <Icon name="workspace" :size="12" :style="{ color: 'var(--accent)' }" />
             <span class="cmd-cust-name" :style="{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">
                 {{ triggerLabel }}
             </span>
@@ -117,7 +117,7 @@ const pillStyle = {
             <div
                 class="cmd-mono cmd-uc"
                 :style="{ padding: '8px 10px 4px', fontSize: '9.5px', color: 'var(--fg-mute)', fontWeight: 500 }"
-            >{{ t('customer_switcher.customers') }}</div>
+            >{{ t('workspace_switcher.workspaces') }}</div>
             <Link
                 v-for="c in list"
                 :key="c.id"
@@ -136,7 +136,7 @@ const pillStyle = {
                 }"
             >
                 <span :style="{ display: 'flex', alignItems: 'center', gap: '7px', overflow: 'hidden' }">
-                    <Icon name="customer" :size="11" />
+                    <Icon name="workspace" :size="11" />
                     <span :style="{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">{{ c.name }}</span>
                 </span>
                 <span v-if="c.id === current?.id" class="cmd-mono" :style="{ fontSize: '9.5px', color: 'var(--accent)' }">●</span>

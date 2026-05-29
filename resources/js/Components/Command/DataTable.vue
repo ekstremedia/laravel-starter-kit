@@ -26,7 +26,7 @@ export interface Column<T = any> {
  * Sorting & filtering are both optionally handled locally when `localSort`
  * / `localSearch` are true. When false the table just renders `rows` as
  * provided and emits events — use this for server-side Inertia tables
- * (Users/Customers) that already paginate.
+ * (Users/Workspaces) that already paginate.
  */
 import { computed, ref, useSlots, watch } from 'vue';
 import { router } from '@inertiajs/vue3';

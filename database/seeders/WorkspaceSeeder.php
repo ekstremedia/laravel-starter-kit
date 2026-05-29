@@ -8,9 +8,9 @@ use App\Domains\Workspaces\Models\Workspace;
 use Illuminate\Database\Seeder;
 
 /**
- * Seeds the default customer so the starter kit runs as a "single workspace"
+ * Seeds the default workspace so the starter kit runs as a "single workspace"
  * app out of the box. The app always runs multi-tenant and needs at least one
- * customer to be reachable — this seeder guarantees that. The slug comes from
+ * workspace to be reachable — this seeder guarantees that. The slug comes from
  * config so deployments can override it with the WORKSPACES_DEFAULT_WORKSPACE env
  * var.
  *
@@ -27,11 +27,11 @@ class WorkspaceSeeder extends Seeder
         Workspace::firstOrCreate(
             ['slug' => $slug],
             [
-                'name' => config('app.name', 'Default customer'),
+                'name' => config('app.name', 'Default workspace'),
                 'status' => 'active',
                 // Files (personal + company-shared) are on out of the box
-                // with a 5 GB per-customer cap. Admins can flip the flags
-                // or adjust the cap from /admin/customers/{id}/edit.
+                // with a 5 GB per-workspace cap. Admins can flip the flags
+                // or adjust the cap from /admin/workspaces/{id}/edit.
                 'files_feature_enabled' => true,
                 'company_files_enabled' => true,
                 'storage_quota_bytes' => 5 * 1024 * 1024 * 1024,

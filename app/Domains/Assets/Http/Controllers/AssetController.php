@@ -61,7 +61,7 @@ class AssetController extends Controller
         $asset = Asset::create([...$data, 'workspace_id' => $workspace->id]);
 
         return redirect()
-            ->route('customer.assets.show', ['customer' => $workspace->slug, 'asset' => $asset->id])
+            ->route('workspace.assets.show', ['workspace' => $workspace->slug, 'asset' => $asset->id])
             ->with('success', __('assets.created', ['name' => $asset->name]));
     }
 
@@ -129,7 +129,7 @@ class AssetController extends Controller
         $asset->delete();
 
         return redirect()
-            ->route('customer.assets.index', ['customer' => $workspace->slug])
+            ->route('workspace.assets.index', ['workspace' => $workspace->slug])
             ->with('success', __('assets.deleted'));
     }
 
@@ -158,7 +158,7 @@ class AssetController extends Controller
 
     private function currentTenant(Request $request): Workspace
     {
-        $workspace = $request->attributes->get('customer');
+        $workspace = $request->attributes->get('workspace');
         if ($workspace instanceof Workspace) {
             return $workspace;
         }

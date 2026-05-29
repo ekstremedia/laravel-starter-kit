@@ -14,7 +14,7 @@ class WorkspaceMemberRemovedNotification extends Notification
     use Queueable;
     use UsesEmailTemplate;
 
-    public function __construct(public string $customerName) {}
+    public function __construct(public string $workspaceName) {}
 
     /**
      * @return array<int, string>
@@ -26,8 +26,8 @@ class WorkspaceMemberRemovedNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        return $this->renderTemplate('customer-member-removed', $notifiable, [
-            'customer_name' => $this->customerName,
+        return $this->renderTemplate('workspace-member-removed', $notifiable, [
+            'workspace_name' => $this->workspaceName,
         ]);
     }
 
@@ -37,8 +37,8 @@ class WorkspaceMemberRemovedNotification extends Notification
     public function toArray(object $notifiable): array
     {
         return [
-            'title' => "Removed from {$this->customerName}",
-            'message' => "You have been removed from {$this->customerName}.",
+            'title' => "Removed from {$this->workspaceName}",
+            'message' => "You have been removed from {$this->workspaceName}.",
             'icon' => 'pi-building',
         ];
     }

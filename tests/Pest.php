@@ -34,12 +34,12 @@ pest()->extend(TestCase::class)
     ->in('Unit');
 
 /**
- * Create a customer (`App\Domains\Workspaces\Models\Workspace` under the hood) for use in a test.
+ * Create a workspace (`App\Domains\Workspaces\Models\Workspace` under the hood) for use in a test.
  * In multi-tenant integration tests against real Postgres the creation event
- * pipeline provisions the per-customer schema; in the Feature suite above we
+ * pipeline provisions the per-workspace schema; in the Feature suite above we
  * strip those listeners so this just writes a `tenants` row.
  */
-function createCustomer(string $slug = 'acme', ?string $name = null): Workspace
+function createWorkspace(string $slug = 'acme', ?string $name = null): Workspace
 {
     return Workspace::create([
         'slug' => $slug,
@@ -49,50 +49,50 @@ function createCustomer(string $slug = 'acme', ?string $name = null): Workspace
 }
 
 /**
- * Attach the user to a customer (creating one on the fly when not supplied)
- * and grant them a customer-scoped role. Defaults to `User` so most tests get
+ * Attach the user to a workspace (creating one on the fly when not supplied)
+ * and grant them a workspace-scoped role. Defaults to `User` so most tests get
  * the standard file permissions; pass `null` to skip role assignment when a
  * bare membership is what the test needs.
  */
-function joinCustomer(User $user, ?Workspace $customer = null, ?string $role = 'User'): Workspace
+function joinWorkspace(User $user, ?Workspace $workspace = null, ?string $role = 'User'): Workspace
 {
-    $customer ??= Workspace::query()->where('slug', 'acme')->first() ?? createCustomer();
+    $workspace ??= Workspace::query()->where('slug', 'acme')->first() ?? createWorkspace();
 
     if ($role === null) {
-        $user->customers()->syncWithoutDetaching([$customer->id]);
+        $user->workspaces()->syncWithoutDetaching([$workspace->id]);
     } else {
-        grantRoleOnCustomer($user, $role, $customer);
+        grantRoleOnWorkspace($user, $role, $workspace);
     }
 
-    return $customer;
+    return $workspace;
 }
 
 /**
- * Build a customer-scoped URL, e.g. `customerUrl($c, '/dashboard')` →
- * `/c/acme/dashboard`. Path is joined as-is; omit to get the root `/c/acme`.
+ * Build a workspace-scoped URL, e.g. `workspaceUrl($c, '/dashboard')` →
+ * `/w/acme/dashboard`. Path is joined as-is; omit to get the root `/w/acme`.
  */
-function customerUrl(Workspace $customer, string $path = ''): string
+function workspaceUrl(Workspace $workspace, string $path = ''): string
 {
     $path = $path === '' ? '' : '/'.ltrim($path, '/');
 
-    return "/c/{$customer->slug}{$path}";
+    return "/w/{$workspace->slug}{$path}";
 }
 
 /**
- * Assign a customer-scoped role to a user on a specific customer. Joins the
- * customer first so the membership + role rows stay in sync. Resets the
+ * Assign a workspace-scoped role to a user on a specific workspace. Joins the
+ * workspace first so the membership + role rows stay in sync. Resets the
  * PermissionRegistrar team id back to null so subsequent unscoped checks
  * (e.g. SuperAdmin) aren't accidentally constrained.
  */
-function grantRoleOnCustomer(User $user, string $role, Workspace $customer): void
+function grantRoleOnWorkspace(User $user, string $role, Workspace $workspace): void
 {
-    WorkspaceMembership::attach($user, $customer, $role);
+    WorkspaceMembership::attach($user, $workspace, $role);
     app(PermissionRegistrar::class)->setPermissionsTeamId(null);
 }
 
 /**
  * Promote a user to platform SuperAdmin by setting the boolean column on the
- * users table. Independent of any customer context; see `User::isSuperAdmin()`.
+ * users table. Independent of any workspace context; see `User::isSuperAdmin()`.
  */
 function makeSuperAdmin(User $user): User
 {

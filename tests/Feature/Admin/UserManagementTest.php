@@ -10,7 +10,7 @@ beforeEach(function () {
     $this->admin->forceFill(['is_super_admin' => true])->save();
 });
 
-it('creates a user (platform-level; no customer role assigned here)', function () {
+it('creates a user (platform-level; no workspace role assigned here)', function () {
     $this->actingAs($this->admin)->post('/admin/users', [
         'first_name' => 'Jane',
         'last_name' => 'Doe',

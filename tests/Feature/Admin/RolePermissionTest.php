@@ -15,12 +15,12 @@ beforeEach(function () {
 it('creates a role with permissions', function () {
     $this->actingAs($this->admin)->post('/admin/roles', [
         'name' => 'Moderator',
-        'permissions' => ['manage customer users', 'view dashboard'],
+        'permissions' => ['manage workspace users', 'view dashboard'],
     ])->assertRedirect('/admin/roles');
 
     $role = Role::findByName('Moderator');
     expect($role->permissions->pluck('name')->all())
-        ->toEqualCanonicalizing(['manage customer users', 'view dashboard']);
+        ->toEqualCanonicalizing(['manage workspace users', 'view dashboard']);
 });
 
 it('updates role permissions', function () {

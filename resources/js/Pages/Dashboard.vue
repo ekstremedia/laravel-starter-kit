@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /*
- * Customer-scoped dashboard. Differs from /home (personal account overview)
- * by showing tenant-level stats: customer identity, member count, files
+ * Workspace-scoped dashboard. Differs from /home (personal account overview)
+ * by showing tenant-level stats: workspace identity, member count, files
  * usage (when the feature is on), chat backlog (when chat is on), and
  * cross-member recent activity. Non-admins only see cells relevant to
  * them — the Admin deep-link on the member tile is hidden when they lack
@@ -13,7 +13,7 @@ import { computed } from 'vue';
 import AppLayout from '@/Layouts/CommandLayout.vue';
 import Dot from '@/Components/Command/Dot.vue';
 import Icon from '@/Components/Command/Icon.vue';
-import { useCustomer } from '@/composables/useCustomer';
+import { useWorkspace } from '@/composables/useWorkspace';
 import type { PageProps } from '@/types';
 
 interface ActivityRow {
@@ -37,9 +37,9 @@ const props = defineProps<Props>();
 const { t } = useI18n();
 const page = usePage<PageProps>();
 const user = computed(() => page.props.auth.user!);
-const customer = computed(() => page.props.customer);
+const workspace = computed(() => page.props.workspace);
 const isAdmin = computed(() => user.value?.is_super_admin === true);
-const { customerUrl } = useCustomer();
+const { workspaceUrl } = useWorkspace();
 
 const headerMeta = computed(() => {
     const now = new Date();
@@ -86,7 +86,7 @@ function formatDate(iso: string | null): string {
 
             <h1
                 :style="{ margin: 0, fontSize: '32px', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--fg)' }"
-            >{{ customer?.name ?? t('nav.dashboard') }}</h1>
+            >{{ workspace?.name ?? t('nav.dashboard') }}</h1>
             <p :style="{ fontSize: '13px', color: 'var(--fg-dim)', margin: '8px 0 0' }">
                 {{ t('dashboard.tenant_subtitle') }}
             </p>
@@ -104,12 +104,12 @@ function formatDate(iso: string | null): string {
                     overflow: 'hidden',
                 }"
             >
-                <!-- Customer identity -->
+                <!-- Workspace identity -->
                 <div :style="{ background: 'var(--panel)', padding: '14px 16px' }">
                     <div
                         class="cmd-mono cmd-uc"
                         :style="{ fontSize: '10px', color: 'var(--fg-mute)', marginBottom: '8px', fontWeight: 500 }"
-                    >{{ t('dashboard.customer') }}</div>
+                    >{{ t('dashboard.workspace') }}</div>
                     <div :style="{ display: 'flex', alignItems: 'center', gap: '8px' }">
                         <span
                             class="cmd-mono"
@@ -121,8 +121,8 @@ function formatDate(iso: string | null): string {
                                 padding: '2px 8px',
                                 borderRadius: '3px',
                             }"
-                        >{{ customer?.slug ?? '—' }}</span>
-                        <span :style="{ fontSize: '13px', color: 'var(--fg)' }">{{ customer?.name ?? '—' }}</span>
+                        >{{ workspace?.slug ?? '—' }}</span>
+                        <span :style="{ fontSize: '13px', color: 'var(--fg)' }">{{ workspace?.name ?? '—' }}</span>
                     </div>
                 </div>
 
@@ -157,7 +157,7 @@ function formatDate(iso: string | null): string {
                         <span class="cmd-mono" :style="{ fontSize: '11.5px', color: 'var(--fg-mute)', marginLeft: 'auto' }">{{ formatBytes(filesStats.bytes) }}</span>
                     </div>
                     <Link
-                        :href="customerUrl('/files')"
+                        :href="workspaceUrl('/files')"
                         :style="{ fontSize: '11.5px', color: 'var(--accent)', textDecoration: 'none', display: 'inline-block', marginTop: '6px' }"
                     >{{ t('dashboard.open_files') }} →</Link>
                 </div>

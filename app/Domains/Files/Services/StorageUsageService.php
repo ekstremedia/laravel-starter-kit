@@ -22,7 +22,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  *   - **Billable** — uploads where the FileItem is in the `file` collection
  *     and is owned by the model in question. Owners are polymorphic (User,
  *     Workspace, Building, etc.). This is what quota enforcement and the /files
- *     usage bar use. Scoped per-(owner, tenant) so each customer gets its
+ *     usage bar use. Scoped per-(owner, tenant) so each workspace gets its
  *     own bucket.
  *
  *   - **System total** — every row in the `media` table, regardless of owner
@@ -211,7 +211,7 @@ class StorageUsageService
     }
 
     /**
-     * Billable usage per customer (tenant). Sums the `file` collection only.
+     * Billable usage per workspace (tenant). Sums the `file` collection only.
      *
      * @return array<int, array{workspace_id: int, name: string, slug: string, bytes: int, file_count: int}>
      */
@@ -377,7 +377,7 @@ class StorageUsageService
 
     /**
      * Resolve a user's effective personal-storage quota following the 3-tier
-     * fallback order: user override → customer default → global default →
+     * fallback order: user override → workspace default → global default →
      * unlimited.
      *
      * Sentinels:
@@ -539,8 +539,8 @@ class StorageUsageService
                 thresholdPercent: $current,
                 usedBytes: $used,
                 quotaBytes: (int) $quota,
-                tenantId: $workspace->id,
-                tenantName: $workspace->name,
+                workspaceId: $workspace->id,
+                workspaceName: $workspace->name,
             ));
             $thresholdMap[$key] = $current;
             $settings->merge(['storage_last_alerted_threshold' => $thresholdMap]);

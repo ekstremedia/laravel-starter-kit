@@ -107,9 +107,9 @@ class AppServiceProvider extends ServiceProvider
         // never takes the site down in the field.
         Model::preventLazyLoading(! $this->app->isProduction());
 
-        // Stamp the active customer on every activity_log row. Without this,
-        // customer-scoped dashboards that filter activity by "members of
-        // this customer" would leak rows from other customers the same
+        // Stamp the active workspace on every activity_log row. Without this,
+        // workspace-scoped dashboards that filter activity by "members of
+        // this workspace" would leak rows from other workspaces the same
         // users belong to (a user who's Admin on A and User on B would see
         // B's actions on A's dashboard). Null workspace_id is preserved for
         // genuine central-only events (password reset, profile edit from
@@ -154,9 +154,9 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // SuperAdmin bypass: `Gate::before` runs before every ability check
-        // (Spatie permission gates included), so a SuperAdmin clears customer-
-        // scoped `can('upload files')` / `can('manage customer users')` checks
-        // even when they enter a customer they hold no membership role on.
+        // (Spatie permission gates included), so a SuperAdmin clears workspace-
+        // scoped `can('upload files')` / `can('manage workspace users')` checks
+        // even when they enter a workspace they hold no membership role on.
         // Returning `null` falls through to normal resolution for everyone else.
         Gate::before(function ($user, $ability) {
             if ($user !== null && $user->isSuperAdmin()) {

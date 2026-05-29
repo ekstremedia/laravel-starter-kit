@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n';
 import CmdButton from '@/Components/Command/Button.vue';
 import Icon from '@/Components/Command/Icon.vue';
 import ScopeSwitcher from '@/Components/Files/ScopeSwitcher.vue';
-import { useCustomer } from '@/composables/useCustomer';
+import { useWorkspace } from '@/composables/useWorkspace';
 import type { PageProps } from '@/types';
 
 /**
@@ -50,16 +50,16 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const { customerUrl, customer } = useCustomer();
+const { workspaceUrl, workspace } = useWorkspace();
 const page = usePage<PageProps>();
 
 // The scope pill only earns its place when a Shared tab actually exists:
-// tenancy on, the feature enabled for this customer, and the viewer permitted.
+// workspaces on, the feature enabled for this workspace, and the viewer permitted.
 // Otherwise the whole row is dropped (no lone "Private" chip).
 const showScopeSwitcher = computed<boolean>(() =>
-    (page.props.tenancy?.enabled ?? false)
-    && !!customer.value?.files_feature_enabled
-    && !!customer.value?.company_files_enabled
+    (page.props.workspaces?.enabled ?? false)
+    && !!workspace.value?.files_feature_enabled
+    && !!workspace.value?.company_files_enabled
     && (props.permissions.canViewShared ?? false),
 );
 
@@ -89,14 +89,14 @@ const newFolderText = computed(() => props.newFolderLabel ?? t('files.new_folder
         <div :style="{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }">
             <div :style="{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', flexWrap: 'wrap' }">
                 <Link
-                    :href="customerUrl(basePath)"
+                    :href="workspaceUrl(basePath)"
                     :style="{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 500 }"
                 >{{ rootLabel }}</Link>
                 <template v-for="(b, i) in breadcrumbs" :key="b.id">
                     <Icon name="chevR" :size="11" :style="{ color: 'var(--fg-mute)' }" />
                     <Link
                         v-if="i < breadcrumbs.length - 1"
-                        :href="customerUrl(`${basePath}/${b.id}`)"
+                        :href="workspaceUrl(`${basePath}/${b.id}`)"
                         :style="{ color: 'var(--accent)', textDecoration: 'none' }"
                     >{{ b.name }}</Link>
                     <span v-else :style="{ color: 'var(--fg)', fontWeight: 500 }">{{ b.name }}</span>

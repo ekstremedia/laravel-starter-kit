@@ -21,7 +21,7 @@ use Illuminate\Validation\Rule;
  * tokenised link that threads them through registration/login and into the
  * workspace with the assigned role.
  *
- * store()/destroy() run inside a workspace (customer.admin gated); accept()
+ * store()/destroy() run inside a workspace (workspace.admin gated); accept()
  * is a public route — the global tenant scope is inert there, so the
  * invitation resolves by its unique token regardless of context.
  */
@@ -39,7 +39,7 @@ class WorkspaceInvitationController extends Controller
         $email = mb_strtolower($data['email']);
 
         $invitee = User::query()->where('email', $email)->first();
-        if ($invitee && $invitee->belongsToCustomer($workspace)) {
+        if ($invitee && $invitee->belongsToWorkspace($workspace)) {
             return back()->with('error', __('invitations.flash.already_member', ['email' => $email]));
         }
 
@@ -113,13 +113,13 @@ class WorkspaceInvitationController extends Controller
     public static function toWorkspace(Workspace $workspace): RedirectResponse
     {
         return config('workspaces.enabled')
-            ? redirect()->route('customer.dashboard', ['customer' => $workspace->slug])
-            : redirect()->route('customer.dashboard');
+            ? redirect()->route('workspace.dashboard', ['workspace' => $workspace->slug])
+            : redirect()->route('workspace.dashboard');
     }
 
     private function workspace(Request $request): Workspace
     {
-        $workspace = $request->attributes->get('customer');
+        $workspace = $request->attributes->get('workspace');
 
         if (! $workspace instanceof Workspace) {
             throw new \LogicException('WorkspaceInvitationController requires an active workspace.');

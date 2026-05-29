@@ -7,19 +7,19 @@ use Database\Seeders\RoleAndPermissionSeeder;
 
 beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
-    $this->customer = createCustomer();
+    $this->workspace = createWorkspace();
 });
 
-it('lets a member view the customer about page', function () {
+it('lets a member view the workspace about page', function () {
     $member = User::factory()->create();
-    grantRoleOnCustomer($member, 'User', $this->customer);
+    grantRoleOnWorkspace($member, 'User', $this->workspace);
 
     $this->actingAs($member)
-        ->get(customerUrl($this->customer, '/about'))
+        ->get(workspaceUrl($this->workspace, '/about'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('Customer/About/Show')
-            ->where('profile.slug', $this->customer->slug)
+            ->component('Workspace/About/Show')
+            ->where('profile.slug', $this->workspace->slug)
             ->where('can_edit', false)
             ->has('members')
         );
@@ -29,44 +29,44 @@ it('forbids non-members from the about page', function () {
     $outsider = User::factory()->create();
 
     $this->actingAs($outsider)
-        ->get(customerUrl($this->customer, '/about'))
+        ->get(workspaceUrl($this->workspace, '/about'))
         ->assertForbidden();
 });
 
-it('exposes can_edit=true for customer Admins', function () {
+it('exposes can_edit=true for workspace Admins', function () {
     $admin = User::factory()->create();
-    grantRoleOnCustomer($admin, 'Admin', $this->customer);
+    grantRoleOnWorkspace($admin, 'Admin', $this->workspace);
 
     $this->actingAs($admin)
-        ->get(customerUrl($this->customer, '/about'))
+        ->get(workspaceUrl($this->workspace, '/about'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->where('can_edit', true));
 });
 
 it('forbids non-Admin members from the edit page', function () {
     $editor = User::factory()->create();
-    grantRoleOnCustomer($editor, 'Editor', $this->customer);
+    grantRoleOnWorkspace($editor, 'Editor', $this->workspace);
 
     $this->actingAs($editor)
-        ->get(customerUrl($this->customer, '/about/edit'))
+        ->get(workspaceUrl($this->workspace, '/about/edit'))
         ->assertForbidden();
 });
 
-it('lets a customer Admin update the customer profile', function () {
+it('lets a workspace Admin update the workspace profile', function () {
     $admin = User::factory()->create();
-    grantRoleOnCustomer($admin, 'Admin', $this->customer);
+    grantRoleOnWorkspace($admin, 'Admin', $this->workspace);
 
     $this->actingAs($admin)
-        ->put(customerUrl($this->customer, '/about'), [
+        ->put(workspaceUrl($this->workspace, '/about'), [
             'name' => 'New Name LLC',
             'headline' => '  We make widgets  ',
             'about' => "Founded in 2020.\n\nMaking widgets since.",
             'location' => 'Oslo',
             'website' => 'https://example.com',
         ])
-        ->assertRedirect(customerUrl($this->customer, '/about'));
+        ->assertRedirect(workspaceUrl($this->workspace, '/about'));
 
-    $fresh = $this->customer->fresh();
+    $fresh = $this->workspace->fresh();
     expect($fresh->name)->toBe('New Name LLC');
     expect($fresh->headline)->toBe('We make widgets');
     expect($fresh->about)->toBe("Founded in 2020.\n\nMaking widgets since.");
@@ -76,11 +76,11 @@ it('lets a customer Admin update the customer profile', function () {
 
 it('rejects a bad website URL', function () {
     $admin = User::factory()->create();
-    grantRoleOnCustomer($admin, 'Admin', $this->customer);
+    grantRoleOnWorkspace($admin, 'Admin', $this->workspace);
 
     $this->actingAs($admin)
-        ->put(customerUrl($this->customer, '/about'), [
-            'name' => $this->customer->name,
+        ->put(workspaceUrl($this->workspace, '/about'), [
+            'name' => $this->workspace->name,
             'website' => 'javascript:alert(1)',
         ])
         ->assertSessionHasErrors('website');
@@ -88,10 +88,10 @@ it('rejects a bad website URL', function () {
 
 it('forbids non-Admin members from updating', function () {
     $editor = User::factory()->create();
-    grantRoleOnCustomer($editor, 'Editor', $this->customer);
+    grantRoleOnWorkspace($editor, 'Editor', $this->workspace);
 
     $this->actingAs($editor)
-        ->put(customerUrl($this->customer, '/about'), [
+        ->put(workspaceUrl($this->workspace, '/about'), [
             'name' => 'hacker',
         ])
         ->assertForbidden();

@@ -23,7 +23,7 @@ return [
     'exiftool_binary' => env('EXIFTOOL_BINARY', 'exiftool'),
 
     // Polymorphic owner types this app accepts for FileItem ownership.
-    // Add new types (Building, Customer, Property…) here as the domain grows
+    // Add new types (Building, Workspace, Property…) here as the domain grows
     // — the controller refuses to morph to anything not on this list to
     // prevent crafted owner_type payloads from probing arbitrary classes.
     'allowed_owner_types' => [

@@ -183,7 +183,7 @@ class FileTrashController extends Controller
 
     private function currentTenant(Request $request): Workspace
     {
-        $workspace = $request->attributes->get('customer');
+        $workspace = $request->attributes->get('workspace');
         if ($workspace instanceof Workspace) {
             return $workspace;
         }

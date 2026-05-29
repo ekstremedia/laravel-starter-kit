@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /*
- * Customer profile editor — accessible to customer Admins (via the
+ * Workspace profile editor — accessible to workspace Admins (via the
  * TenantProfilePolicy). Mirrors the editable fields of the user profile
  * (headline / bio-equivalent / location / website) plus the company name.
  */
@@ -8,9 +8,9 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import AppLayout from '@/Layouts/CommandLayout.vue';
 import Field from '@/Components/Command/Field.vue';
-import { useCustomer } from '@/composables/useCustomer';
+import { useWorkspace } from '@/composables/useWorkspace';
 
-interface CustomerProfilePayload {
+interface WorkspaceProfilePayload {
     id: number;
     slug: string;
     name: string;
@@ -21,12 +21,12 @@ interface CustomerProfilePayload {
 }
 
 interface Props {
-    profile: CustomerProfilePayload;
+    profile: WorkspaceProfilePayload;
 }
 
 const props = defineProps<Props>();
 const { t } = useI18n();
-const { customerUrl } = useCustomer();
+const { workspaceUrl } = useWorkspace();
 
 const form = useForm({
     name: props.profile.name,
@@ -41,19 +41,19 @@ function save() {
     // flash('success', __('flash.profile.updated')) and the global
     // useFlashToast() in CommandLayout surfaces it. Adding one here would
     // double-toast and use a different label than the backend message.
-    form.put(customerUrl('/about'), { preserveScroll: true });
+    form.put(workspaceUrl('/about'), { preserveScroll: true });
 }
 </script>
 
 <template>
     <AppLayout>
-        <Head :title="t('customer.about.edit_title')" />
+        <Head :title="t('workspace.about.edit_title')" />
 
         <div :style="{ maxWidth: '720px', margin: '0 auto', padding: '24px 20px' }">
             <div :style="{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }">
-                <h1 :style="{ margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--fg)' }">{{ t('customer.about.edit_title') }}</h1>
+                <h1 :style="{ margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--fg)' }">{{ t('workspace.about.edit_title') }}</h1>
                 <Link
-                    :href="customerUrl('/about')"
+                    :href="workspaceUrl('/about')"
                     :style="{ fontSize: '12px', color: 'var(--fg-mute)', textDecoration: 'none' }"
                 >{{ t('common.cancel') }}</Link>
             </div>
@@ -65,25 +65,25 @@ function save() {
             >
                 <Field
                     v-model="form.name"
-                    :label="t('customer.about.name_label')"
+                    :label="t('workspace.about.name_label')"
                     :error="form.errors.name"
                 />
                 <Field
                     v-model="form.headline"
-                    :label="t('customer.about.headline_label')"
-                    :placeholder="t('customer.about.headline_placeholder')"
+                    :label="t('workspace.about.headline_label')"
+                    :placeholder="t('workspace.about.headline_placeholder')"
                     :error="form.errors.headline"
                 />
 
                 <div>
                     <label :style="{ display: 'block', fontSize: '11px', color: 'var(--fg-dim)', marginBottom: '4px', fontWeight: 500 }">
-                        {{ t('customer.about.about_label') }}
+                        {{ t('workspace.about.about_label') }}
                     </label>
                     <textarea
                         v-model="form.about"
                         rows="6"
                         :maxlength="2000"
-                        :placeholder="t('customer.about.about_placeholder')"
+                        :placeholder="t('workspace.about.about_placeholder')"
                         :style="{
                             width: '100%',
                             background: 'var(--panel2)',
@@ -103,13 +103,13 @@ function save() {
                 <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }">
                     <Field
                         v-model="form.location"
-                        :label="t('customer.about.location_label')"
+                        :label="t('workspace.about.location_label')"
                         :error="form.errors.location"
                     />
                     <Field
                         v-model="form.website"
                         type="url"
-                        :label="t('customer.about.website_label')"
+                        :label="t('workspace.about.website_label')"
                         placeholder="https://example.com"
                         :error="form.errors.website"
                     />

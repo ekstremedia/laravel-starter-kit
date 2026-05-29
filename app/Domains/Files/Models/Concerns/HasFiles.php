@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * Default implementation of the FileOwner contract. Adopt on any Eloquent
  * model that should own a file tree. Override the canManage/canView hooks
  * when the model has its own membership/permission semantics (Workspace,
- * Building, Customer, etc.).
+ * Building, Workspace, etc.).
  */
 trait HasFiles
 {

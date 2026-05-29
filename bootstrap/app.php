@@ -33,21 +33,21 @@ return Application::configure(basePath: dirname(__DIR__))
         channels: __DIR__.'/../routes/channels.php',
         health: '/up',
         then: function (): void {
-            // Workspace routes. Multi-tenant: mounted under /c/{workspace} and
+            // Workspace routes. Multi-tenant: mounted under /w/{workspace} and
             // resolved by slug. Single-tenant (tenancy disabled): mounted at the
             // root with no prefix and bound to the one default workspace — so
             // the app reads like a normal Laravel app. Paths that also exist
             // centrally (/profile, /notifications in web.php, registered first)
             // win the match; the workspace duplicates are harmless shadows.
             if (config('workspaces.enabled')) {
-                Route::prefix('c/{customer}')
+                Route::prefix('w/{workspace}')
                     ->middleware(['web', 'auth', 'verified', ResolveWorkspace::class])
-                    ->name('customer.')
-                    ->group(__DIR__.'/../routes/customer.php');
+                    ->name('workspace.')
+                    ->group(__DIR__.'/../routes/workspace.php');
             } else {
                 Route::middleware(['web', 'auth', 'verified', BindDefaultWorkspace::class])
-                    ->name('customer.')
-                    ->group(__DIR__.'/../routes/customer.php');
+                    ->name('workspace.')
+                    ->group(__DIR__.'/../routes/workspace.php');
             }
         },
     )
@@ -78,7 +78,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'chat.enabled' => EnsureChatEnabled::class,
             'storage.available' => EnsureStorageAvailable::class,
             'company.storage.available' => EnsureCompanyStorageAvailable::class,
-            'customer.admin' => EnsureWorkspaceAdmin::class,
+            'workspace.admin' => EnsureWorkspaceAdmin::class,
             'super.admin' => EnsureSuperAdmin::class,
         ]);
     })

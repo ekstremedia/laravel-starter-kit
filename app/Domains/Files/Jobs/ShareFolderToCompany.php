@@ -37,7 +37,7 @@ class ShareFolderToCompany implements ShouldQueue
 
     public function __construct(
         public int $personalFolderId,
-        public int $tenantId,
+        public int $workspaceId,
         public int $actingUserId,
         public ?int $companyParentId = null,
     ) {}
@@ -45,7 +45,7 @@ class ShareFolderToCompany implements ShouldQueue
     public function handle(StorageUsageService $usage): void
     {
         $folder = FileItem::find($this->personalFolderId);
-        $workspace = Workspace::find($this->tenantId);
+        $workspace = Workspace::find($this->workspaceId);
         $actor = User::find($this->actingUserId);
 
         if (! $folder || ! $workspace || ! $actor) {

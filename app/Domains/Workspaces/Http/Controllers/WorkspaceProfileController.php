@@ -14,33 +14,33 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Customer "About" page — a small, editable profile card for the company.
- * Distinct from /admin/customers/{id}/edit, which is the platform-admin
- * surface. Here, customer Admins (and super admins) can write a tagline,
+ * Workspace "About" page — a small, editable profile card for the company.
+ * Distinct from /admin/workspaces/{id}/edit, which is the platform-admin
+ * surface. Here, workspace Admins (and super admins) can write a tagline,
  * a longer about-blurb, location, and website without leaving their
- * customer-scoped UI.
+ * workspace-scoped UI.
  */
 class WorkspaceProfileController extends Controller
 {
     /**
-     * Public-ish landing for the customer. Any member can view; outsiders
+     * Public-ish landing for the workspace. Any member can view; outsiders
      * cannot (the surrounding tenancy middleware already bounces them, but
      * we re-check via the policy so a future de-scoping doesn't open this up
      * silently).
      */
     public function show(Request $request): Response
     {
-        $customer = $this->customer();
+        $workspace = $this->workspace();
         $viewer = $request->user();
-        abort_unless($viewer && (new WorkspaceProfilePolicy)->view($viewer, $customer), 403);
+        abort_unless($viewer && (new WorkspaceProfilePolicy)->view($viewer, $workspace), 403);
 
         $teamKey = config('permission.column_names.team_foreign_key');
         $mhrTable = config('permission.table_names.model_has_roles');
 
         // Same JOIN-based role load as the members page so the about page can
         // show "Members" with their role chips without per-row queries.
-        $members = $customer->users()
-            ->with(['roles' => fn ($q) => $q->where("{$mhrTable}.{$teamKey}", $customer->id), 'media'])
+        $members = $workspace->users()
+            ->with(['roles' => fn ($q) => $q->where("{$mhrTable}.{$teamKey}", $workspace->id), 'media'])
             ->orderBy('users.email')
             ->limit(24)
             ->get(['users.id', 'users.public_id', 'users.first_name', 'users.last_name', 'users.email', 'users.headline'])
@@ -53,46 +53,46 @@ class WorkspaceProfileController extends Controller
             ])
             ->values();
 
-        return Inertia::render('Customer/About/Show', [
+        return Inertia::render('Workspace/About/Show', [
             'profile' => [
-                'id' => $customer->id,
-                'slug' => $customer->slug,
-                'name' => $customer->name,
-                'headline' => $customer->headline,
-                'about' => $customer->about,
-                'location' => $customer->location,
-                'website' => $customer->website,
+                'id' => $workspace->id,
+                'slug' => $workspace->slug,
+                'name' => $workspace->name,
+                'headline' => $workspace->headline,
+                'about' => $workspace->about,
+                'location' => $workspace->location,
+                'website' => $workspace->website,
             ],
             'members' => $members,
-            'member_count' => $customer->users()->count(),
-            'can_edit' => (new WorkspaceProfilePolicy)->update($viewer, $customer),
+            'member_count' => $workspace->users()->count(),
+            'can_edit' => (new WorkspaceProfilePolicy)->update($viewer, $workspace),
         ]);
     }
 
     public function edit(Request $request): Response
     {
-        $customer = $this->customer();
+        $workspace = $this->workspace();
         $viewer = $request->user();
-        abort_unless($viewer && (new WorkspaceProfilePolicy)->update($viewer, $customer), 403);
+        abort_unless($viewer && (new WorkspaceProfilePolicy)->update($viewer, $workspace), 403);
 
-        return Inertia::render('Customer/About/Edit', [
+        return Inertia::render('Workspace/About/Edit', [
             'profile' => [
-                'id' => $customer->id,
-                'slug' => $customer->slug,
-                'name' => $customer->name,
-                'headline' => $customer->headline,
-                'about' => $customer->about,
-                'location' => $customer->location,
-                'website' => $customer->website,
+                'id' => $workspace->id,
+                'slug' => $workspace->slug,
+                'name' => $workspace->name,
+                'headline' => $workspace->headline,
+                'about' => $workspace->about,
+                'location' => $workspace->location,
+                'website' => $workspace->website,
             ],
         ]);
     }
 
     public function update(Request $request): RedirectResponse
     {
-        $customer = $this->customer();
+        $workspace = $this->workspace();
         $viewer = $request->user();
-        abort_unless($viewer && (new WorkspaceProfilePolicy)->update($viewer, $customer), 403);
+        abort_unless($viewer && (new WorkspaceProfilePolicy)->update($viewer, $workspace), 403);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -109,14 +109,14 @@ class WorkspaceProfileController extends Controller
             }
         }
 
-        $customer->fill($data)->save();
+        $workspace->fill($data)->save();
 
         return redirect()
-            ->route('customer.about.show', ['customer' => $customer->slug])
+            ->route('workspace.about.show', ['workspace' => $workspace->slug])
             ->with('success', __('flash.profile.updated'));
     }
 
-    private function customer(): Workspace
+    private function workspace(): Workspace
     {
         /** @var Workspace $workspace */
         $workspace = app(WorkspaceContext::class)->current() ?? abort(404);

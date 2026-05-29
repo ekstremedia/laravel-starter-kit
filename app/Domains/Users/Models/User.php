@@ -127,10 +127,10 @@ class User extends Authenticatable implements FileOwner, HasLocalePreference, Ha
     /**
      * Platform super-user flag. Stored as a plain column on users rather than
      * a Spatie role: Spatie's team schema forces `model_has_roles.team_id` to
-     * be non-null, so "global, not attached to any customer" isn't
+     * be non-null, so "global, not attached to any workspace" isn't
      * representable there. Keeping it as a boolean also makes the distinction
      * crystal-clear — SuperAdmin is a platform property of the account, not a
-     * per-customer assignment.
+     * per-workspace assignment.
      */
     public function isSuperAdmin(): bool
     {
@@ -282,21 +282,21 @@ class User extends Authenticatable implements FileOwner, HasLocalePreference, Ha
     }
 
     /**
-     * Customers (a.k.a. tenants in package-speak) this user is a member of.
+     * Workspaces (a.k.a. tenants in package-speak) this user is a member of.
      * The underlying model is `App\Domains\Workspaces\Models\Workspace` because stancl/tenancy's base
-     * contract names it that way; at the application layer we call them customers.
+     * contract names it that way; at the application layer we call them workspaces.
      *
      * @return BelongsToMany<Workspace, $this>
      */
-    public function customers(): BelongsToMany
+    public function workspaces(): BelongsToMany
     {
         return $this->belongsToMany(Workspace::class, 'workspace_user', 'user_id', 'workspace_id')
             ->withTimestamps();
     }
 
-    public function belongsToCustomer(Workspace $customer): bool
+    public function belongsToWorkspace(Workspace $workspace): bool
     {
-        return $this->customers()->whereKey($customer->getKey())->exists();
+        return $this->workspaces()->whereKey($workspace->getKey())->exists();
     }
 
     /**
@@ -395,7 +395,7 @@ class User extends Authenticatable implements FileOwner, HasLocalePreference, Ha
 
     /**
      * Grantable platform-level capability (e.g. "manage_email_templates") —
-     * not super-admin, not customer-scoped. Stored on the user row because
+     * not super-admin, not workspace-scoped. Stored on the user row because
      * Spatie's team schema can't represent a team-less assignment. This is the
      * *explicit* grant only; SuperAdmins bypass abilities via Gate::before.
      */

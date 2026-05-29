@@ -13,7 +13,7 @@ use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 
 /**
  * Single-workspace mode (tenancy disabled). The workspace routes are mounted
- * at the root (no /c/{workspace} prefix), so there is no slug to resolve — we
+ * at the root (no /w/{workspace} prefix), so there is no slug to resolve — we
  * just bind the one default workspace for the request so the BelongsToWorkspace
  * global scope and the per-workspace permission team still work transparently.
  *
@@ -38,7 +38,7 @@ class BindDefaultWorkspace
             throw new ServiceUnavailableHttpException(null, 'No workspace is configured. Run database seeding.');
         }
 
-        $request->attributes->set('customer', $workspace);
+        $request->attributes->set('workspace', $workspace);
 
         return $this->tenancy->runFor($workspace, fn () => $next($request));
     }

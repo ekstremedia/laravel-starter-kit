@@ -11,7 +11,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('workspaces', function (Blueprint $table) {
-            // Separate from files_feature_enabled so a customer can keep
+            // Separate from files_feature_enabled so a workspace can keep
             // personal files while disabling the shared-company area.
             $table->boolean('company_files_enabled')->default(false);
             // Signed so we can encode an explicit "unlimited" override as -1
@@ -21,9 +21,9 @@ return new class extends Migration
             // Denormalized running total for the company files bucket.
             // Maintained by StorageUsageService::recomputeForTenant.
             $table->unsignedBigInteger('storage_used_bytes')->default(0);
-            // Per-customer default personal quota for members. Null = inherit
+            // Per-workspace default personal quota for members. Null = inherit
             // from the global AppSetting default. -1 = explicit unlimited for
-            // this customer (overrides any global cap). See
+            // this workspace (overrides any global cap). See
             // StorageUsageService::effectivePersonalQuota for the full
             // 3-tier resolution order.
             $table->bigInteger('default_member_storage_bytes')->nullable();

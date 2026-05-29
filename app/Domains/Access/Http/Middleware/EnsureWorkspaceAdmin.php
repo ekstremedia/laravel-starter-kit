@@ -10,13 +10,13 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 /**
- * Gates customer-scoped admin routes to either:
+ * Gates workspace-scoped admin routes to either:
  *   - SuperAdmin  (platform super-user, assignment has team_id = null), or
- *   - Admin on the currently-active customer (team-scoped assignment).
+ *   - Admin on the currently-active workspace (team-scoped assignment).
  *
  * Spatie's bundled `role:Admin` middleware wouldn't let SuperAdmin through
  * because their assignment has `team_id = null` and the active team id is
- * the customer's — the role lookup would miss. We need the OR explicitly.
+ * the workspace's — the role lookup would miss. We need the OR explicitly.
  */
 class EnsureWorkspaceAdmin
 {

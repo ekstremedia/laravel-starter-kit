@@ -14,7 +14,7 @@ import Field from '@/Components/Command/Field.vue';
 import CmdSelect from '@/Components/Command/Select.vue';
 import CmdButton from '@/Components/Command/Button.vue';
 import { useToast } from 'primevue/usetoast';
-import { useCustomer } from '@/composables/useCustomer';
+import { useWorkspace } from '@/composables/useWorkspace';
 import type { PageProps } from '@/types';
 import type { FileBrowserItem } from '@/types/files';
 
@@ -34,7 +34,7 @@ interface PageData {
 
 const props = defineProps<PageData>();
 const { t } = useI18n();
-const { customerUrl } = useCustomer();
+const { workspaceUrl } = useWorkspace();
 const page = usePage<PageProps>();
 
 const viewMode = ref<'grid' | 'list'>((localStorage.getItem('files.viewMode') as 'grid' | 'list') || 'grid');
@@ -70,8 +70,8 @@ const browserPermissions = computed(() => ({
 // Surface Share-to-Company only when the tenant enables company files and the
 // user holds the permission.
 const canShareToCompany = computed<boolean>(() => {
-    const customer = page.props.customer;
-    return !!customer?.company_files_enabled && hasPerm('share files to company');
+    const workspace = page.props.workspace;
+    return !!workspace?.company_files_enabled && hasPerm('share files to company');
 });
 
 const switcherPermissions = computed(() => {
@@ -112,7 +112,7 @@ const toast = useToast();
 
 function onSearch() {
     router.get(
-        customerUrl(currentFolderId.value ? `/files/${currentFolderId.value}` : '/files'),
+        workspaceUrl(currentFolderId.value ? `/files/${currentFolderId.value}` : '/files'),
         { q: searchQuery.value || undefined },
         { preserveState: true, preserveScroll: true, replace: true },
     );
@@ -128,19 +128,19 @@ function confirmDelete(item: FileBrowserItem) {
         acceptLabel: t('files.delete'),
         rejectLabel: t('common.cancel'),
         acceptProps: { severity: 'danger' },
-        accept: () => router.delete(customerUrl(`/files/${item.id}`), { preserveScroll: true }),
+        accept: () => router.delete(workspaceUrl(`/files/${item.id}`), { preserveScroll: true }),
     });
 }
 
 // ── Share to company ─────────────────────────────────────────────────
 function shareToCompany(item: FileBrowserItem) {
-    router.post(customerUrl(`/files/${item.id}/share-to-company`), {}, {
+    router.post(workspaceUrl(`/files/${item.id}/share-to-company`), {}, {
         preserveScroll: true,
         onError: () => toast.add({ severity: 'error', summary: t('files.share_to_company'), detail: t('files.share_failed'), life: 4000 }),
     });
 }
 function unshareFromCompany(item: FileBrowserItem) {
-    router.delete(customerUrl(`/files/${item.id}/share-to-company`), {
+    router.delete(workspaceUrl(`/files/${item.id}/share-to-company`), {
         preserveScroll: true,
         onError: () => toast.add({ severity: 'error', summary: t('files.unshare_from_company'), detail: t('files.share_failed'), life: 4000 }),
     });
@@ -166,7 +166,7 @@ async function createShare() {
     if (!shareDialogFile.value) return;
     shareCreating.value = true;
     try {
-        const res = await fetch(customerUrl(`/files/${shareDialogFile.value.id}/shares`), {
+        const res = await fetch(workspaceUrl(`/files/${shareDialogFile.value.id}/shares`), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -189,7 +189,7 @@ async function createShare() {
 async function quickShare(item: FileBrowserItem) {
     if (item.type !== 'file') return openShareDialog(item);
     try {
-        const res = await fetch(customerUrl(`/files/${item.id}/shares/signed`), {
+        const res = await fetch(workspaceUrl(`/files/${item.id}/shares/signed`), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -212,7 +212,7 @@ async function quickShare(item: FileBrowserItem) {
 // ── Bulk actions (selection lives in FileBrowser; it hands us the ids) ──
 function bulkDownload(ids: number[]) {
     if (!ids.length) return;
-    window.location.href = customerUrl(`/files/bulk/zip?ids=${ids.join(',')}`);
+    window.location.href = workspaceUrl(`/files/bulk/zip?ids=${ids.join(',')}`);
 }
 function confirmBulkDelete(ids: number[]) {
     if (!ids.length) return;
@@ -225,7 +225,7 @@ function confirmBulkDelete(ids: number[]) {
         rejectLabel: t('common.cancel'),
         acceptProps: { severity: 'danger' },
         accept: () => router.post(
-            customerUrl('/files/bulk/delete'),
+            workspaceUrl('/files/bulk/delete'),
             { ids },
             { preserveScroll: true, onSuccess: () => browserRef.value?.clearSelection() },
         ),
@@ -242,7 +242,7 @@ async function openMoveDialog(ids: number[]) {
     moveIds.value = ids;
     moveTargetId.value = 0;
     try {
-        const res = await fetch(customerUrl('/files/folders'), {
+        const res = await fetch(workspaceUrl('/files/folders'), {
             headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
             credentials: 'same-origin',
         });
@@ -270,7 +270,7 @@ const moveFolderOptions = computed(() => {
 
 function submitMove() {
     router.post(
-        customerUrl('/files/bulk/move'),
+        workspaceUrl('/files/bulk/move'),
         { ids: moveIds.value, parent_id: moveTargetId.value || null },
         {
             preserveScroll: true,
@@ -290,7 +290,7 @@ function submitNewFolder() {
     const name = newFolderName.value.trim();
     if (!name) return;
     router.post(
-        customerUrl('/files/folder'),
+        workspaceUrl('/files/folder'),
         { name, parent_id: currentFolderId.value },
         { preserveScroll: true, onSuccess: () => { newFolderOpen.value = false; } },
     );
@@ -332,7 +332,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey));
                 }"
             >
                 <template #afterActions>
-                    <Link :href="customerUrl('/files/trash')" class="cmd-ghost-btn" :style="{ position: 'relative' }">
+                    <Link :href="workspaceUrl('/files/trash')" class="cmd-ghost-btn" :style="{ position: 'relative' }">
                         <i class="pi pi-trash" :style="{ fontSize: '11px' }" />
                         <span>{{ t('files.trash') }}</span>
                         <span

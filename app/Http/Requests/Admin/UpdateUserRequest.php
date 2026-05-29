@@ -20,7 +20,7 @@ class UpdateUserRequest extends FormRequest
     {
         $userId = $this->route('user')?->id;
 
-        // No `roles` rule: roles are customer-scoped and managed per-customer
+        // No `roles` rule: roles are workspace-scoped and managed per-workspace
         // from `/admin/users/{id}`. The controller ignores any roles payload
         // here, so we don't pretend to validate it.
         return [

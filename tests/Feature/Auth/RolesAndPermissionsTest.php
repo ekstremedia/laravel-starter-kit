@@ -10,7 +10,7 @@ beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
 });
 
-it('creates the customer-scoped Admin role template', function () {
+it('creates the workspace-scoped Admin role template', function () {
     expect(Role::where('name', 'Admin')->exists())->toBeTrue();
 });
 
@@ -18,11 +18,11 @@ it('creates the User role template', function () {
     expect(Role::where('name', 'User')->exists())->toBeTrue();
 });
 
-it('creates expected customer-scoped permissions', function () {
+it('creates expected workspace-scoped permissions', function () {
     $expected = [
         'view dashboard',
-        'manage customer users',
-        'manage customer settings',
+        'manage workspace users',
+        'manage workspace settings',
         'manage profile',
         'upload files',
     ];
@@ -32,11 +32,11 @@ it('creates expected customer-scoped permissions', function () {
     }
 });
 
-it('gives the customer-scoped Admin role every customer permission', function () {
+it('gives the workspace-scoped Admin role every workspace permission', function () {
     $adminRole = Role::findByName('Admin');
-    $allCustomerPermissions = Permission::all();
+    $allWorkspacePermissions = Permission::all();
 
-    expect($adminRole->permissions->count())->toBe($allCustomerPermissions->count());
+    expect($adminRole->permissions->count())->toBe($allWorkspacePermissions->count());
 });
 
 it('promotes a user to platform SuperAdmin via the is_super_admin column', function () {
@@ -45,13 +45,13 @@ it('promotes a user to platform SuperAdmin via the is_super_admin column', funct
     expect($user->isSuperAdmin())->toBeTrue();
 });
 
-it('assigns the Admin role on a specific customer', function () {
-    $customer = createCustomer();
+it('assigns the Admin role on a specific workspace', function () {
+    $workspace = createWorkspace();
     $user = User::factory()->create();
 
-    grantRoleOnCustomer($user, 'Admin', $customer);
+    grantRoleOnWorkspace($user, 'Admin', $workspace);
 
-    app(PermissionRegistrar::class)->setPermissionsTeamId($customer->id);
+    app(PermissionRegistrar::class)->setPermissionsTeamId($workspace->id);
     expect($user->hasRole('Admin'))->toBeTrue();
-    expect($user->can('manage customer users'))->toBeTrue();
+    expect($user->can('manage workspace users'))->toBeTrue();
 });

@@ -17,30 +17,30 @@ use Inertia\Response;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Customer-scoped user management. A customer-Admin (i.e. someone who holds
- * the `Admin` role for the active customer) manages their own workspace's
- * members here — invite existing users, change their customer-level role,
+ * Workspace-scoped user management. A workspace-Admin (i.e. someone who holds
+ * the `Admin` role for the active workspace) manages their own workspace's
+ * members here — invite existing users, change their workspace-level role,
  * remove them. Platform administration stays at `/admin/*` behind SuperAdmin.
  *
- * All lookups and mutations are implicitly scoped to the active customer via
+ * All lookups and mutations are implicitly scoped to the active workspace via
  * `ResolveWorkspace` (which has already set the permission team id and
- * exposed the customer on the request).
+ * exposed the workspace on the request).
  */
 class WorkspaceMembersController extends Controller
 {
     public function index(Request $request): Response
     {
-        $customer = $this->customer($request);
+        $workspace = $this->workspace($request);
 
         // Eager-load team-scoped roles with one JOIN instead of the N+1 storm
         // of per-user `WorkspaceMembership::rolesOn` calls. The `->where` on
-        // `model_has_roles.team_id` scopes the pivot to this customer so we
-        // never accidentally pick up the same user's roles on another customer.
+        // `model_has_roles.team_id` scopes the pivot to this workspace so we
+        // never accidentally pick up the same user's roles on another workspace.
         $teamKey = config('permission.column_names.team_foreign_key');
         $mhrTable = config('permission.table_names.model_has_roles');
 
-        $members = $customer->users()
-            ->with(['roles' => fn ($q) => $q->where("{$mhrTable}.{$teamKey}", $customer->id)])
+        $members = $workspace->users()
+            ->with(['roles' => fn ($q) => $q->where("{$mhrTable}.{$teamKey}", $workspace->id)])
             ->orderBy('users.email')
             ->get(['users.id', 'users.first_name', 'users.last_name', 'users.email'])
             ->map(fn (User $u) => [
@@ -67,7 +67,7 @@ class WorkspaceMembersController extends Controller
             ])
             ->values();
 
-        return Inertia::render('Customer/Members/Index', [
+        return Inertia::render('Workspace/Members/Index', [
             'members' => $members,
             'invitations' => $invitations,
             'assignable_roles' => WorkspaceMembership::assignableRoles(),
@@ -76,7 +76,7 @@ class WorkspaceMembersController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $customer = $this->customer($request);
+        $workspace = $this->workspace($request);
 
         $data = $request->validate([
             // `exists:users,email` runs through the default DB connection,
@@ -101,46 +101,46 @@ class WorkspaceMembersController extends Controller
 
         // `WorkspaceMembership::attach()` calls `syncRoles()`, which overwrites
         // the member's existing role set. Inviting someone who is already in
-        // the customer would silently downgrade their roles — reject that
+        // the workspace would silently downgrade their roles — reject that
         // here and direct the admin to the per-row role editor instead.
-        if ($user->belongsToCustomer($customer)) {
-            return back()->with('error', __('flash.customers.already_member', [
+        if ($user->belongsToWorkspace($workspace)) {
+            return back()->with('error', __('flash.workspaces.already_member', [
                 'email' => $user->email,
-                'name' => $customer->name,
+                'name' => $workspace->name,
             ]));
         }
 
-        WorkspaceMembership::attach($user, $customer, $data['roles']);
+        WorkspaceMembership::attach($user, $workspace, $data['roles']);
 
-        return back()->with('success', __('flash.customers.member_added', ['email' => $user->email, 'name' => $customer->name]));
+        return back()->with('success', __('flash.workspaces.member_added', ['email' => $user->email, 'name' => $workspace->name]));
     }
 
     public function setRole(Request $request, User $user): RedirectResponse
     {
-        $customer = $this->customer($request);
+        $workspace = $this->workspace($request);
 
         $data = $request->validate([
             'roles' => ['present', 'array'],
             'roles.*' => ['string', Rule::in(WorkspaceMembership::assignableRoles())],
         ]);
 
-        if (! $user->belongsToCustomer($customer)) {
-            return back()->with('error', __('flash.customers.not_member', ['email' => $user->email, 'name' => $customer->name]));
+        if (! $user->belongsToWorkspace($workspace)) {
+            return back()->with('error', __('flash.workspaces.not_member', ['email' => $user->email, 'name' => $workspace->name]));
         }
 
         $newRoles = array_values(array_unique($data['roles']));
-        $wasAdmin = in_array('Admin', WorkspaceMembership::rolesOn($user, $customer), true);
+        $wasAdmin = in_array('Admin', WorkspaceMembership::rolesOn($user, $workspace), true);
         $willBeAdmin = in_array('Admin', $newRoles, true);
 
-        // Per-customer last-admin guard: don't let the only Admin on this
-        // customer lose the role, whether by self-demote or external change.
-        if ($wasAdmin && ! $willBeAdmin && $this->otherAdmins($customer, $user) === 0) {
-            return back()->with('error', __('flash.customers.last_admin'));
+        // Per-workspace last-admin guard: don't let the only Admin on this
+        // workspace lose the role, whether by self-demote or external change.
+        if ($wasAdmin && ! $willBeAdmin && $this->otherAdmins($workspace, $user) === 0) {
+            return back()->with('error', __('flash.workspaces.last_admin'));
         }
 
-        WorkspaceMembership::syncRoles($user, $customer, $newRoles);
+        WorkspaceMembership::syncRoles($user, $workspace, $newRoles);
 
-        return back()->with('success', __('flash.customers.member_role_updated', [
+        return back()->with('success', __('flash.workspaces.member_role_updated', [
             'email' => $user->email,
             'role' => empty($newRoles) ? __('admin.users.no_roles') : implode(', ', $newRoles),
         ]));
@@ -148,61 +148,61 @@ class WorkspaceMembersController extends Controller
 
     public function destroy(Request $request, User $user): RedirectResponse
     {
-        $customer = $this->customer($request);
+        $workspace = $this->workspace($request);
 
-        if (! $user->belongsToCustomer($customer)) {
-            return back()->with('error', __('flash.customers.not_member', ['email' => $user->email, 'name' => $customer->name]));
+        if (! $user->belongsToWorkspace($workspace)) {
+            return back()->with('error', __('flash.workspaces.not_member', ['email' => $user->email, 'name' => $workspace->name]));
         }
 
-        if (in_array('Admin', WorkspaceMembership::rolesOn($user, $customer), true)
-            && $this->otherAdmins($customer, $user) === 0
+        if (in_array('Admin', WorkspaceMembership::rolesOn($user, $workspace), true)
+            && $this->otherAdmins($workspace, $user) === 0
         ) {
-            return back()->with('error', __('flash.customers.last_admin'));
+            return back()->with('error', __('flash.workspaces.last_admin'));
         }
 
-        WorkspaceMembership::detach($user, $customer);
+        WorkspaceMembership::detach($user, $workspace);
 
-        return back()->with('success', __('flash.customers.member_removed', ['email' => $user->email, 'name' => $customer->name]));
+        return back()->with('success', __('flash.workspaces.member_removed', ['email' => $user->email, 'name' => $workspace->name]));
     }
 
     /**
-     * Count Admins on `$customer` excluding `$excluding` — used by the
+     * Count Admins on `$workspace` excluding `$excluding` — used by the
      * last-admin guard on role-change and remove.
      */
-    private function otherAdmins(Workspace $customer, User $excluding): int
+    private function otherAdmins(Workspace $workspace, User $excluding): int
     {
         // Collapse what used to be "pull every member, call rolesOn() per
         // user" (one N+1 query storm per membership action) into a single
-        // JOIN that counts Admin role rows on this customer's team scope.
+        // JOIN that counts Admin role rows on this workspace's team scope.
         $teamKey = config('permission.column_names.team_foreign_key');
 
-        return $customer->users()
+        return $workspace->users()
             ->where('users.id', '!=', $excluding->id)
             ->whereHas('roles', fn ($q) => $q
                 ->where('name', 'Admin')
-                ->where(config('permission.table_names.model_has_roles').'.'.$teamKey, $customer->id))
+                ->where(config('permission.table_names.model_has_roles').'.'.$teamKey, $workspace->id))
             ->count();
     }
 
-    private function customer(Request $request): Workspace
+    private function workspace(Request $request): Workspace
     {
-        $customer = $request->attributes->get('customer');
+        $workspace = $request->attributes->get('workspace');
 
         // ResolveWorkspace always populates this attribute before the
         // route dispatches. If we land here with it missing, the routing is
         // misconfigured (someone mounted the controller outside the
-        // `/c/{customer}` group) — bail loudly so the fault is visible.
-        if (! $customer instanceof Workspace) {
+        // `/w/{workspace}` group) — bail loudly so the fault is visible.
+        if (! $workspace instanceof Workspace) {
             throw new \LogicException(
-                'WorkspaceMembersController requires the customer request attribute set by ResolveWorkspace.',
+                'WorkspaceMembersController requires the workspace request attribute set by ResolveWorkspace.',
             );
         }
 
         // Defensive: the team id should already be set by ResolveWorkspace,
         // but re-asserting keeps this controller safe if it's ever called from
         // a flow that bypasses that middleware (e.g. a console runner).
-        app(PermissionRegistrar::class)->setPermissionsTeamId($customer->id);
+        app(PermissionRegistrar::class)->setPermissionsTeamId($workspace->id);
 
-        return $customer;
+        return $workspace;
     }
 }

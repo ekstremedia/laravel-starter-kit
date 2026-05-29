@@ -6,10 +6,10 @@ import Toast from 'primevue/toast';
 import LanguageSwitcher from '@/Components/LanguageSwitcher.vue';
 import DarkModeToggle from '@/Components/DarkModeToggle.vue';
 import ChatDropdown from '@/Components/Chat/ChatDropdown.vue';
-import CustomerSwitcher from '@/Components/Command/CustomerSwitcher.vue';
+import WorkspaceSwitcher from '@/Components/Command/WorkspaceSwitcher.vue';
 import NotificationBell from '@/Components/NotificationBell.vue';
 import { useFlashToast } from '@/composables/useFlashToast';
-import { useCustomer } from '@/composables/useCustomer';
+import { useWorkspace } from '@/composables/useWorkspace';
 import { useUnreadCounts } from '@/composables/useUnreadCounts';
 import { useUserChannel } from '@/composables/useUserChannel';
 import type { PageProps } from '@/types';
@@ -19,21 +19,21 @@ const page = usePage<PageProps>();
 const user = computed(() => page.props.auth?.user);
 const isAdmin = computed(() => user.value?.is_super_admin === true);
 const appName = import.meta.env.VITE_APP_NAME || t('app.name');
-const { customer, tenancyEnabled, customerUrl } = useCustomer();
-const dashboardUrl = computed(() => customerUrl('/dashboard'));
-const profileUrl = computed(() => customerUrl('/profile'));
-const filesUrl = computed(() => customerUrl('/files'));
+const { workspace, tenancyEnabled, workspaceUrl } = useWorkspace();
+const dashboardUrl = computed(() => workspaceUrl('/dashboard'));
+const profileUrl = computed(() => workspaceUrl('/profile'));
+const filesUrl = computed(() => workspaceUrl('/files'));
 const filesEnabled = computed(() => {
     const us = (page.props.user_settings ?? {}) as Record<string, unknown>;
     const appSettings = (page.props.app_settings ?? {}) as Record<string, unknown>;
-    const tenancyOn = Boolean(page.props.tenancy?.enabled);
+    const tenancyOn = Boolean(page.props.workspaces?.enabled);
     // Show the link only when every gate is green:
     //   global app toggle + per-user setting,
-    //   AND (tenancy off | the active customer has it on).
+    //   AND (workspaces off | the active workspace has it on).
     return (
         Boolean(appSettings.files_feature_enabled)
         && Boolean(us.files_enabled)
-        && (!tenancyOn || Boolean(page.props.customer?.files_feature_enabled))
+        && (!tenancyOn || Boolean(page.props.workspace?.files_feature_enabled))
     );
 });
 const notificationSettingsUrl = '/settings/notifications';
@@ -44,9 +44,9 @@ const {
     incrementNotifications,
 } = useUnreadCounts();
 const notificationBellRef = ref<InstanceType<typeof NotificationBell> | null>(null);
-// Customer-scoped nav entries show in the layout when either tenancy is off
-// (single-tenant mode, routes at root) or a customer is actively in scope.
-const showCustomerNav = computed(() => !tenancyEnabled.value || Boolean(customer.value));
+// Workspace-scoped nav entries show in the layout when either workspaces is off
+// (single-tenant mode, routes at root) or a workspace is actively in scope.
+const showWorkspaceNav = computed(() => !tenancyEnabled.value || Boolean(workspace.value));
 
 const dropdownOpen = ref(false);
 useFlashToast();
@@ -117,7 +117,7 @@ function initials(u: { first_name: string; last_name: string }) {
                         <template v-if="user">
                             <div class="hidden sm:flex items-center gap-1">
                                 <Link
-                                    v-if="showCustomerNav"
+                                    v-if="showWorkspaceNav"
                                     :href="dashboardUrl"
                                     class="px-3 py-2 text-sm font-medium rounded-lg transition-colors"
                                     :class="$page.url.startsWith(dashboardUrl)
@@ -152,7 +152,7 @@ function initials(u: { first_name: string; last_name: string }) {
 
                     <!-- Right side -->
                     <div class="flex items-center gap-1 sm:gap-3">
-                        <template v-if="user"><CustomerSwitcher /></template>
+                        <template v-if="user"><WorkspaceSwitcher /></template>
                         <div class="hidden sm:block"><LanguageSwitcher /></div>
                         <DarkModeToggle />
 
@@ -208,7 +208,7 @@ function initials(u: { first_name: string; last_name: string }) {
                                         class="absolute right-0 mt-2 w-48 rounded-xl bg-white dark:bg-dark-900 border border-gray-200 dark:border-dark-700 shadow-lg dark:shadow-dark-950/50 py-1 z-50"
                                     >
                                         <Link
-                                            v-if="showCustomerNav"
+                                            v-if="showWorkspaceNav"
                                             :href="dashboardUrl"
                                             class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-800 sm:hidden"
                                         >

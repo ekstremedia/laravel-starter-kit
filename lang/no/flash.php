@@ -31,7 +31,7 @@ return [
         'restore_staged' => 'Sikkerhetskopien er pakket ut til :path. Fullfør gjenoppretting fra CLI — se infopanelet for instruksjoner.',
     ],
 
-    'customers' => [
+    'workspaces' => [
         'created' => 'Kunden «:name» ble opprettet.',
         'updated' => 'Kunden er oppdatert.',
         'deleted' => 'Kunden «:name» ble slettet.',
@@ -90,10 +90,10 @@ return [
         'twofa_reset' => 'Tofaktorautentisering er tilbakestilt for denne brukeren.',
         'test_notification_sent' => 'Testvarsel sendt.',
         'role_updated' => 'Rolle oppdatert til :role.',
-        'customer_attached' => 'La til :email i :name.',
-        'customers_attached' => 'La til :email i :names.',
-        'customer_detached' => 'Fjernet :email fra :name.',
-        'customer_role_updated' => 'Satte :email som :role på :name.',
+        'workspace_attached' => 'La til :email i :name.',
+        'workspaces_attached' => 'La til :email i :names.',
+        'workspace_detached' => 'Fjernet :email fra :name.',
+        'workspace_role_updated' => 'Satte :email som :role på :name.',
         'not_member' => ':email er ikke medlem av :name.',
         'platform_permission_updated' => 'Plattformtilgang oppdatert.',
     ],

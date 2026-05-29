@@ -118,12 +118,12 @@ return [
      * Teams Feature — enabled.
      *
      * `SuperAdmin` (global, team_id=null) is the system super-user across every
-     * customer. `Admin`/`Editor`/`User` are customer-scoped: the same user can be
-     * Admin on customer A and plain User on customer B.
+     * workspace. `Admin`/`Editor`/`User` are workspace-scoped: the same user can be
+     * Admin on workspace A and plain User on workspace B.
      *
-     * Team id = the active customer (Workspace) id. It is set by
+     * Team id = the active workspace (Workspace) id. It is set by
      * `ResolveWorkspace` after `tenancy()->initialize()` so every
-     * `hasRole`/`can` check in the request auto-scopes to the active customer.
+     * `hasRole`/`can` check in the request auto-scopes to the active workspace.
      */
 
     'teams' => true,

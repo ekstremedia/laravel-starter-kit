@@ -153,7 +153,7 @@ class EmailTemplateController extends Controller
             'user_name' => 'John',
             'user_full_name' => 'John Doe',
             'user_email' => 'john@example.com',
-            'customer_name' => 'Acme Corp',
+            'workspace_name' => 'Acme Corp',
             'reason' => 'Violation of terms of service.',
             'message' => 'Hello from the admin panel!',
             'app_name' => config('app.name'),

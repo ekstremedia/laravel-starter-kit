@@ -13,7 +13,7 @@ const { t } = useI18n();
 const form = useForm({ name: '', slug: '' });
 
 function submit() {
-    form.post('/admin/customers');
+    form.post('/admin/workspaces');
 }
 
 function slugify(value: string): string {
@@ -33,14 +33,14 @@ function onNameBlur() {
 
 <template>
     <div>
-    <Head :title="t('admin.customers.new_customer') + ' · Admin'" />
+    <Head :title="t('admin.workspaces.new_workspace') + ' · Admin'" />
 
     <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '18px' }">
         <h1 :style="{ margin: 0, fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--fg)' }">
-            {{ t('admin.customers.new_customer') }}
+            {{ t('admin.workspaces.new_workspace') }}
         </h1>
         <Link
-            href="/admin/customers"
+            href="/admin/workspaces"
             :style="{ fontSize: '11.5px', color: 'var(--fg-dim)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px' }"
         >
             <Icon name="chevR" :size="10" :style="{ transform: 'rotate(180deg)' }" />
@@ -65,7 +65,7 @@ function onNameBlur() {
         <div>
             <Field
                 v-model="form.slug"
-                :label="t('admin.customers.slug')"
+                :label="t('admin.workspaces.slug')"
                 :error="form.errors.slug"
                 placeholder="acme"
             />
@@ -74,9 +74,9 @@ function onNameBlur() {
                 :style="{ fontSize: '10.5px', color: 'var(--fg-mute)', marginTop: '5px', display: 'flex', alignItems: 'center', gap: '6px' }"
             >
                 <span>→</span>
-                <code :style="{ background: 'var(--panel2)', border: '1px solid var(--border)', padding: '1px 6px', borderRadius: '3px', color: 'var(--fg-dim)' }">/c/{{ effectiveSlug || 'slug' }}</code>
+                <code :style="{ background: 'var(--panel2)', border: '1px solid var(--border)', padding: '1px 6px', borderRadius: '3px', color: 'var(--fg-dim)' }">/w/{{ effectiveSlug || 'slug' }}</code>
             </p>
-            <p :style="{ fontSize: '11px', color: 'var(--fg-mute)', marginTop: '5px' }">{{ t('admin.customers.slug_help') }}</p>
+            <p :style="{ fontSize: '11px', color: 'var(--fg-mute)', marginTop: '5px' }">{{ t('admin.workspaces.slug_help') }}</p>
         </div>
 
         <div :style="{ display: 'flex', gap: '6px', paddingTop: '4px' }">
@@ -100,10 +100,10 @@ function onNameBlur() {
                 }"
             >
                 <Icon name="plus" :size="12" />
-                {{ t('admin.customers.create') }}
+                {{ t('admin.workspaces.create') }}
             </button>
             <Link
-                href="/admin/customers"
+                href="/admin/workspaces"
                 :style="{ background: 'transparent', color: 'var(--fg-dim)', border: '1px solid var(--border)', padding: '7px 12px', borderRadius: '5px', fontSize: '12px', textDecoration: 'none', fontFamily: 'inherit' }"
             >{{ t('common.cancel') }}</Link>
         </div>

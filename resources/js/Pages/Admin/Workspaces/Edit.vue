@@ -25,7 +25,7 @@ interface Member {
     avatar_thumb_url: string | null;
     roles: string[];
 }
-interface CustomerData {
+interface WorkspaceData {
     id: number;
     slug: string;
     name: string;
@@ -45,7 +45,7 @@ interface CustomerData {
 }
 
 const props = defineProps<{
-    customer: CustomerData;
+    workspace: WorkspaceData;
     global_files_feature_enabled: boolean;
     global_default_personal_storage_bytes: number | null;
     assignableRoles: string[];
@@ -96,22 +96,22 @@ function initialMemberMode(bytes: number | null): MemberMode {
     return 'custom';
 }
 
-const companyMode = ref<QuotaMode>(initialCompanyMode(props.customer.storage_quota_bytes));
-const companyCustomGb = ref<number | ''>(bytesToGb(props.customer.storage_quota_bytes));
+const companyMode = ref<QuotaMode>(initialCompanyMode(props.workspace.storage_quota_bytes));
+const companyCustomGb = ref<number | ''>(bytesToGb(props.workspace.storage_quota_bytes));
 
-const memberMode = ref<MemberMode>(initialMemberMode(props.customer.default_member_storage_bytes));
-const memberCustomGb = ref<number | ''>(bytesToGb(props.customer.default_member_storage_bytes));
+const memberMode = ref<MemberMode>(initialMemberMode(props.workspace.default_member_storage_bytes));
+const memberCustomGb = ref<number | ''>(bytesToGb(props.workspace.default_member_storage_bytes));
 
 const form = useForm({
-    name: props.customer.name,
-    status: props.customer.status,
-    // Coerce each per-customer flag to false whenever the global feature
+    name: props.workspace.name,
+    status: props.workspace.status,
+    // Coerce each per-workspace flag to false whenever the global feature
     // is off so a stale `true` can't be submitted while the toggle is
     // disabled. Personal and company are otherwise independent.
-    files_feature_enabled: props.global_files_feature_enabled && props.customer.files_feature_enabled,
-    company_files_enabled: props.global_files_feature_enabled && props.customer.company_files_enabled,
-    storage_quota_bytes: props.customer.storage_quota_bytes,
-    default_member_storage_bytes: props.customer.default_member_storage_bytes,
+    files_feature_enabled: props.global_files_feature_enabled && props.workspace.files_feature_enabled,
+    company_files_enabled: props.global_files_feature_enabled && props.workspace.company_files_enabled,
+    storage_quota_bytes: props.workspace.storage_quota_bytes,
+    default_member_storage_bytes: props.workspace.default_member_storage_bytes,
 });
 
 const statusOpen = ref(false);
@@ -133,25 +133,25 @@ function materializeMemberQuota(): number | null {
 // is set. The admin edit page surfaces an explicit "Unlimited" word
 // (not an em dash), so wrap the shared helper with the extra branch.
 function humanBytes(n: number | null | undefined): string {
-    if (n == null || n < 0) return t('admin.customers.unlimited');
+    if (n == null || n < 0) return t('admin.workspaces.unlimited');
     return sharedHumanBytes(n);
 }
 
 function save() {
     if (companyMode.value === 'custom' && !isValidCustomGb(companyCustomGb.value)) {
-        push(t('admin.customers.custom_quota_required'), 'danger');
+        push(t('admin.workspaces.custom_quota_required'), 'danger');
         return;
     }
     if (memberMode.value === 'custom' && !isValidCustomGb(memberCustomGb.value)) {
-        push(t('admin.customers.custom_quota_required'), 'danger');
+        push(t('admin.workspaces.custom_quota_required'), 'danger');
         return;
     }
 
     form.storage_quota_bytes = materializeCompanyQuota();
     form.default_member_storage_bytes = materializeMemberQuota();
 
-    // Server flashes flash.customers.updated via useFlashToast.
-    form.put(`/admin/customers/${props.customer.id}`, { preserveScroll: true });
+    // Server flashes flash.workspaces.updated via useFlashToast.
+    form.put(`/admin/workspaces/${props.workspace.id}`, { preserveScroll: true });
 }
 
 // The member-add panel sends a role alongside the email — the backend
@@ -162,9 +162,9 @@ const memberForm = useForm<{ email: string; roles: string[] }>({ email: '', role
 
 function attach() {
     memberForm.roles = [memberRole.value];
-    // Server flashes flash.customers.member_added — reset the input
+    // Server flashes flash.workspaces.member_added — reset the input
     // here but let the flash surface the confirmation toast.
-    memberForm.post(`/admin/customers/${props.customer.id}/members`, {
+    memberForm.post(`/admin/workspaces/${props.workspace.id}/members`, {
         preserveScroll: true,
         onSuccess: () => {
             memberForm.reset('email');
@@ -176,15 +176,15 @@ function attach() {
 function detach(member: Member) {
     confirmer.require({
         group: 'command',
-        message: t('admin.customers.confirm_detach', { email: member.email, name: props.customer.name }),
-        header: t('admin.customers.detach'),
+        message: t('admin.workspaces.confirm_detach', { email: member.email, name: props.workspace.name }),
+        header: t('admin.workspaces.detach'),
         icon: 'pi pi-exclamation-triangle',
         acceptClass: 'p-button-danger',
-        acceptLabel: t('admin.customers.detach'),
+        acceptLabel: t('admin.workspaces.detach'),
         rejectLabel: t('common.cancel'),
         accept: () => {
-            // Server flashes flash.customers.member_removed.
-            router.delete(`/admin/customers/${props.customer.id}/members/${member.id}`, { preserveScroll: true });
+            // Server flashes flash.workspaces.member_removed.
+            router.delete(`/admin/workspaces/${props.workspace.id}/members/${member.id}`, { preserveScroll: true });
         },
     });
 }
@@ -192,27 +192,27 @@ function detach(member: Member) {
 
 <template>
     <div>
-        <Head :title="`${customer.name} · Admin`" />
+        <Head :title="`${workspace.name} · Admin`" />
 
         <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '18px', gap: '16px' }">
         <div :style="{ minWidth: 0 }">
             <h1 :style="{ margin: 0, fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--fg)' }">
-                {{ customer.name }}
+                {{ workspace.name }}
             </h1>
             <div
                 class="cmd-mono"
                 :style="{ marginTop: '4px', fontSize: '11.5px', color: 'var(--fg-mute)', display: 'flex', alignItems: 'center', gap: '8px' }"
             >
-                <code :style="{ background: 'var(--panel2)', border: '1px solid var(--border)', padding: '1px 6px', borderRadius: '3px', color: 'var(--fg-dim)' }">/c/{{ customer.slug }}</code>
+                <code :style="{ background: 'var(--panel2)', border: '1px solid var(--border)', padding: '1px 6px', borderRadius: '3px', color: 'var(--fg-dim)' }">/w/{{ workspace.slug }}</code>
                 <span>·</span>
                 <span :style="{ display: 'inline-flex', alignItems: 'center', gap: '5px' }">
-                    <Dot :color="customer.status === 'active' ? 'var(--success)' : 'var(--warning)'" :size="5" />
-                    <span :style="{ color: customer.status === 'active' ? 'var(--fg)' : 'var(--fg-dim)' }">{{ customer.status }}</span>
+                    <Dot :color="workspace.status === 'active' ? 'var(--success)' : 'var(--warning)'" :size="5" />
+                    <span :style="{ color: workspace.status === 'active' ? 'var(--fg)' : 'var(--fg-dim)' }">{{ workspace.status }}</span>
                 </span>
             </div>
         </div>
         <Link
-            href="/admin/customers"
+            href="/admin/workspaces"
             :style="{ fontSize: '11.5px', color: 'var(--fg-dim)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px' }"
         >
             <Icon name="chevR" :size="10" :style="{ transform: 'rotate(180deg)' }" />
@@ -224,7 +224,7 @@ function detach(member: Member) {
         <!-- Settings -->
         <section class="cmd-card" :style="{ padding: '20px' }">
             <h2 :style="{ fontSize: '14px', fontWeight: 600, color: 'var(--fg)', margin: '0 0 16px' }">
-                {{ t('admin.customers.settings') }}
+                {{ t('admin.workspaces.settings') }}
             </h2>
             <form @submit.prevent="save" :style="{ display: 'flex', flexDirection: 'column', gap: '14px' }">
                 <Field
@@ -291,19 +291,19 @@ function detach(member: Member) {
                             >{{ opt }}</div>
                         </div>
                     </div>
-                    <p :style="{ fontSize: '11px', color: 'var(--fg-mute)', marginTop: '5px' }">{{ t('admin.customers.suspended_hint') }}</p>
+                    <p :style="{ fontSize: '11px', color: 'var(--fg-mute)', marginTop: '5px' }">{{ t('admin.workspaces.suspended_hint') }}</p>
                 </div>
 
                 <div :style="{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', paddingTop: '6px' }">
                     <div :style="{ flex: 1, minWidth: 0 }">
                         <div :style="{ fontSize: '12.5px', fontWeight: 500, color: 'var(--fg)', display: 'inline-flex', alignItems: 'center', gap: '6px' }">
                             <Icon name="disk" :size="12" :style="{ color: 'var(--accent)' }" />
-                            {{ t('admin.customers.files_enabled') }}
+                            {{ t('admin.workspaces.files_enabled') }}
                         </div>
-                        <div :style="{ fontSize: '11px', color: 'var(--fg-dim)', marginTop: '2px' }">{{ t('admin.customers.files_enabled_hint') }}</div>
+                        <div :style="{ fontSize: '11px', color: 'var(--fg-dim)', marginTop: '2px' }">{{ t('admin.workspaces.files_enabled_hint') }}</div>
                         <i18n-t
                             v-if="!global_files_feature_enabled"
-                            keypath="admin.customers.files_global_disabled_hint"
+                            keypath="admin.workspaces.files_global_disabled_hint"
                             tag="p"
                             :style="{ fontSize: '11px', color: 'var(--warning)', marginTop: '5px' }"
                         >
@@ -311,14 +311,14 @@ function detach(member: Member) {
                                 <Link
                                     href="/admin/settings"
                                     :style="{ color: 'var(--warning)', textDecoration: 'underline' }"
-                                >{{ t('admin.customers.app_settings_link') }}</Link>
+                                >{{ t('admin.workspaces.app_settings_link') }}</Link>
                             </template>
                         </i18n-t>
                     </div>
                     <Toggle
                         v-model="form.files_feature_enabled"
                         :disabled="!global_files_feature_enabled"
-                        :label="t('admin.customers.files_feature')"
+                        :label="t('admin.workspaces.files_feature')"
                     />
                 </div>
                 <p v-if="form.errors.files_feature_enabled" :style="{ fontSize: '11px', color: 'var(--danger)', marginTop: '-6px' }">
@@ -326,21 +326,21 @@ function detach(member: Member) {
                 </p>
 
                 <!-- Company files is an independent toggle — one, the
-                     other, or both can run per customer. Only gated on
+                     other, or both can run per workspace. Only gated on
                      the global Files feature (enforced server-side). -->
                 <div :style="{ borderTop: '1px solid var(--border)', paddingTop: '14px', marginTop: '2px' }">
                     <div :style="{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px' }">
                         <div :style="{ flex: 1, minWidth: 0 }">
                             <div :style="{ fontSize: '12.5px', fontWeight: 500, color: 'var(--fg)', display: 'inline-flex', alignItems: 'center', gap: '6px' }">
                                 <Icon name="disk" :size="12" :style="{ color: 'var(--accent)' }" />
-                                {{ t('admin.customers.company_files') }}
+                                {{ t('admin.workspaces.company_files') }}
                             </div>
-                            <div :style="{ fontSize: '11px', color: 'var(--fg-dim)', marginTop: '2px' }">{{ t('admin.customers.company_files_hint') }}</div>
+                            <div :style="{ fontSize: '11px', color: 'var(--fg-dim)', marginTop: '2px' }">{{ t('admin.workspaces.company_files_hint') }}</div>
                         </div>
                         <Toggle
                             v-model="form.company_files_enabled"
                             :disabled="!global_files_feature_enabled"
-                            :label="t('admin.customers.company_files')"
+                            :label="t('admin.workspaces.company_files')"
                         />
                     </div>
 
@@ -348,20 +348,20 @@ function detach(member: Member) {
                         <!-- Company storage quota -->
                         <div>
                             <div class="cmd-mono cmd-uc" :style="{ fontSize: '10px', color: 'var(--fg-mute)', marginBottom: '6px', fontWeight: 500, letterSpacing: '0.06em' }">
-                                {{ t('admin.customers.company_storage_quota') }}
+                                {{ t('admin.workspaces.company_storage_quota') }}
                             </div>
                             <div :style="{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '6px' }">
                                 <label :style="{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--fg)', cursor: 'pointer' }">
                                     <input type="radio" value="unlimited" v-model="companyMode" />
-                                    {{ t('admin.customers.unlimited') }}
+                                    {{ t('admin.workspaces.unlimited') }}
                                 </label>
                                 <label :style="{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--fg)', cursor: 'pointer' }">
                                     <input type="radio" value="custom" v-model="companyMode" />
-                                    {{ t('admin.customers.custom') }}
+                                    {{ t('admin.workspaces.custom') }}
                                 </label>
                                 <label :style="{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--fg-dim)', cursor: 'pointer' }">
                                     <input type="radio" value="blocked" v-model="companyMode" />
-                                    {{ t('admin.customers.blocked') }}
+                                    {{ t('admin.workspaces.blocked') }}
                                 </label>
                             </div>
                             <div v-if="companyMode === 'custom'" :style="{ display: 'flex', alignItems: 'center', gap: '6px' }">
@@ -375,31 +375,31 @@ function detach(member: Member) {
                                 <span :style="{ fontSize: '11.5px', color: 'var(--fg-mute)' }">GB</span>
                             </div>
                             <p :style="{ fontSize: '11px', color: 'var(--fg-mute)', marginTop: '6px' }">
-                                {{ t('admin.customers.company_storage_used', { used: humanBytes(customer.storage_used_bytes) }) }}
+                                {{ t('admin.workspaces.company_storage_used', { used: humanBytes(workspace.storage_used_bytes) }) }}
                             </p>
                         </div>
 
                         <!-- Default member storage -->
                         <div>
                             <div class="cmd-mono cmd-uc" :style="{ fontSize: '10px', color: 'var(--fg-mute)', marginBottom: '6px', fontWeight: 500, letterSpacing: '0.06em' }">
-                                {{ t('admin.customers.default_member_storage') }}
+                                {{ t('admin.workspaces.default_member_storage') }}
                             </div>
                             <div :style="{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '6px' }">
                                 <label :style="{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--fg)', cursor: 'pointer' }">
                                     <input type="radio" value="inherit" v-model="memberMode" />
-                                    {{ t('admin.customers.inherit_global') }}
+                                    {{ t('admin.workspaces.inherit_global') }}
                                 </label>
                                 <label :style="{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--fg)', cursor: 'pointer' }">
                                     <input type="radio" value="unlimited" v-model="memberMode" />
-                                    {{ t('admin.customers.unlimited') }}
+                                    {{ t('admin.workspaces.unlimited') }}
                                 </label>
                                 <label :style="{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--fg)', cursor: 'pointer' }">
                                     <input type="radio" value="custom" v-model="memberMode" />
-                                    {{ t('admin.customers.custom') }}
+                                    {{ t('admin.workspaces.custom') }}
                                 </label>
                                 <label :style="{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--fg-dim)', cursor: 'pointer' }">
                                     <input type="radio" value="blocked" v-model="memberMode" />
-                                    {{ t('admin.customers.blocked') }}
+                                    {{ t('admin.workspaces.blocked') }}
                                 </label>
                             </div>
                             <div v-if="memberMode === 'custom'" :style="{ display: 'flex', alignItems: 'center', gap: '6px' }">
@@ -413,7 +413,7 @@ function detach(member: Member) {
                                 <span :style="{ fontSize: '11.5px', color: 'var(--fg-mute)' }">GB / user</span>
                             </div>
                             <p :style="{ fontSize: '11px', color: 'var(--fg-mute)', marginTop: '6px' }">
-                                {{ t('admin.customers.global_default_member_storage', { value: humanBytes(global_default_personal_storage_bytes) }) }}
+                                {{ t('admin.workspaces.global_default_member_storage', { value: humanBytes(global_default_personal_storage_bytes) }) }}
                             </p>
                         </div>
                     </div>
@@ -449,14 +449,14 @@ function detach(member: Member) {
         <!-- Members -->
         <section class="cmd-card" :style="{ padding: '20px' }">
             <h2 :style="{ fontSize: '14px', fontWeight: 600, color: 'var(--fg)', margin: '0 0 16px' }">
-                {{ t('admin.customers.member_count', { count: customer.users.length }) }}
+                {{ t('admin.workspaces.member_count', { count: workspace.users.length }) }}
             </h2>
 
             <form @submit.prevent="attach" :style="{ display: 'flex', gap: '6px', marginBottom: '14px' }">
                 <input
                     v-model="memberForm.email"
                     type="email"
-                    :placeholder="t('admin.customers.add_member_placeholder')"
+                    :placeholder="t('admin.workspaces.add_member_placeholder')"
                     :style="{
                         flex: 1,
                         background: 'var(--panel2)',
@@ -471,7 +471,7 @@ function detach(member: Member) {
                 />
                 <select
                     v-model="memberRole"
-                    :aria-label="t('admin.customers.member_role')"
+                    :aria-label="t('admin.workspaces.member_role')"
                     :style="{
                         background: 'var(--panel2)',
                         border: '1px solid var(--border)',
@@ -514,11 +514,11 @@ function detach(member: Member) {
             </p>
 
             <ul
-                v-if="customer.users.length"
+                v-if="workspace.users.length"
                 :style="{ listStyle: 'none', padding: 0, margin: 0 }"
             >
                 <li
-                    v-for="member in customer.users"
+                    v-for="member in workspace.users"
                     :key="member.id"
                     :style="{
                         display: 'flex',
@@ -573,7 +573,7 @@ function detach(member: Member) {
                     </Link>
                     <div :style="{ display: 'flex', flexWrap: 'wrap', gap: '4px', justifyContent: 'flex-end' }">
                         <span
-                            v-for="role in (member.roles.length ? member.roles : [t('admin.customers.no_role')])"
+                            v-for="role in (member.roles.length ? member.roles : [t('admin.workspaces.no_role')])"
                             :key="role"
                             :style="{
                                 fontSize: '10px',
@@ -599,7 +599,7 @@ function detach(member: Member) {
                 </li>
             </ul>
             <p v-else :style="{ fontSize: '12px', color: 'var(--fg-mute)', padding: '20px 0', textAlign: 'center' }">
-                {{ t('admin.customers.no_members') }}
+                {{ t('admin.workspaces.no_members') }}
             </p>
         </section>
     </div>

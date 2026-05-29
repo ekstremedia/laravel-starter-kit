@@ -34,7 +34,7 @@ class CreateWorkspace
             ]);
 
             // The creator administers their own space (manage members, files,
-            // settings) via the existing customer-scoped Admin role.
+            // settings) via the existing workspace-scoped Admin role.
             WorkspaceMembership::attach($owner, $workspace, ['Admin']);
 
             return $workspace;

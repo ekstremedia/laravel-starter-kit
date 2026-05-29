@@ -279,7 +279,7 @@ class FileItemController extends Controller
     }
 
     /**
-     * Share an owned personal file to the active customer's company tree.
+     * Share an owned personal file to the active workspace's company tree.
      */
     public function share(Request $request, FileItem $file): RedirectResponse
     {
@@ -319,7 +319,7 @@ class FileItemController extends Controller
             CompanyFilesCache::bump($workspace->id, 'folder_share_started', $parentId);
             ShareFolderToCompany::dispatch(
                 personalFolderId: $file->id,
-                tenantId: $workspace->id,
+                workspaceId: $workspace->id,
                 actingUserId: $user->id,
                 companyParentId: $parentId,
             );
@@ -721,7 +721,7 @@ class FileItemController extends Controller
 
     private function currentTenant(Request $request): Workspace
     {
-        $workspace = $request->attributes->get('customer');
+        $workspace = $request->attributes->get('workspace');
 
         if ($workspace instanceof Workspace) {
             return $workspace;
@@ -792,10 +792,10 @@ class FileItemController extends Controller
      * folder. Operates on owner_type/owner_id so company and personal files
      * have independent name spaces even when they share a tenant + parent.
      */
-    private function uniqueName(int $tenantId, Model $owner, ?int $parentId, string $name, ?int $ignoreId = null): string
+    private function uniqueName(int $workspaceId, Model $owner, ?int $parentId, string $name, ?int $ignoreId = null): string
     {
         return $this->uniqueNameByColumns(
-            $tenantId,
+            $workspaceId,
             $owner->getMorphClass(),
             (int) $owner->getKey(),
             $parentId,
@@ -810,10 +810,10 @@ class FileItemController extends Controller
      * we don't depend on owner being eagerly loadable — a deleted owner row
      * still has stable stored ids and we want the rename to succeed.
      */
-    private function uniqueNameForItem(int $tenantId, FileItem $item, string $name): string
+    private function uniqueNameForItem(int $workspaceId, FileItem $item, string $name): string
     {
         return $this->uniqueNameByColumns(
-            $tenantId,
+            $workspaceId,
             (string) $item->owner_type,
             (int) $item->owner_id,
             $item->parent_id,
@@ -822,12 +822,12 @@ class FileItemController extends Controller
         );
     }
 
-    private function uniqueNameByColumns(int $tenantId, string $ownerType, int $ownerId, ?int $parentId, string $name, ?int $ignoreId): string
+    private function uniqueNameByColumns(int $workspaceId, string $ownerType, int $ownerId, ?int $parentId, string $name, ?int $ignoreId): string
     {
         $base = $name;
         $i = 1;
         while (FileItem::query()
-            ->where('workspace_id', $tenantId)
+            ->where('workspace_id', $workspaceId)
             ->where('owner_type', $ownerType)
             ->where('owner_id', $ownerId)
             ->where('parent_id', $parentId)

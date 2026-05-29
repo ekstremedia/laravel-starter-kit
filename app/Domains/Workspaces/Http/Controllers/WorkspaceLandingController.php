@@ -17,7 +17,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
  * Post-login landing (`/app`). Central redirects from Fortify, LoginResponse,
  * RedirectIfAuthenticated, impersonation, and DevLogin all point here:
  *
- *   - user has 1 customer  → /c/{slug}/dashboard
+ *   - user has 1 workspace  → /w/{slug}/dashboard
  *   - user has many        → render the picker
  */
 class WorkspaceLandingController extends Controller
@@ -43,49 +43,49 @@ class WorkspaceLandingController extends Controller
         // Single-workspace mode: there's no picker and no slug — go straight to
         // the (root-mounted) dashboard.
         if (! config('workspaces.enabled')) {
-            return redirect()->route('customer.dashboard');
+            return redirect()->route('workspace.dashboard');
         }
 
-        // SuperAdmins can enter any active customer; regular users only their memberships.
-        /** @var Collection<int, Workspace> $customers */
-        $customers = $user->isSuperAdmin()
+        // SuperAdmins can enter any active workspace; regular users only their memberships.
+        /** @var Collection<int, Workspace> $workspaces */
+        $workspaces = $user->isSuperAdmin()
             ? Workspace::query()->where('status', 'active')->orderBy('name')->get()
-            : $user->customers()->where('status', 'active')->orderBy('name')->get();
+            : $user->workspaces()->where('status', 'active')->orderBy('name')->get();
 
-        if ($customers->count() === 1) {
+        if ($workspaces->count() === 1) {
             /** @var Workspace $only */
-            $only = $customers->first();
+            $only = $workspaces->first();
 
-            return redirect()->route('customer.dashboard', ['customer' => $only->slug]);
+            return redirect()->route('workspace.dashboard', ['workspace' => $only->slug]);
         }
 
-        // Prefer the user's most recently visited customer. Falls through to
-        // the picker if the slug is stale (customer suspended, user removed)
+        // Prefer the user's most recently visited workspace. Falls through to
+        // the picker if the slug is stale (workspace suspended, user removed)
         // or has never been set.
-        $remembered = $user->settings()->resolved()['last_customer_slug'] ?? null;
+        $remembered = $user->settings()->resolved()['last_workspace_slug'] ?? null;
         if (is_string($remembered) && $remembered !== '') {
-            $match = $customers->firstWhere('slug', $remembered);
+            $match = $workspaces->firstWhere('slug', $remembered);
             if ($match) {
-                return redirect()->route('customer.dashboard', ['customer' => $match->slug]);
+                return redirect()->route('workspace.dashboard', ['workspace' => $match->slug]);
             }
         }
 
         // The picker itself handles the empty case with a friendly "ask an admin
         // to add you" message — let it render so the user sees *why* they can't
         // enter anywhere rather than getting a bare redirect.
-        return $this->picker($customers);
+        return $this->picker($workspaces);
     }
 
     /**
-     * @param  Collection<int, Workspace>  $customers
+     * @param  Collection<int, Workspace>  $workspaces
      */
-    private function picker($customers): Response
+    private function picker($workspaces): Response
     {
-        return Inertia::render('Customers/Picker', [
-            'customers' => $customers->map(fn (Workspace $customer) => [
-                'id' => $customer->id,
-                'slug' => $customer->slug,
-                'name' => $customer->name,
+        return Inertia::render('Workspaces/Picker', [
+            'workspaces' => $workspaces->map(fn (Workspace $workspace) => [
+                'id' => $workspace->id,
+                'slug' => $workspace->slug,
+                'name' => $workspace->name,
             ])->values(),
         ]);
     }

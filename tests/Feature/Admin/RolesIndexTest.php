@@ -12,8 +12,8 @@ beforeEach(function () {
 });
 
 it('renders roles index with permission and user counts', function () {
-    $customer = createCustomer();
-    User::factory()->count(3)->create()->each(fn ($u) => grantRoleOnCustomer($u, 'User', $customer));
+    $workspace = createWorkspace();
+    User::factory()->count(3)->create()->each(fn ($u) => grantRoleOnWorkspace($u, 'User', $workspace));
 
     $this->actingAs($this->admin)
         ->get('/admin/roles')

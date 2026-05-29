@@ -36,7 +36,7 @@ class CompanyFileLink extends Model
     protected $fillable = ['workspace_id', 'file_item_id', 'company_parent_id', 'shared_by_user_id'];
 
     /**
-     * Share/unshare are auditable events on the company side — a Customer
+     * Share/unshare are auditable events on the company side — a Workspace
      * Admin dashboard filtering log_name = 'company-files' gets a clean
      * feed of who linked what in, without the noise of every rename/upload
      * on the underlying FileItems.

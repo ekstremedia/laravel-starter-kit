@@ -59,7 +59,7 @@ class CompanyFileController extends Controller
         // `can_manage` column is resolved per-user from permission state, so
         // we re-map that after the cache read.
         $cached = CompanyFilesCache::rememberList(
-            tenantId: $workspace->id,
+            workspaceId: $workspace->id,
             folderId: $parentId,
             search: $search,
             builder: fn () => $this->buildListingPayload($request, $workspace, $parentId, $search),
@@ -348,8 +348,8 @@ class CompanyFileController extends Controller
         if (! $isOwner && ($notifyInApp || $notifyEmail)) {
             $uploader->notify(new CompanyFileDeletedByAdminNotification(
                 fileName: $file->name,
-                tenantId: $workspace->id,
-                tenantName: $workspace->name,
+                workspaceId: $workspace->id,
+                workspaceName: $workspace->name,
                 actorName: $user->fullName(),
                 sendEmail: $notifyEmail,
                 sendDatabase: $notifyInApp,
@@ -405,8 +405,8 @@ class CompanyFileController extends Controller
         if (! $isUploader && ! $fileItem->trashed() && ($notifyInApp || $notifyEmail)) {
             $uploader->notify(new CompanyFileUnlinkedByAdminNotification(
                 fileName: $fileName,
-                tenantId: $workspace->id,
-                tenantName: $workspace->name,
+                workspaceId: $workspace->id,
+                workspaceName: $workspace->name,
                 actorName: $user->fullName(),
                 sendEmail: $notifyEmail,
                 sendDatabase: $notifyInApp,
@@ -478,7 +478,7 @@ class CompanyFileController extends Controller
 
     private function currentTenant(Request $request): Workspace
     {
-        $workspace = $request->attributes->get('customer');
+        $workspace = $request->attributes->get('workspace');
         if ($workspace instanceof Workspace) {
             return $workspace;
         }
@@ -496,9 +496,9 @@ class CompanyFileController extends Controller
     private function assertFeatureAvailable(Workspace $workspace, User $user): void
     {
         // The app-level flag is the master kill switch for everything
-        // file-related. Per-customer, the shared workspace lives behind
+        // file-related. Per-workspace, the shared workspace lives behind
         // its own `company_files_enabled` toggle — independent of the
-        // personal `files_feature_enabled`, so a customer can run with
+        // personal `files_feature_enabled`, so a workspace can run with
         // one or the other or both.
         if (! AppSetting::current()->files_feature_enabled) {
             abort(404);
@@ -531,7 +531,7 @@ class CompanyFileController extends Controller
 
     private function canManageCompanyFiles(User $user, Workspace $workspace): bool
     {
-        // Super admins always qualify. Otherwise the per-customer permission
+        // Super admins always qualify. Otherwise the per-workspace permission
         // (scoped via the tenancy middleware) governs admin actions.
         return $user->isSuperAdmin() || (bool) $user->can('manage company files');
     }
@@ -548,12 +548,12 @@ class CompanyFileController extends Controller
         };
     }
 
-    private function uniqueNameCompany(int $tenantId, ?int $parentId, string $name, ?int $ignoreId = null): string
+    private function uniqueNameCompany(int $workspaceId, ?int $parentId, string $name, ?int $ignoreId = null): string
     {
         $base = $name;
         $i = 1;
         while (FileItem::query()
-            ->where('workspace_id', $tenantId)
+            ->where('workspace_id', $workspaceId)
             ->where('scope', FileItem::SCOPE_COMPANY)
             ->where('parent_id', $parentId)
             ->where('name', $name)

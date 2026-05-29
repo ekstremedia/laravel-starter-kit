@@ -25,13 +25,13 @@ class StorageDashboardController extends Controller
         $byType = $this->usage->systemBreakdownByType();
         $byCollection = $this->usage->systemBreakdownByCollection();
 
-        // Search inputs let admins find a user/customer without scrolling
+        // Search inputs let admins find a user/workspace without scrolling
         // through a long top-N list. Empty strings = no filter.
         $userSearch = trim((string) $request->string('user_search')->toString());
-        $customerSearch = trim((string) $request->string('customer_search')->toString());
+        $workspaceSearch = trim((string) $request->string('workspace_search')->toString());
 
         $topUsers = $this->usage->topUsers(20, $userSearch ?: null);
-        $byCustomer = $this->usage->usageByTenant($customerSearch ?: null, 50);
+        $byWorkspace = $this->usage->usageByTenant($workspaceSearch ?: null, 50);
 
         // Billable storage grouped by the polymorphic owner entity type. We
         // emit a stable `key` (personal/company/other) the Vue localizes, plus
@@ -60,17 +60,17 @@ class StorageDashboardController extends Controller
                 'file_count' => (int) DB::connection(config('workspaces.database.central_connection'))
                     ->table('media')->count(),
                 'user_count' => User::query()->count(),
-                'customer_count' => Workspace::query()->count(),
+                'workspace_count' => Workspace::query()->count(),
             ],
             'by_type' => $byType,
             'by_collection' => $byCollection,
             'by_entity_type' => $byEntityType,
-            'by_customer' => $byCustomer,
+            'by_workspace' => $byWorkspace,
             'top_users' => $topUsers,
             'growth' => $this->growth(),
             'filters' => [
                 'user_search' => $userSearch,
-                'customer_search' => $customerSearch,
+                'workspace_search' => $workspaceSearch,
             ],
         ]);
     }

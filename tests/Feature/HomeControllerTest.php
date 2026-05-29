@@ -33,7 +33,7 @@ it('renders the Home Inertia page with userDetail and activity', function () {
                 ->where('last_name', $user->last_name)
                 ->has('email_verified_at')
                 ->where('two_factor_enabled', false)
-                ->has('customer_roles')
+                ->has('workspace_roles')
                 ->where('is_super_admin', false)
                 ->has('created_at')
             )

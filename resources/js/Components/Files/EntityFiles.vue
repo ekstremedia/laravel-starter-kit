@@ -23,7 +23,7 @@ import ImageLightbox from '@/Components/Files/ImageLightbox.vue';
 import FileDetailsDialog from '@/Components/Files/FileDetailsDialog.vue';
 import TextPreviewDialog from '@/Components/Files/TextPreviewDialog.vue';
 import { humanBytes as formatBytes } from '@/utils/bytes';
-import { useCustomer } from '@/composables/useCustomer';
+import { useWorkspace } from '@/composables/useWorkspace';
 import { useFileMedia } from '@/composables/useFileMedia';
 
 export interface FileRow {
@@ -75,7 +75,7 @@ const props = withDefaults(
 );
 
 const { t } = useI18n();
-const { customerUrl } = useCustomer();
+const { workspaceUrl } = useWorkspace();
 const confirm = useConfirm();
 
 const viewMode = ref<'grid' | 'list'>((localStorage.getItem('entityFiles.viewMode') as 'grid' | 'list') || 'grid');
@@ -90,7 +90,7 @@ const confirmGroup = computed(() => `entity-files-${props.ownerType}-${props.own
 const currentFolderId = computed(() => props.currentFolder?.id ?? null);
 const items = computed(() => props.files?.data ?? []);
 
-const uploadUrl = computed(() => customerUrl('/entity-files'));
+const uploadUrl = computed(() => workspaceUrl('/entity-files'));
 const extraUploadData = computed(() => ({
     owner_type: props.ownerType,
     owner_id: props.ownerId,
@@ -131,7 +131,7 @@ const {
     copyLink,
 } = useFileMedia<FileRow>({
     items,
-    downloadUrl: (i) => customerUrl(`/entity-files/${i.id}/download`),
+    downloadUrl: (i) => workspaceUrl(`/entity-files/${i.id}/download`),
     onFolder: (i) => router.visit(props.folderUrl(i.id)),
 });
 
@@ -157,7 +157,7 @@ function submitNewFolder() {
     const name = newFolderName.value.trim();
     if (!name) return;
     router.post(
-        customerUrl('/entity-files/folder'),
+        workspaceUrl('/entity-files/folder'),
         {
             owner_type: props.ownerType,
             owner_id: props.ownerId,
@@ -191,7 +191,7 @@ function submitRename(item: FileRow) {
     const name = renameValue.value.trim();
     renamingId.value = null;
     if (!name || name === item.name) return;
-    router.patch(customerUrl(`/entity-files/${item.id}`), { name }, { preserveScroll: true });
+    router.patch(workspaceUrl(`/entity-files/${item.id}`), { name }, { preserveScroll: true });
 }
 
 function confirmDelete(item: FileRow) {
@@ -203,7 +203,7 @@ function confirmDelete(item: FileRow) {
         acceptLabel: t('assets.delete'),
         rejectLabel: t('common.cancel'),
         acceptProps: { severity: 'danger' },
-        accept: () => router.delete(customerUrl(`/entity-files/${item.id}`), { preserveScroll: true }),
+        accept: () => router.delete(workspaceUrl(`/entity-files/${item.id}`), { preserveScroll: true }),
     });
 }
 </script>
@@ -340,7 +340,7 @@ function confirmDelete(item: FileRow) {
                 <div v-if="canManage" class="cmd-file-actions" :style="{ position: 'absolute', right: '4px', top: '4px' }">
                     <ItemActionsMenu
                         :item="item"
-                        :download-url="item.type === 'file' ? customerUrl(`/entity-files/${item.id}/download`) : undefined"
+                        :download-url="item.type === 'file' ? workspaceUrl(`/entity-files/${item.id}/download`) : undefined"
                         variant="overlay"
                         @open="openItem(item)"
                         @rename="startRename(item)"
@@ -407,7 +407,7 @@ function confirmDelete(item: FileRow) {
                             <ItemActionsMenu
                                 v-if="canManage"
                                 :item="item"
-                                :download-url="item.type === 'file' ? customerUrl(`/entity-files/${item.id}/download`) : undefined"
+                                :download-url="item.type === 'file' ? workspaceUrl(`/entity-files/${item.id}/download`) : undefined"
                                 variant="inline"
                                 @open="openItem(item)"
                                 @rename="startRename(item)"
@@ -475,7 +475,7 @@ function confirmDelete(item: FileRow) {
 
         <TextPreviewDialog
             :item="textItem"
-            :download-url="textItem ? customerUrl(`/entity-files/${textItem.id}/download`) : undefined"
+            :download-url="textItem ? workspaceUrl(`/entity-files/${textItem.id}/download`) : undefined"
             @close="textItem = null"
         />
     </div>
