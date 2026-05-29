@@ -642,6 +642,8 @@ export default {
             minutes_ago: '{n}m ago',
             rel_now: 'now',
             rel_recent: 'recently',
+            rel_hours: '{n}h',
+            rel_days: '{n}d',
             kpi_users: 'USERS',
             kpi_workspaces: 'WORKSPACES',
             kpi_activity: 'ACTIVITY',

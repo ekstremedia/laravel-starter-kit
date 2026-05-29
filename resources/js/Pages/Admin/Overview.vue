@@ -89,9 +89,9 @@ function relativeHours(iso: string | null | undefined): string {
     if (diffMs < 0) return t('admin.overview.rel_now');
     const hr = Math.floor(diffMs / 3_600_000);
     if (hr < 1) return t('admin.overview.rel_recent');
-    if (hr < 24) return `${hr}t`;
+    if (hr < 24) return t('admin.overview.rel_hours', { n: hr });
     const day = Math.floor(hr / 24);
-    return `${day}d`;
+    return t('admin.overview.rel_days', { n: day });
 }
 
 function formatTime(iso: string | null): string {
