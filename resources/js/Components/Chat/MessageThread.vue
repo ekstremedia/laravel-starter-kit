@@ -157,6 +157,7 @@ defineExpose({ scrollToBottom });
                                         :src="att.thumb_url ?? att.url"
                                         :alt="att.name"
                                         class="max-w-full rounded-lg max-h-60 object-contain bg-white/10"
+                                        @error="(e) => { const el = e.target as HTMLImageElement; if (att.url && el.src !== att.url) el.src = att.url; }"
                                     />
                                 </a>
                                 <a
