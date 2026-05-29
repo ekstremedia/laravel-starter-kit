@@ -320,11 +320,14 @@ function getCsrfToken(): string {
                     height: 'calc(100vh - 10rem)',
                 }"
             >
-                <!-- Conversation list. Full-width on mobile (so it fills the
-                     screen when no thread is open); fixed 320px from sm up. -->
+                <!-- Conversation list. Single-pane (full width) until lg; the
+                     two-pane split only kicks in at lg, where there's room for
+                     a 320px list AND a comfortable thread beside the rail.
+                     (Splitting at sm crushed the thread/composer once the rail
+                     was subtracted from the viewport.) -->
                 <div
                     :style="{ borderRight: '1px solid var(--border)' }"
-                    :class="[mobileShowThread ? 'hidden sm:flex' : 'flex', 'flex-col w-full sm:w-80 sm:shrink-0']"
+                    :class="[mobileShowThread ? 'hidden lg:flex' : 'flex', 'flex-col w-full lg:w-80 lg:shrink-0']"
                 >
                     <ConversationList
                         :conversations="conversationList"
@@ -335,10 +338,10 @@ function getCsrfToken(): string {
                     />
                 </div>
 
-                <!-- Message thread (hidden on mobile when list is shown) -->
+                <!-- Message thread (hidden below lg when the list is shown) -->
                 <div
                     class="flex-1 flex flex-col min-w-0"
-                    :class="!mobileShowThread ? 'hidden sm:flex' : 'flex'"
+                    :class="!mobileShowThread ? 'hidden lg:flex' : 'flex'"
                 >
                     <template v-if="activeConversation">
                         <!-- Thread header -->
@@ -355,7 +358,7 @@ function getCsrfToken(): string {
                             <button
                                 @click="goBackToList"
                                 :aria-label="t('chat.back_to_conversations')"
-                                class="sm:hidden"
+                                class="lg:hidden"
                                 :style="{ background: 'transparent', border: 'none', color: 'var(--fg-dim)', cursor: 'pointer', padding: '4px', borderRadius: '3px' }"
                             >
                                 <i class="pi pi-arrow-left"></i>
