@@ -130,10 +130,6 @@ class WorkspaceController extends Controller
                 'id' => $workspace->id,
                 'slug' => $workspace->slug,
                 'name' => $workspace->name,
-                'headline' => $workspace->headline,
-                'about' => $workspace->about,
-                'location' => $workspace->location,
-                'website' => $workspace->website,
                 'status' => $workspace->status,
                 'files_feature_enabled' => (bool) $workspace->files_feature_enabled,
                 'company_files_enabled' => (bool) $workspace->company_files_enabled,
@@ -176,10 +172,6 @@ class WorkspaceController extends Controller
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'headline' => ['sometimes', 'nullable', 'string', 'max:160'],
-            'about' => ['sometimes', 'nullable', 'string', 'max:2000'],
-            'location' => ['sometimes', 'nullable', 'string', 'max:120'],
-            'website' => ['sometimes', 'nullable', 'string', 'url:http,https', 'max:255'],
             'status' => ['required', Rule::in(['active', 'suspended'])],
             'files_feature_enabled' => ['sometimes', 'boolean', $requiresGlobalFiles],
             // Company files is the master kill switch for the shared
@@ -192,13 +184,6 @@ class WorkspaceController extends Controller
             'storage_quota_bytes' => ['sometimes', 'nullable', 'integer', 'min:-1', 'max:'.((2 ** 53) - 1)],
             'default_member_storage_bytes' => ['sometimes', 'nullable', 'integer', 'min:-1', 'max:'.((2 ** 53) - 1)],
         ]);
-
-        foreach (['headline', 'about', 'location', 'website'] as $key) {
-            if (array_key_exists($key, $data) && is_string($data[$key])) {
-                $trimmed = trim($data[$key]);
-                $data[$key] = $trimmed === '' ? null : $trimmed;
-            }
-        }
 
         // Personal and company-shared files are independent toggles: a
         // workspace can run with one, the other, or both. The global

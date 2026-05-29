@@ -228,12 +228,6 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
     <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '14px' }">
         <div>
             <h1 :style="{ margin: 0, fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--fg)' }">{{ t('admin.users.title') }}</h1>
-            <div
-                class="cmd-mono"
-                :style="{ marginTop: '3px', fontSize: '11.5px', color: 'var(--fg-mute)' }"
-            >
-                {{ t('admin.users.summary', { total: userStats?.total ?? 0, active: userStats?.active ?? 0, selected: selectedCount }) }}
-            </div>
         </div>
         <div :style="{ display: 'flex', gap: '6px' }">
             <div :style="{ position: 'relative' }">

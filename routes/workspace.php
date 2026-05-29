@@ -14,7 +14,6 @@ use App\Domains\Users\Http\Controllers\AvatarController;
 use App\Domains\Workspaces\Http\Controllers\DashboardController;
 use App\Domains\Workspaces\Http\Controllers\WorkspaceInvitationController;
 use App\Domains\Workspaces\Http\Controllers\WorkspaceMembersController;
-use App\Domains\Workspaces\Http\Controllers\WorkspaceProfileController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -40,13 +39,6 @@ Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard
 Route::get('/profile', fn () => Inertia::render('Profile'))->name('profile');
 Route::post('/profile/avatar', [AvatarController::class, 'store'])->name('profile.avatar.store');
 Route::delete('/profile/avatar', [AvatarController::class, 'destroy'])->name('profile.avatar.destroy');
-
-// Workspace "About" — the company's own profile card. View is open to any
-// member; edit is gated to workspace Admins (and SuperAdmins) by the
-// WorkspaceProfilePolicy inside the controller.
-Route::get('/about', [WorkspaceProfileController::class, 'show'])->name('about.show');
-Route::get('/about/edit', [WorkspaceProfileController::class, 'edit'])->name('about.edit');
-Route::put('/about', [WorkspaceProfileController::class, 'update'])->name('about.update');
 
 Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
 Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
