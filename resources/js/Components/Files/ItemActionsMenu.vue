@@ -12,6 +12,10 @@ interface FileItemLite {
 const props = withDefaults(defineProps<{
     item: FileItemLite;
     downloadUrl?: string;
+    // When set, the file has a normalized JPEG (RAW/TIFF/HEIC); the menu then
+    // offers "Download original" + "Download converted image" instead of a
+    // single Download entry.
+    convertedDownloadUrl?: string;
     variant?: 'overlay' | 'inline';
     // Feature flag: whether the surrounding page supports share-to-company.
     // Enabled only when the tenant has company_files_enabled and the user
@@ -66,12 +70,26 @@ const items = computed(() => {
     }
 
     if (props.item.type === 'file') {
-        out.push({
-            label: t('files.download'),
-            icon: 'pi pi-download',
-            url: props.downloadUrl,
-            command: () => emit('download'),
-        });
+        if (props.convertedDownloadUrl) {
+            out.push({
+                label: t('files.download_original'),
+                icon: 'pi pi-download',
+                url: props.downloadUrl,
+                command: () => emit('download'),
+            });
+            out.push({
+                label: t('files.download_converted'),
+                icon: 'pi pi-image',
+                url: props.convertedDownloadUrl,
+            });
+        } else {
+            out.push({
+                label: t('files.download'),
+                icon: 'pi pi-download',
+                url: props.downloadUrl,
+                command: () => emit('download'),
+            });
+        }
         out.push({
             label: t('files.open_new_tab'),
             icon: 'pi pi-external-link',

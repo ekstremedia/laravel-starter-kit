@@ -444,6 +444,17 @@ class CompanyFileController extends Controller
             abort(404);
         }
 
+        // `variant=converted` serves the normalized JPEG rendered from a
+        // RAW / TIFF / HEIC original (the `image_preview` collection).
+        if ($request->string('variant')->toString() === 'converted') {
+            $preview = $file->getFirstMedia('image_preview');
+            if ($preview && is_file($preview->getPath())) {
+                $ext = pathinfo($preview->getPath(), PATHINFO_EXTENSION) ?: 'jpg';
+
+                return response()->download($preview->getPath(), pathinfo($file->name, PATHINFO_FILENAME).'.'.$ext);
+            }
+        }
+
         $requested = $request->string('size')->toString();
         if ($requested !== '' && $requested !== 'original' && $media->hasGeneratedConversion($requested)) {
             $path = $media->getPath($requested);

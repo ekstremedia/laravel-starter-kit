@@ -401,6 +401,18 @@ class FileItemController extends Controller
             abort(404);
         }
 
+        // `variant=converted` serves the normalized JPEG we render from RAW /
+        // TIFF / HEIC originals (the `image_preview` collection), so the user
+        // can grab a displayable copy alongside the (default) original.
+        if ($request->string('variant')->toString() === 'converted') {
+            $preview = $file->getFirstMedia('image_preview');
+            if ($preview && is_file($preview->getPath())) {
+                $ext = pathinfo($preview->getPath(), PATHINFO_EXTENSION) ?: 'jpg';
+
+                return response()->download($preview->getPath(), pathinfo($file->name, PATHINFO_FILENAME).'.'.$ext);
+            }
+        }
+
         $requested = $request->string('size')->toString();
         if ($requested !== '' && $requested !== 'original' && $media->hasGeneratedConversion($requested)) {
             $path = $media->getPath($requested);

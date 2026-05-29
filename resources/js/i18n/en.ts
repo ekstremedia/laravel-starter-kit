@@ -1225,6 +1225,8 @@ export default {
         delete: 'Delete',
         open: 'Open',
         download: 'Download',
+        download_original: 'Download original',
+        download_converted: 'Download converted image',
         move_to: 'Move to…',
         size: 'Size',
         modified: 'Modified',

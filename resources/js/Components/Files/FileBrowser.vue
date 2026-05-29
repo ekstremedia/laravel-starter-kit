@@ -83,6 +83,13 @@ const url = (path: string) => customerUrl(`${props.basePath}${path}`);
 // Param kept structural (not `T`) so it accepts both the rendered rows and the
 // non-generic `docPreviewItem` ref below without fighting the component generic.
 const downloadUrl = (item: { id: number }) => url(`/${item.id}/download`);
+// The normalized JPEG for RAW/TIFF/HEIC — only when one was generated.
+const convertedUrl = (item: { id: number; has_converted_image?: boolean }) =>
+    item.has_converted_image ? `${downloadUrl(item)}?variant=converted` : undefined;
+function lightboxConvertedUrl(id: number | string): string | undefined {
+    const found = props.items.find((i) => i.id === Number(id));
+    return found ? convertedUrl(found) : undefined;
+}
 
 // company items carry `can_manage`; private items are always manageable by
 // their owner. `linked` items (a personal file mirrored into the company tree)
@@ -453,6 +460,7 @@ onUnmounted(() => {
                     <ItemActionsMenu
                         :item="item"
                         :download-url="item.type === 'file' ? downloadUrl(item) : undefined"
+                        :converted-download-url="item.type === 'file' ? convertedUrl(item) : undefined"
                         variant="overlay"
                         :can-rename="canRenameItem(item)"
                         :can-share-link="canShareLink"
@@ -550,6 +558,7 @@ onUnmounted(() => {
                             <ItemActionsMenu
                                 :item="item"
                                 :download-url="item.type === 'file' ? downloadUrl(item) : undefined"
+                                :converted-download-url="item.type === 'file' ? convertedUrl(item) : undefined"
                                 variant="inline"
                                 :can-rename="canRenameItem(item)"
                                 :can-share-link="canShareLink"
@@ -586,7 +595,18 @@ onUnmounted(() => {
         <!-- Preview stack -->
         <ImageLightbox v-if="lightboxItems.length" v-model="lightboxIndex" :items="lightboxItems">
             <template #header-actions="{ item }">
+                <a
+                    v-if="lightboxConvertedUrl(item.id)"
+                    :href="lightboxConvertedUrl(item.id)"
+                    :aria-label="t('files.download_converted')"
+                    :title="t('files.download_converted')"
+                    class="rounded-lg bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+                    @click.stop
+                >
+                    <i class="pi pi-image" :style="{ fontSize: '18px' }" />
+                </a>
                 <button
+                    v-if="fullPreview"
                     type="button"
                     :aria-label="t('files.details.title')"
                     :title="t('files.details.title')"

@@ -18,6 +18,8 @@ export interface FileBrowserItem extends MediaFileRow {
     size: number;
     parent_id: number | null;
     image_processing?: boolean;
+    // A normalized JPEG exists (RAW/TIFF/HEIC) — enables "download converted".
+    has_converted_image?: boolean;
     created_at: string | null;
     updated_at: string | null;
 

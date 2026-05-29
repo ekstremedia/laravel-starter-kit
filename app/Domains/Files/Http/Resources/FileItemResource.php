@@ -120,6 +120,9 @@ class FileItemResource extends JsonResource
             // for RAW/TIFF, file for native images).
             'available_sizes' => $previewMedia ? $this->availableSizes($previewMedia) : null,
             'has_doc_preview' => $docPreview !== null,
+            // A normalized JPEG exists (RAW/TIFF/HEIC original) — the UI offers
+            // a "download converted image" option alongside the original.
+            'has_converted_image' => $imagePreview !== null,
         ];
     }
 

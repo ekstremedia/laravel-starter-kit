@@ -65,4 +65,37 @@ describe('ItemActionsMenu', () => {
         const hrefs = wrapper.findAll('.p-menu li a').map((a) => a.attributes('href'));
         expect(hrefs).toContain('/media/42.zip');
     });
+
+    it('offers original + converted downloads when a converted image exists', () => {
+        const wrapper = mount(ItemActionsMenu, {
+            props: {
+                item: { id: 1, type: 'file' },
+                downloadUrl: '/files/1/download',
+                convertedDownloadUrl: '/files/1/download?variant=converted',
+            },
+        });
+        const labels = menuLabels(wrapper);
+        expect(labels).toEqual(expect.arrayContaining(['files.download_original', 'files.download_converted']));
+        expect(labels).not.toContain('files.download');
+        const hrefs = wrapper.findAll('.p-menu li a').map((a) => a.attributes('href'));
+        expect(hrefs).toContain('/files/1/download?variant=converted');
+    });
+
+    it('honors the per-entry gates (company surface drops link/details/copy)', () => {
+        const wrapper = mount(ItemActionsMenu, {
+            props: {
+                item: { id: 1, type: 'file' },
+                downloadUrl: '/d/1',
+                canShareLink: false,
+                canDetails: false,
+                canCopyLink: false,
+            },
+        });
+        const labels = menuLabels(wrapper);
+        expect(labels).not.toContain('files.share');
+        expect(labels).not.toContain('files.copy_link');
+        expect(labels).not.toContain('files.details.title');
+        // open / download / delete still present
+        expect(labels).toEqual(expect.arrayContaining(['files.open', 'files.download', 'files.delete']));
+    });
 });

@@ -1223,6 +1223,8 @@ export default {
         delete: 'Slett',
         open: 'Åpne',
         download: 'Last ned',
+        download_original: 'Last ned original',
+        download_converted: 'Last ned konvertert bilde',
         move_to: 'Flytt til …',
         size: 'Størrelse',
         modified: 'Endret',
