@@ -273,7 +273,7 @@ class HandleInertiaRequests extends Middleware
      *
      * @return Builder<Tenant>|BelongsToMany<Tenant, User>
      */
-    private function accessibleCustomersQuery(User $user)
+    private function accessibleCustomersQuery(User $user): Builder|BelongsToMany
     {
         return $user->isSuperAdmin()
             ? Tenant::query()->where('status', 'active')

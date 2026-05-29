@@ -295,6 +295,9 @@ export default {
     rail: {
         aria_label: 'Hovednavigasjon',
         brand: 'Starter Kit',
+        // Monogram shown in the rail's brand tile (app vs admin mode).
+        brand_mark: 'SK',
+        admin_mark: 'AD',
         administration: 'Administrasjon',
         back_to_app: 'Tilbake til appen',
         section_workspace: 'Arbeidsområde',

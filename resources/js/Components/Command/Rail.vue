@@ -30,7 +30,8 @@ const { appVisible, adminVisible } = useSidebarItems();
 
 // On /admin/* the rail swaps to the admin item set; everywhere else it shows
 // the app nav. Entry into the admin area is via the topbar profile dropdown.
-const isAdminMode = computed(() => currentPath.value.startsWith('/admin'));
+// Boundary-aware so a future route like /administrator isn't treated as admin.
+const isAdminMode = computed(() => currentPath.value === '/admin' || currentPath.value.startsWith('/admin/'));
 const visible = computed(() => (isAdminMode.value ? adminVisible.value : appVisible.value));
 
 const initials = computed(() =>
@@ -86,7 +87,7 @@ type Entry = SidebarEntry;
                 overflow: 'hidden',
             }"
         >
-            <span :style="{ flexShrink: 0 }">{{ isAdminMode ? 'AD' : 'SK' }}</span>
+            <span :style="{ flexShrink: 0 }">{{ isAdminMode ? t('rail.admin_mark') : t('rail.brand_mark') }}</span>
             <span
                 v-if="expanded"
                 :style="{ fontSize: '12px', letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }"

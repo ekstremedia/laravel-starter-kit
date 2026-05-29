@@ -21,7 +21,10 @@ const isSuperAdmin = computed(() => user.value?.is_super_admin === true);
 // Delegated email-template editors aren't super admins, but can still reach
 // the mail page — surface it for them when they don't get the full admin link.
 const canManageEmailTemplates = computed(() => page.props.auth?.can?.manage_email_templates === true);
-const isAdminMode = computed(() => page.url.split('?')[0].startsWith('/admin'));
+const isAdminMode = computed(() => {
+    const p = page.url.split('?')[0];
+    return p === '/admin' || p.startsWith('/admin/');
+});
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent || '');
 const shortcutKey = computed(() => (isMac ? '⌘K' : 'Ctrl K'));
