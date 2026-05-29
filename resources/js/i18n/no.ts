@@ -981,6 +981,8 @@ export default {
             policy: 'Retningslinjer',
             announcement: 'Annonsering',
             filesystem: 'Filsystem',
+            saving: 'Lagrer…',
+            saved: 'Lagret',
             unsaved: 'Ulagrede endringer',
             discard: 'Forkast',
             toast_saved: 'Innstillinger lagret',
