@@ -54,11 +54,11 @@ it('accepts an upload within the configured max_upload_bytes', function () {
 });
 
 it('does not let medialibrary cap reject a file under the admin limit', function () {
-    // Medialibrary's own max_file_size must track the PHP ceiling, never a
-    // value below the admin upload limit — otherwise a validated file would
-    // still throw FileIsTooBig at addMedia().
+    // Medialibrary's own max_file_size tracks the PHP ceiling, so it can never
+    // be below the *effective* (clamped) upload limit that validation enforces
+    // — otherwise a validated file would still throw FileIsTooBig at addMedia().
     expect(config('media-library.max_file_size'))->toBe(UploadLimits::phpCeilingBytes())
-        ->and(config('media-library.max_file_size'))->toBeGreaterThanOrEqual(AppSetting::current()->max_upload_bytes);
+        ->and(config('media-library.max_file_size'))->toBeGreaterThanOrEqual(UploadLimits::maxUploadBytes());
 });
 
 it('exposes the PHP upload ceiling on the admin settings page', function () {
