@@ -6,6 +6,8 @@ import CommandLayout from '@/Layouts/CommandLayout.vue';
 import CmdDataTable, { type Column } from '@/Components/Command/DataTable.vue';
 import Icon from '@/Components/Command/Icon.vue';
 import Dot from '@/Components/Command/Dot.vue';
+import PageTitle from '@/Components/Command/PageTitle.vue';
+import CmdButton from '@/Components/Command/Button.vue';
 import { useCommandToasts } from '@/composables/useCommandToasts';
 import { formatDateTime } from '@/composables/useDateTime';
 
@@ -109,35 +111,18 @@ function submitRestore() {
     <div>
     <Head :title="t('admin.backups.head_title')" />
 
-    <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '14px' }">
-        <div>
-            <h1 :style="{ margin: 0, fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--fg)' }">
-                {{ t('admin.backups.title') }}
-            </h1>
-            <div
-                class="cmd-mono"
-                :style="{ marginTop: '3px', fontSize: '11.5px', color: 'var(--fg-mute)' }"
-            >{{ t('admin.backups.subtitle') }}</div>
-        </div>
-        <div :style="{ display: 'flex', gap: '6px' }">
-            <button
-                type="button"
-                @click="runClean"
-                :style="{ background: 'transparent', color: 'var(--fg-dim)', border: '1px solid var(--border)', padding: '5px 10px', borderRadius: '5px', fontSize: '11.5px', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: '5px' }"
-            >
-                <Icon name="trash" :size="12" />
+    <PageTitle :title="t('admin.backups.title')" :subtitle="t('admin.backups.subtitle')">
+        <template #actions>
+            <CmdButton variant="ghost" size="md" @click="runClean">
+                <template #icon><Icon name="trash" :size="12" /></template>
                 {{ t('admin.backups.clean') }}
-            </button>
-            <button
-                type="button"
-                @click="runBackup"
-                :style="{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '5px 11px', borderRadius: '5px', fontSize: '11.5px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: '5px' }"
-            >
-                <Icon name="arrow" :size="12" />
+            </CmdButton>
+            <CmdButton variant="primary" size="md" @click="runBackup">
+                <template #icon><Icon name="arrow" :size="12" /></template>
                 {{ t('admin.backups.run_now') }}
-            </button>
-        </div>
-    </div>
+            </CmdButton>
+        </template>
+    </PageTitle>
 
     <!-- Summary strip -->
     <div
