@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Files\Models;
 
+use App\Domains\Tenancy\Models\Concerns\BelongsToTenant;
 use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -46,6 +47,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  */
 class FileItem extends Model implements HasMedia
 {
+    use BelongsToTenant;
     use HasFactory;
     use HasUuids;
     use InteractsWithMedia;

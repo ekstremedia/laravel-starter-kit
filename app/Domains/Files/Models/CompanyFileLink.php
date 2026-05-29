@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Files\Models;
 
+use App\Domains\Tenancy\Models\Concerns\BelongsToTenant;
 use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -28,6 +29,7 @@ use Spatie\Activitylog\Support\LogOptions;
  */
 class CompanyFileLink extends Model
 {
+    use BelongsToTenant;
     use HasFactory;
     use LogsActivity;
 

@@ -7,6 +7,7 @@ namespace App\Domains\Assets\Models;
 use App\Domains\Files\Contracts\FileOwner;
 use App\Domains\Files\Models\Concerns\HasFileQuota;
 use App\Domains\Files\Models\Concerns\HasFiles;
+use App\Domains\Tenancy\Models\Concerns\BelongsToTenant;
 use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -38,6 +39,7 @@ use Spatie\Activitylog\Support\LogOptions;
  */
 class Asset extends Model implements FileOwner
 {
+    use BelongsToTenant;
     use HasFactory;
     use HasFileQuota;
     use HasFiles;
