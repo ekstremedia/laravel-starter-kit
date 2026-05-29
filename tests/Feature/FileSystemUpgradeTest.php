@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Domains\Files\Models\FileItem;
 use App\Domains\Files\Services\FileMetadataExtractor;
+use App\Domains\Files\Support\UploadLimits;
 use App\Domains\Settings\Models\AppSetting;
 use App\Domains\Users\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
@@ -50,6 +51,14 @@ it('accepts an upload within the configured max_upload_bytes', function () {
         ->assertRedirect();
 
     expect(FileItem::where('user_id', $this->user->id)->count())->toBe(1);
+});
+
+it('does not let medialibrary cap reject a file under the admin limit', function () {
+    // Medialibrary's own max_file_size must track the PHP ceiling, never a
+    // value below the admin upload limit — otherwise a validated file would
+    // still throw FileIsTooBig at addMedia().
+    expect(config('media-library.max_file_size'))->toBe(UploadLimits::phpCeilingBytes())
+        ->and(config('media-library.max_file_size'))->toBeGreaterThanOrEqual(AppSetting::current()->max_upload_bytes);
 });
 
 it('exposes the PHP upload ceiling on the admin settings page', function () {

@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Files\Support\UploadLimits;
 use Spatie\ImageOptimizer\Optimizers\Avifenc;
 use Spatie\ImageOptimizer\Optimizers\Cwebp;
 use Spatie\ImageOptimizer\Optimizers\Gifsicle;
@@ -35,10 +36,15 @@ return [
     'disk_name' => env('MEDIA_DISK', 'public'),
 
     /*
-     * The maximum file size of an item in bytes.
-     * Adding a larger file will result in an exception.
+     * The maximum file size of an item in bytes. Adding a larger file throws.
+     *
+     * We track the running PHP upload ceiling (min of upload_max_filesize /
+     * post_max_size) so this never rejects a file the server already accepted —
+     * the real per-file business limit is enforced per upload path (the
+     * admin `max_upload_bytes` setting for files, AvatarController for avatars,
+     * etc.) before addMedia() is ever called.
      */
-    'max_file_size' => 1024 * 1024 * 50, // 50MB — align with AvatarController + nginx + PHP limits
+    'max_file_size' => UploadLimits::phpCeilingBytes(),
 
     /*
      * This queue connection will be used to generate derived and responsive images.
