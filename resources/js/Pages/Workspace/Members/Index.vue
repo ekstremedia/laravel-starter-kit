@@ -285,7 +285,7 @@ function remove(member: Member) {
     margin: 0;
 }
 .page__head .muted {
-    color: var(--color-text-subtle);
+    color: var(--fg-mute);
     font-size: 13px;
     margin-top: 4px;
 }
@@ -302,20 +302,20 @@ function remove(member: Member) {
     font-size: 12px;
 }
 .field span {
-    color: var(--color-text-subtle);
+    color: var(--fg-mute);
 }
 .field input,
 .field select,
 .table__row select {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
+    background: var(--panel);
+    border: 1px solid var(--border);
     border-radius: 6px;
     padding: 6px 8px;
-    color: var(--color-text);
+    color: var(--fg);
     font-size: 13px;
 }
 button {
-    background: var(--color-accent);
+    background: var(--accent);
     color: white;
     border: 0;
     border-radius: 6px;
@@ -333,16 +333,16 @@ button:disabled {
 }
 button.danger {
     background: transparent;
-    color: var(--color-danger);
+    color: var(--danger);
     padding: 4px 8px;
 }
 .error {
-    color: var(--color-danger);
+    color: var(--danger);
     font-size: 12px;
     margin-top: 8px;
 }
 .table {
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--border);
     border-radius: 8px;
     overflow: hidden;
 }
@@ -353,15 +353,15 @@ button.danger {
     gap: 12px;
     padding: 10px 16px;
     font-size: 13px;
-    border-top: 1px solid var(--color-border);
+    border-top: 1px solid var(--border);
 }
 .table__row:first-child {
     border-top: 0;
 }
 .table__row--head {
-    background: var(--color-surface-muted);
+    background: var(--panel2);
     font-weight: 600;
-    color: var(--color-text-subtle);
+    color: var(--fg-mute);
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -374,12 +374,12 @@ button.danger {
     justify-content: flex-end;
 }
 .muted {
-    color: var(--color-text-subtle);
+    color: var(--fg-mute);
 }
 .empty {
     padding: 24px;
     text-align: center;
-    color: var(--color-text-subtle);
+    color: var(--fg-mute);
     font-size: 13px;
 }
 .section-head {
@@ -398,11 +398,11 @@ button.danger {
     grid-template-columns: 1.4fr 200px auto;
 }
 .field select {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
+    background: var(--panel);
+    border: 1px solid var(--border);
     border-radius: 6px;
     padding: 6px 8px;
-    color: var(--color-text);
+    color: var(--fg);
     font-size: 13px;
 }
 .badge {
@@ -414,7 +414,7 @@ button.danger {
     font-weight: 600;
 }
 .badge--warn {
-    background: rgba(255, 138, 138, 0.15);
-    color: var(--color-danger);
+    background: color-mix(in srgb, var(--danger) 15%, transparent);
+    color: var(--danger);
 }
 </style>

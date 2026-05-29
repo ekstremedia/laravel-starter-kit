@@ -61,7 +61,7 @@ class WorkspaceInvitationController extends Controller
     }
 
     /** Admin revokes a pending invitation. */
-    public function destroy(Request $request, WorkspaceInvitation $invitation): RedirectResponse
+    public function destroy(WorkspaceInvitation $invitation): RedirectResponse
     {
         // Route-model binding runs through the global tenant scope, so the
         // invitation is guaranteed to belong to the active workspace.

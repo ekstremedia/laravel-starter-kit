@@ -35,9 +35,8 @@ pest()->extend(TestCase::class)
 
 /**
  * Create a workspace (`App\Domains\Workspaces\Models\Workspace` under the hood) for use in a test.
- * In multi-tenant integration tests against real Postgres the creation event
- * pipeline provisions the per-workspace schema; in the Feature suite above we
- * strip those listeners so this just writes a `tenants` row.
+ * Tenancy is row-level, so this just writes a `workspaces` row — there are no
+ * per-workspace schemas/databases to provision.
  */
 function createWorkspace(string $slug = 'acme', ?string $name = null): Workspace
 {
