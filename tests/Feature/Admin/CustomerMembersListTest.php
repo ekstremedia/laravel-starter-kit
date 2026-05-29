@@ -46,7 +46,7 @@ it('saves customer profile fields from the admin edit page', function () {
             'name' => 'Updated Co',
             'status' => 'suspended',
             // Whitespace-padded — exercises the trim normalization in
-            // CustomerController::update().
+            // WorkspaceController::update().
             'headline' => '  tagline  ',
             'about' => 'about text',
             'location' => 'Oslo',

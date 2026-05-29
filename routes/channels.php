@@ -26,5 +26,5 @@ Broadcast::channel('customer.{tenantId}.files', function ($user, $tenantId) {
         return true;
     }
 
-    return $user->customers()->where('tenants.id', (int) $tenantId)->exists();
+    return $user->customers()->where('workspaces.id', (int) $tenantId)->exists();
 });

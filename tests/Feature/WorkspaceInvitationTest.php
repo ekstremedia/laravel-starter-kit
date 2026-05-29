@@ -1,9 +1,9 @@
 <?php
 
 use App\Domains\Notifications\Notifications\WorkspaceInvitationNotification;
-use App\Domains\Tenancy\Models\WorkspaceInvitation;
-use App\Domains\Tenancy\Support\CustomerMembership;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\WorkspaceInvitation;
+use App\Domains\Workspaces\Support\WorkspaceMembership;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Support\Facades\Notification;
 
@@ -70,7 +70,7 @@ it('lets a logged-in invitee accept and join with the invited role', function ()
 
     expect($invitee->fresh()->belongsToCustomer($this->customer))->toBeTrue();
     expect($invitation->fresh()->accepted_at)->not->toBeNull();
-    expect(CustomerMembership::rolesOn($invitee, $this->customer))->toContain('Editor');
+    expect(WorkspaceMembership::rolesOn($invitee, $this->customer))->toContain('Editor');
 });
 
 it('sends a guest to register and remembers the invitation', function () {

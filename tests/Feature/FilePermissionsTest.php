@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 use App\Domains\Files\Models\FileItem;
 use App\Domains\Settings\Models\AppSetting;
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -18,7 +18,7 @@ use Spatie\Permission\PermissionRegistrar;
  * (optionally) grant back a curated subset, then forget the registrar's
  * permission cache so the next HTTP request sees the new state.
  */
-function grantOnly(User $user, Tenant $customer, array $keep): void
+function grantOnly(User $user, Workspace $customer, array $keep): void
 {
     $registrar = app(PermissionRegistrar::class);
     $registrar->setPermissionsTeamId($customer->id);

@@ -54,7 +54,7 @@ it('the same user can hold different roles on different customers', function () 
     expect($user->fresh()->hasRole('Admin'))->toBeFalse();
 });
 
-it('InitializeTenancyByPath scopes the permission team id to the active customer during the request', function () {
+it('ResolveWorkspace scopes the permission team id to the active customer during the request', function () {
     $customer = createCustomer();
     $user = User::factory()->create();
     grantRoleOnCustomer($user, 'User', $customer);
@@ -79,7 +79,7 @@ it('lets SuperAdmin enter any customer regardless of membership', function () {
     $customer = createCustomer();
 
     // No membership on the customer; the SuperAdmin flag alone should bypass
-    // the InitializeTenancyByPath membership guard.
+    // the ResolveWorkspace membership guard.
     $this->actingAs($super)
         ->get(customerUrl($customer, '/dashboard'))
         ->assertOk();

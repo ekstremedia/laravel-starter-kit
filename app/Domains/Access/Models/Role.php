@@ -13,6 +13,6 @@ class Role extends SpatieRole
 {
     public function getConnectionName(): ?string
     {
-        return (string) config('tenancy.database.central_connection', 'central');
+        return (string) config('workspaces.database.central_connection', 'central');
     }
 }

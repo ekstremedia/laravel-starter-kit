@@ -4,10 +4,10 @@ namespace App\Domains\Auth\Actions;
 
 use App\Domains\Notifications\Notifications\WelcomeNotification;
 use App\Domains\Settings\Models\AppSetting;
-use App\Domains\Tenancy\Actions\CreateWorkspace;
-use App\Domains\Tenancy\Models\Tenant;
-use App\Domains\Tenancy\Support\CustomerMembership;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Actions\CreateWorkspace;
+use App\Domains\Workspaces\Models\Workspace;
+use App\Domains\Workspaces\Support\WorkspaceMembership;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -50,7 +50,7 @@ class CreateNewUser implements CreatesNewUsers
         // off) everyone shares the one default workspace, so create_own is
         // ignored. In multi-tenant mode the configured registration_mode
         // decides between self-serve space creation and auto-join.
-        if (config('tenancy.enabled') && config('tenancy.registration_mode') === 'create_own') {
+        if (config('workspaces.enabled') && config('workspaces.registration_mode') === 'create_own') {
             app(CreateWorkspace::class)->forOwner($user, $this->defaultWorkspaceName($user));
         } else {
             $this->attachToDefaultCustomer($user, $settings->default_role ?? 'User');
@@ -71,18 +71,18 @@ class CreateNewUser implements CreatesNewUsers
 
     /**
      * New sign-ups auto-join the default customer configured in
-     * `tenancy.default_customer_slug` (env: `TENANCY_DEFAULT_CUSTOMER`) with the
+     * `tenancy.default_workspace_slug` (env: `WORKSPACES_DEFAULT_WORKSPACE`) with the
      * platform-configured default role. Roles are always customer-scoped, so we
-     * go through `CustomerMembership` to keep the pivot + role assignment in
+     * go through `WorkspaceMembership` to keep the pivot + role assignment in
      * sync. When the configured slug doesn't resolve we log a warning — the
      * user would land on the picker with nowhere to go until an admin attaches
      * them, which is worth surfacing.
      */
     private function attachToDefaultCustomer(User $user, string $defaultRole): void
     {
-        $slug = config('tenancy.default_customer_slug', 'default');
+        $slug = config('workspaces.default_workspace_slug', 'default');
 
-        $customer = Tenant::query()->where('slug', $slug)->first();
+        $customer = Workspace::query()->where('slug', $slug)->first();
 
         if ($customer === null) {
             Log::warning('Default customer not found for new user; skipping auto-join.', [
@@ -97,12 +97,12 @@ class CreateNewUser implements CreatesNewUsers
         // recognise as assignable — mirroring the previous swallowed
         // RoleDoesNotExist behaviour so a bad app-setting value can't block
         // registration.
-        $role = in_array($defaultRole, CustomerMembership::assignableRoles(), true)
+        $role = in_array($defaultRole, WorkspaceMembership::assignableRoles(), true)
             ? $defaultRole
             : 'User';
 
         try {
-            CustomerMembership::attach($user, $customer, [$role]);
+            WorkspaceMembership::attach($user, $customer, [$role]);
         } catch (RoleDoesNotExist) {
             $user->customers()->syncWithoutDetaching([$customer->id]);
         }

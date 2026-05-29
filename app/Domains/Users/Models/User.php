@@ -9,7 +9,7 @@ use App\Domains\Files\Models\Concerns\HasFiles;
 use App\Domains\Files\Models\FileItem;
 use App\Domains\Notifications\Notifications\ResetPasswordNotification;
 use App\Domains\Notifications\Notifications\VerifyEmailNotification;
-use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Workspaces\Models\Workspace;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\Translation\HasLocalePreference;
@@ -111,7 +111,7 @@ class User extends Authenticatable implements FileOwner, HasLocalePreference, Ha
      */
     public function getConnectionName(): ?string
     {
-        return config('tenancy.database.central_connection');
+        return config('workspaces.database.central_connection');
     }
 
     public function canImpersonate(): bool
@@ -283,18 +283,18 @@ class User extends Authenticatable implements FileOwner, HasLocalePreference, Ha
 
     /**
      * Customers (a.k.a. tenants in package-speak) this user is a member of.
-     * The underlying model is `App\Domains\Tenancy\Models\Tenant` because stancl/tenancy's base
+     * The underlying model is `App\Domains\Workspaces\Models\Workspace` because stancl/tenancy's base
      * contract names it that way; at the application layer we call them customers.
      *
-     * @return BelongsToMany<Tenant, $this>
+     * @return BelongsToMany<Workspace, $this>
      */
     public function customers(): BelongsToMany
     {
-        return $this->belongsToMany(Tenant::class, 'workspace_user', 'user_id', 'workspace_id')
+        return $this->belongsToMany(Workspace::class, 'workspace_user', 'user_id', 'workspace_id')
             ->withTimestamps();
     }
 
-    public function belongsToCustomer(Tenant $customer): bool
+    public function belongsToCustomer(Workspace $customer): bool
     {
         return $this->customers()->whereKey($customer->getKey())->exists();
     }
@@ -317,7 +317,7 @@ class User extends Authenticatable implements FileOwner, HasLocalePreference, Ha
      * arbitrary user-owned files only via the cross-cutting `manage all
      * files` permission (or super-admin).
      */
-    public function canManageFiles(User $user, ?Tenant $tenant = null): bool
+    public function canManageFiles(User $user, ?Workspace $workspace = null): bool
     {
         if ($user->isSuperAdmin() || $user->can('manage all files')) {
             return true;
@@ -326,9 +326,9 @@ class User extends Authenticatable implements FileOwner, HasLocalePreference, Ha
         return $user->getKey() === $this->getKey();
     }
 
-    public function canViewFiles(User $user, ?Tenant $tenant = null): bool
+    public function canViewFiles(User $user, ?Workspace $workspace = null): bool
     {
-        return $this->canManageFiles($user, $tenant);
+        return $this->canManageFiles($user, $workspace);
     }
 
     /**

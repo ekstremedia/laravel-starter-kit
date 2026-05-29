@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Database\Factories;
 
 use App\Domains\Files\Models\FileItem;
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -30,7 +30,7 @@ class FileItemFactory extends Factory
     public function definition(): array
     {
         return [
-            'workspace_id' => Tenant::factory(),
+            'workspace_id' => Workspace::factory(),
             'user_id' => User::factory(),
             'parent_id' => null,
             'type' => FileItem::TYPE_FILE,
@@ -77,7 +77,7 @@ class FileItemFactory extends Factory
     }
 
     /**
-     * Make this FileItem owned by the given model (User personal, Tenant
+     * Make this FileItem owned by the given model (User personal, Workspace
      * company, or any other FileOwner).
      */
     public function ownedBy(Model $owner): static
@@ -85,16 +85,16 @@ class FileItemFactory extends Factory
         return $this->state(fn () => [
             'owner_type' => $owner->getMorphClass(),
             'owner_id' => $owner->getKey(),
-            'scope' => $owner instanceof Tenant ? FileItem::SCOPE_COMPANY : FileItem::SCOPE_PERSONAL,
+            'scope' => $owner instanceof Workspace ? FileItem::SCOPE_COMPANY : FileItem::SCOPE_PERSONAL,
         ]);
     }
 
-    public function company(Tenant $tenant): static
+    public function company(Workspace $workspace): static
     {
         return $this->state(fn () => [
-            'workspace_id' => $tenant->getKey(),
-            'owner_type' => $tenant->getMorphClass(),
-            'owner_id' => $tenant->getKey(),
+            'workspace_id' => $workspace->getKey(),
+            'owner_type' => $workspace->getMorphClass(),
+            'owner_id' => $workspace->getKey(),
             'scope' => FileItem::SCOPE_COMPANY,
         ]);
     }

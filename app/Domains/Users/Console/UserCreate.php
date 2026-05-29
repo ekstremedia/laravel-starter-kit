@@ -2,9 +2,9 @@
 
 namespace App\Domains\Users\Console;
 
-use App\Domains\Tenancy\Models\Tenant;
-use App\Domains\Tenancy\Support\CustomerMembership;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
+use App\Domains\Workspaces\Support\WorkspaceMembership;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
 
@@ -38,15 +38,15 @@ class UserCreate extends Command
         $customerSlug = $this->option('customer');
         $hasCustomer = $customerSlug !== null && $customerSlug !== '';
 
-        if ($hasCustomer && ! in_array($role, CustomerMembership::assignableRoles(), true)) {
-            $this->error("Role [{$role}] is not assignable. Pick one of: ".implode(', ', CustomerMembership::assignableRoles()).'.');
+        if ($hasCustomer && ! in_array($role, WorkspaceMembership::assignableRoles(), true)) {
+            $this->error("Role [{$role}] is not assignable. Pick one of: ".implode(', ', WorkspaceMembership::assignableRoles()).'.');
 
             return self::FAILURE;
         }
 
         $customer = null;
         if ($hasCustomer) {
-            $customer = Tenant::query()->where('slug', $customerSlug)->first();
+            $customer = Workspace::query()->where('slug', $customerSlug)->first();
             if ($customer === null) {
                 $this->error("Customer with slug [{$customerSlug}] not found.");
 
@@ -77,7 +77,7 @@ class UserCreate extends Command
         ])->save();
 
         if ($customer !== null) {
-            CustomerMembership::attach($user, $customer, $role);
+            WorkspaceMembership::attach($user, $customer, $role);
             $this->info("Created user {$user->id} <{$email}> as {$role} on [{$customer->slug}].");
         } else {
             $this->info("Created user {$user->id} <{$email}>.");

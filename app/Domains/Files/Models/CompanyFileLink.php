@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Files\Models;
 
-use App\Domains\Tenancy\Models\Concerns\BelongsToTenant;
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Concerns\BelongsToWorkspace;
+use App\Domains\Workspaces\Models\Workspace;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,14 +22,14 @@ use Spatie\Activitylog\Support\LogOptions;
  * @property int|null $shared_by_user_id
  * @property Carbon $created_at
  * @property Carbon $updated_at
- * @property-read Tenant $tenant
+ * @property-read Workspace $workspace
  * @property-read FileItem $fileItem
  * @property-read FileItem|null $companyParent
  * @property-read User|null $sharedBy
  */
 class CompanyFileLink extends Model
 {
-    use BelongsToTenant;
+    use BelongsToWorkspace;
     use HasFactory;
     use LogsActivity;
 
@@ -56,12 +56,12 @@ class CompanyFileLink extends Model
      */
     public function getConnectionName(): ?string
     {
-        return config('tenancy.database.central_connection');
+        return config('workspaces.database.central_connection');
     }
 
-    public function tenant(): BelongsTo
+    public function workspace(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class, 'workspace_id');
+        return $this->belongsTo(Workspace::class, 'workspace_id');
     }
 
     public function fileItem(): BelongsTo

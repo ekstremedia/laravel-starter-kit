@@ -28,12 +28,12 @@ class UserSetting extends Model
     /**
      * Pin every read/write to the central tenancy connection. Without this,
      * stancl/tenancy swaps the default connection to the active tenant on
-     * InitializeTenancyByPath requests, and merge()/save() would then write
+     * ResolveWorkspace requests, and merge()/save() would then write
      * user_settings into the wrong schema.
      */
     public function getConnectionName(): ?string
     {
-        return config('tenancy.database.central_connection');
+        return config('workspaces.database.central_connection');
     }
 
     protected $casts = [
@@ -69,7 +69,7 @@ class UserSetting extends Model
         // Highest threshold (80/95/100) we've already notified about, so we
         // don't spam the same warning every upload. Reset to null on delete.
         'storage_last_alerted_threshold' => null,
-        // Most recently visited customer slug — used by CustomerLandingController
+        // Most recently visited customer slug — used by WorkspaceLandingController
         // to auto-redirect returning users instead of forcing them through the picker.
         'last_customer_slug' => null,
     ];

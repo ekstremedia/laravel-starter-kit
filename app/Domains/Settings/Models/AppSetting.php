@@ -10,7 +10,7 @@ class AppSetting extends Model
 
     public function getConnectionName(): ?string
     {
-        return config('tenancy.database.central_connection');
+        return config('workspaces.database.central_connection');
     }
 
     protected $casts = [

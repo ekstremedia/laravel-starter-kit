@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Operations\Http\Controllers;
 
 use App\Domains\Files\Services\StorageUsageService;
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
 use App\Http\Controllers\Controller;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
@@ -37,7 +37,7 @@ class StorageDashboardController extends Controller
         // emit a stable `key` (personal/company/other) the Vue localizes, plus
         // a `label` fallback (the entity class basename) for custom owners.
         $personalType = (new User)->getMorphClass();
-        $companyType = (new Tenant)->getMorphClass();
+        $companyType = (new Workspace)->getMorphClass();
         $byEntityType = array_map(function (array $row) use ($personalType, $companyType): array {
             $row['key'] = match ($row['type']) {
                 $personalType => 'personal',
@@ -57,10 +57,10 @@ class StorageDashboardController extends Controller
                 'bytes' => $totalBytes,
                 'disk_total' => $diskTotal,
                 'disk_free' => $diskFree,
-                'file_count' => (int) DB::connection(config('tenancy.database.central_connection'))
+                'file_count' => (int) DB::connection(config('workspaces.database.central_connection'))
                     ->table('media')->count(),
                 'user_count' => User::query()->count(),
-                'customer_count' => Tenant::query()->count(),
+                'customer_count' => Workspace::query()->count(),
             ],
             'by_type' => $byType,
             'by_collection' => $byCollection,
@@ -82,7 +82,7 @@ class StorageDashboardController extends Controller
      */
     private function growth(): array
     {
-        $conn = (string) config('tenancy.database.central_connection');
+        $conn = (string) config('workspaces.database.central_connection');
 
         return DB::connection($conn)
             ->table('storage_snapshots')

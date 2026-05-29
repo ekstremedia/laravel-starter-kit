@@ -13,7 +13,7 @@ return new class extends Migration
         Schema::create('file_items', function (Blueprint $table) {
             $table->id();
             $table->uuid()->unique();
-            $table->foreignId('workspace_id')->constrained('tenants')->cascadeOnDelete();
+            $table->foreignId('workspace_id')->constrained('workspaces')->cascadeOnDelete();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('parent_id')->nullable()->constrained('file_items')->cascadeOnDelete();
             $table->string('type', 10);

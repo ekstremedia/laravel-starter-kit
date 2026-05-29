@@ -11,7 +11,6 @@ use App\Domains\Files\Services\StorageUsageService;
 use App\Domains\Notifications\Notifications\CompanyFileDeletedByAdminNotification;
 use App\Domains\Notifications\Notifications\CompanyFileUnlinkedByAdminNotification;
 use App\Domains\Settings\Models\AppSetting;
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Http\UploadedFile;

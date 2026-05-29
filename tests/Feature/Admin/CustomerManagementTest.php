@@ -1,7 +1,7 @@
 <?php
 
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Support\Facades\DB;
 
@@ -54,7 +54,7 @@ it('creates a customer with an explicit slug', function () {
         ])
         ->assertSessionHasNoErrors();
 
-    $customer = Tenant::query()->where('slug', 'acme')->firstOrFail();
+    $customer = Workspace::query()->where('slug', 'acme')->firstOrFail();
 
     expect($customer->name)->toBe('Acme Corp')
         ->and($customer->status)->toBe('active');
@@ -65,7 +65,7 @@ it('auto-generates a slug from the name when none is provided', function () {
         ->post('/admin/customers', ['name' => 'Hello World Inc'])
         ->assertSessionHasNoErrors();
 
-    expect(Tenant::query()->where('slug', 'hello-world-inc')->exists())->toBeTrue();
+    expect(Workspace::query()->where('slug', 'hello-world-inc')->exists())->toBeTrue();
 });
 
 it('rejects slugs that contain uppercase or invalid characters', function () {
@@ -73,7 +73,7 @@ it('rejects slugs that contain uppercase or invalid characters', function () {
         ->post('/admin/customers', ['name' => 'Acme', 'slug' => 'Acme Corp!'])
         ->assertSessionHasErrors('slug');
 
-    expect(Tenant::query()->count())->toBe(0);
+    expect(Workspace::query()->count())->toBe(0);
 });
 
 it('rejects duplicate slugs', function () {
@@ -91,7 +91,7 @@ it('rejects a name that cannot produce a valid auto-slug', function () {
         ->post('/admin/customers', ['name' => '★★★'])
         ->assertSessionHasErrors('slug');
 
-    expect(Tenant::query()->count())->toBe(0);
+    expect(Workspace::query()->count())->toBe(0);
 });
 
 it('renders the edit form with the customer payload', function () {
@@ -138,7 +138,7 @@ it('deletes a customer', function () {
         ->delete("/admin/customers/{$customer->id}")
         ->assertRedirect('/admin/customers');
 
-    expect(Tenant::query()->where('slug', 'acme')->exists())->toBeFalse();
+    expect(Workspace::query()->where('slug', 'acme')->exists())->toBeFalse();
 });
 
 it('cascades workspace_user pivot rows when a customer is deleted', function () {

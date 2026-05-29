@@ -1,14 +1,14 @@
 <?php
 
-use App\Domains\Notifications\Notifications\CustomerMemberAddedNotification;
-use App\Domains\Notifications\Notifications\CustomerMemberRemovedNotification;
-use App\Domains\Tenancy\Support\CustomerMembership;
+use App\Domains\Notifications\Notifications\WorkspaceMemberAddedNotification;
+use App\Domains\Notifications\Notifications\WorkspaceMemberRemovedNotification;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Support\WorkspaceMembership;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Support\Facades\Notification;
 
 beforeEach(function () {
-    config()->set('tenancy.enabled', true);
+    config()->set('workspaces.enabled', true);
     $this->seed(RoleAndPermissionSeeder::class);
 });
 
@@ -98,7 +98,7 @@ it('dispatches notification when notify is true on attach', function () {
         ])
         ->assertRedirect();
 
-    Notification::assertSentTo($user, CustomerMemberAddedNotification::class);
+    Notification::assertSentTo($user, WorkspaceMemberAddedNotification::class);
 });
 
 it('does not dispatch notification when notify is false', function () {
@@ -118,7 +118,7 @@ it('does not dispatch notification when notify is false', function () {
         ])
         ->assertRedirect();
 
-    Notification::assertNotSentTo($user, CustomerMemberAddedNotification::class);
+    Notification::assertNotSentTo($user, WorkspaceMemberAddedNotification::class);
 });
 
 it('dispatches removal notification when notify is true on detach', function () {
@@ -137,7 +137,7 @@ it('dispatches removal notification when notify is true on detach', function () 
         ])
         ->assertRedirect();
 
-    Notification::assertSentTo($user, CustomerMemberRemovedNotification::class);
+    Notification::assertSentTo($user, WorkspaceMemberRemovedNotification::class);
 });
 
 it('lets super admin set a users role on a specific customer', function () {
@@ -153,7 +153,7 @@ it('lets super admin set a users role on a specific customer', function () {
         ->assertRedirect()
         ->assertSessionHasNoErrors();
 
-    expect(CustomerMembership::roleOn($user->fresh(), $customer))->toBe('Admin');
+    expect(WorkspaceMembership::roleOn($user->fresh(), $customer))->toBe('Admin');
 });
 
 it('rejects setting a customer role for a user not in the customer', function () {
@@ -167,7 +167,7 @@ it('rejects setting a customer role for a user not in the customer', function ()
         ->patch("/admin/users/{$user->id}/customers/{$customer->id}/role", ['roles' => ['Admin']])
         ->assertRedirect();
 
-    expect(CustomerMembership::roleOn($user->fresh(), $customer))->toBeNull();
+    expect(WorkspaceMembership::roleOn($user->fresh(), $customer))->toBeNull();
 });
 
 it('shows per-customer roles in the user show payload', function () {

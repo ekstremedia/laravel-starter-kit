@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 use App\Domains\Files\Events\FileItemUpdated;
 use App\Domains\Files\Models\FileItem;
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Illuminate\Support\Facades\Gate;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
  * Cover the polymorphic-owner contract end-to-end: a User-owned tree, a
- * Tenant-owned tree, query/scoping, and broadcast routing. Targets the
+ * Workspace-owned tree, query/scoping, and broadcast routing. Targets the
  * regressions most likely as new owner types (Building, Customer) are added.
  */
 beforeEach(function () {
@@ -42,7 +42,7 @@ it('makes a tenant the owner via ->ownedBy()', function () {
             'user_id' => $this->user->id,
         ]);
 
-    expect($item->owner_type)->toBe((new Tenant)->getMorphClass())
+    expect($item->owner_type)->toBe((new Workspace)->getMorphClass())
         ->and($item->owner_id)->toBe($this->customer->id)
         ->and($item->scope)->toBe(FileItem::SCOPE_COMPANY)
         ->and($item->owner->is($this->customer))->toBeTrue();

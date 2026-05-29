@@ -12,9 +12,9 @@ return new class extends Migration
     {
         Schema::create('company_file_links', function (Blueprint $table) {
             $table->id();
-            // Tenant owning the share. Denormalized from the target
+            // Workspace owning the share. Denormalized from the target
             // company_parent_id for efficient root-level listing.
-            $table->foreignId('workspace_id')->constrained('tenants')->cascadeOnDelete();
+            $table->foreignId('workspace_id')->constrained('workspaces')->cascadeOnDelete();
             // The personal file being exposed to the company. Must be
             // scope='personal' and type='file' — enforced in the controller.
             $table->foreignId('file_item_id')->constrained('file_items')->cascadeOnDelete();

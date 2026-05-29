@@ -107,10 +107,10 @@ class UserExport extends Command
         // `model_has_roles`, `roles`, and `tenants` all live on the landlord
         // schema and the default connection can be anything in a worker that
         // previously handled a tenant job.
-        $central = (string) config('tenancy.database.central_connection');
+        $central = (string) config('workspaces.database.central_connection');
         $rows = DB::connection($central)->table($mhr)
             ->join($rolesTable, "{$rolesTable}.id", '=', "{$mhr}.role_id")
-            ->leftJoin('tenants', 'tenants.id', '=', "{$mhr}.{$teamKey}")
+            ->leftJoin('workspaces', 'workspaces.id', '=', "{$mhr}.{$teamKey}")
             ->where("{$mhr}.model_type", (new User)->getMorphClass())
             ->where("{$mhr}.model_id", $user->id)
             // Defence against a future assignment that lands with a null
@@ -120,7 +120,7 @@ class UserExport extends Command
             ->whereNotNull("{$mhr}.{$teamKey}")
             ->get([
                 "{$mhr}.{$teamKey} as customer_id",
-                'tenants.slug as customer_slug',
+                'workspaces.slug as customer_slug',
                 "{$rolesTable}.name as role",
             ]);
 

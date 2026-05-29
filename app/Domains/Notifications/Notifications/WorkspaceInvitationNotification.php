@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Notifications\Notifications;
 
-use App\Domains\Tenancy\Models\WorkspaceInvitation;
+use App\Domains\Workspaces\Models\WorkspaceInvitation;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -31,7 +31,7 @@ class WorkspaceInvitationNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $workspace = $this->invitation->tenant;
+        $workspace = $this->invitation->workspace;
         $url = route('workspace.invitations.accept', ['token' => $this->invitation->token]);
         $inviter = $this->invitation->invitedBy?->fullName();
 

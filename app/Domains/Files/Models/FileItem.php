@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Files\Models;
 
-use App\Domains\Tenancy\Models\Concerns\BelongsToTenant;
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Concerns\BelongsToWorkspace;
+use App\Domains\Workspaces\Models\Workspace;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -39,7 +39,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  * @property int $size
  * @property Carbon $created_at
  * @property Carbon $updated_at
- * @property-read Tenant $tenant
+ * @property-read Workspace $workspace
  * @property-read User $creator
  * @property-read User $user
  * @property-read Model|null $owner
@@ -47,7 +47,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  */
 class FileItem extends Model implements HasMedia
 {
-    use BelongsToTenant;
+    use BelongsToWorkspace;
     use HasFactory;
     use HasUuids;
     use InteractsWithMedia;
@@ -106,7 +106,7 @@ class FileItem extends Model implements HasMedia
      */
     public function getConnectionName(): ?string
     {
-        return config('tenancy.database.central_connection');
+        return config('workspaces.database.central_connection');
     }
 
     /**
@@ -127,14 +127,14 @@ class FileItem extends Model implements HasMedia
         return 'int';
     }
 
-    public function tenant(): BelongsTo
+    public function workspace(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class, 'workspace_id');
+        return $this->belongsTo(Workspace::class, 'workspace_id');
     }
 
     /**
      * Polymorphic owner: the model that owns this file (User for personal,
-     * Tenant for company, future Building/Customer/etc.). Can be null when
+     * Workspace for company, future Building/Customer/etc.). Can be null when
      * the related row was hard-deleted out from under the morph.
      *
      * @return MorphTo<Model, $this>
@@ -146,7 +146,7 @@ class FileItem extends Model implements HasMedia
 
     /**
      * Who uploaded/created this file. Always a User (column is NOT NULL).
-     * Distinct from owner() — a Tenant-owned file is still created by a user.
+     * Distinct from owner() — a Workspace-owned file is still created by a user.
      *
      * @return BelongsTo<User, $this>
      */

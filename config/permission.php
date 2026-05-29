@@ -121,8 +121,8 @@ return [
      * customer. `Admin`/`Editor`/`User` are customer-scoped: the same user can be
      * Admin on customer A and plain User on customer B.
      *
-     * Team id = the active customer (Tenant) id. It is set by
-     * `InitializeTenancyByPath` after `tenancy()->initialize()` so every
+     * Team id = the active customer (Workspace) id. It is set by
+     * `ResolveWorkspace` after `tenancy()->initialize()` so every
      * `hasRole`/`can` check in the request auto-scopes to the active customer.
      */
 

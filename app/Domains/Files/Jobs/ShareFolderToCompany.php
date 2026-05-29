@@ -8,8 +8,8 @@ use App\Domains\Files\Models\CompanyFileLink;
 use App\Domains\Files\Models\FileItem;
 use App\Domains\Files\Services\StorageUsageService;
 use App\Domains\Files\Support\CompanyFilesCache;
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -45,34 +45,34 @@ class ShareFolderToCompany implements ShouldQueue
     public function handle(StorageUsageService $usage): void
     {
         $folder = FileItem::find($this->personalFolderId);
-        $tenant = Tenant::find($this->tenantId);
+        $workspace = Workspace::find($this->tenantId);
         $actor = User::find($this->actingUserId);
 
-        if (! $folder || ! $tenant || ! $actor) {
+        if (! $folder || ! $workspace || ! $actor) {
             return;
         }
         if (! $folder->isFolder() || $folder->scope !== FileItem::SCOPE_PERSONAL) {
             return;
         }
 
-        DB::connection((string) config('tenancy.database.central_connection'))
-            ->transaction(function () use ($folder, $tenant, $actor): void {
-                $this->mirrorFolder($folder, $tenant, $actor, $this->companyParentId);
+        DB::connection((string) config('workspaces.database.central_connection'))
+            ->transaction(function () use ($folder, $workspace, $actor): void {
+                $this->mirrorFolder($folder, $workspace, $actor, $this->companyParentId);
             });
 
-        $usage->recomputeForTenant($tenant);
+        $usage->recomputeForTenant($workspace);
 
         // Settle the UI: bump the version once the whole tree is in place.
         // An earlier sync bump in the controller started the spinner; this
         // one completes it.
-        CompanyFilesCache::bump($tenant->id, 'folder_share_complete', $this->companyParentId);
+        CompanyFilesCache::bump($workspace->id, 'folder_share_complete', $this->companyParentId);
     }
 
-    private function mirrorFolder(FileItem $personalFolder, Tenant $tenant, User $actor, ?int $companyParentId): void
+    private function mirrorFolder(FileItem $personalFolder, Workspace $workspace, User $actor, ?int $companyParentId): void
     {
         $companyFolder = FileItem::firstOrCreate(
             [
-                'workspace_id' => $tenant->id,
+                'workspace_id' => $workspace->id,
                 'scope' => FileItem::SCOPE_COMPANY,
                 'type' => FileItem::TYPE_FOLDER,
                 'parent_id' => $companyParentId,
@@ -80,22 +80,22 @@ class ShareFolderToCompany implements ShouldQueue
             ],
             [
                 'user_id' => $actor->id,
-                'owner_type' => $tenant->getMorphClass(),
-                'owner_id' => $tenant->id,
+                'owner_type' => $workspace->getMorphClass(),
+                'owner_id' => $workspace->id,
                 'size' => 0,
             ],
         );
 
         // Chunk the descendants so a folder with tens of thousands of items
         // doesn't load the full collection into worker memory at once.
-        $personalFolder->children()->chunkById(200, function ($children) use ($tenant, $actor, $companyFolder): void {
+        $personalFolder->children()->chunkById(200, function ($children) use ($workspace, $actor, $companyFolder): void {
             foreach ($children as $child) {
                 /** @var FileItem $child */
                 if ($child->isFolder()) {
-                    $this->mirrorFolder($child, $tenant, $actor, $companyFolder->id);
+                    $this->mirrorFolder($child, $workspace, $actor, $companyFolder->id);
                 } else {
                     CompanyFileLink::updateOrCreate(
-                        ['workspace_id' => $tenant->id, 'file_item_id' => $child->id],
+                        ['workspace_id' => $workspace->id, 'file_item_id' => $child->id],
                         ['company_parent_id' => $companyFolder->id, 'shared_by_user_id' => $actor->id],
                     );
                 }

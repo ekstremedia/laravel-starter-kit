@@ -13,7 +13,7 @@ return new class extends Migration
         Schema::create('storage_snapshots', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained()->cascadeOnDelete();
-            $table->foreignId('workspace_id')->nullable()->constrained('tenants')->cascadeOnDelete();
+            $table->foreignId('workspace_id')->nullable()->constrained('workspaces')->cascadeOnDelete();
             $table->date('snapshot_date');
             $table->unsignedBigInteger('bytes_used')->default(0);
             $table->unsignedInteger('file_count')->default(0);

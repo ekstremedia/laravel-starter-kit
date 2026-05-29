@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Domains\Tenancy\Models\Tenant;
-use App\Domains\Tenancy\Models\WorkspaceInvitation;
+use App\Domains\Workspaces\Models\Workspace;
+use App\Domains\Workspaces\Models\WorkspaceInvitation;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -21,7 +21,7 @@ class WorkspaceInvitationFactory extends Factory
     public function definition(): array
     {
         return [
-            'workspace_id' => Tenant::factory(),
+            'workspace_id' => Workspace::factory(),
             'email' => $this->faker->unique()->safeEmail(),
             'role' => 'User',
             'token' => WorkspaceInvitation::freshToken(),

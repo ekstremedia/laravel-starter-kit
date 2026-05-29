@@ -14,7 +14,7 @@ use App\Domains\Files\Services\StorageUsageService;
 use App\Domains\Files\Support\OwnerResolver;
 use App\Domains\Files\Support\UploadLimits;
 use App\Domains\Settings\Models\AppSetting;
-use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Workspaces\Models\Workspace;
 use App\Http\Controllers\Controller;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
@@ -43,26 +43,26 @@ class EntityFileController extends Controller
 
     public function storeFolder(Request $request): RedirectResponse
     {
-        $tenant = $this->currentTenant($request);
-        $this->assertFilesEnabled($tenant);
+        $workspace = $this->currentTenant($request);
+        $this->assertFilesEnabled($workspace);
         $owner = OwnerResolver::fromRequest($request, $request->user());
 
-        Gate::forUser($request->user())->authorize('createFolderFor', [FileItem::class, $owner, $tenant]);
+        Gate::forUser($request->user())->authorize('createFolderFor', [FileItem::class, $owner, $workspace]);
 
         $data = $request->validate([
             'name' => 'required|string|max:255',
-            'parent_id' => ['nullable', 'integer', $this->existsRule($tenant, $owner)],
+            'parent_id' => ['nullable', 'integer', $this->existsRule($workspace, $owner)],
         ]);
 
         $folder = FileItem::create([
-            'workspace_id' => $tenant->id,
+            'workspace_id' => $workspace->id,
             'user_id' => $request->user()->id,
             'owner_type' => $owner->getMorphClass(),
             'owner_id' => $owner->getKey(),
             'parent_id' => $data['parent_id'] ?? null,
             'type' => FileItem::TYPE_FOLDER,
             'scope' => FileItem::SCOPE_PERSONAL,
-            'name' => $this->uniqueName($tenant, $owner, $data['parent_id'] ?? null, $data['name']),
+            'name' => $this->uniqueName($workspace, $owner, $data['parent_id'] ?? null, $data['name']),
         ]);
 
         return back()->with('success', __('files.folder_created', ['name' => $folder->name]));
@@ -70,16 +70,16 @@ class EntityFileController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $tenant = $this->currentTenant($request);
-        $this->assertFilesEnabled($tenant);
+        $workspace = $this->currentTenant($request);
+        $this->assertFilesEnabled($workspace);
         $owner = OwnerResolver::fromRequest($request, $request->user());
 
-        Gate::forUser($request->user())->authorize('uploadTo', [FileItem::class, $owner, $tenant]);
+        Gate::forUser($request->user())->authorize('uploadTo', [FileItem::class, $owner, $workspace]);
 
         $request->validate([
             'files' => 'required|array|min:1',
             'files.*' => 'file|max:'.UploadLimits::maxUploadKilobytes(),
-            'parent_id' => ['nullable', 'integer', $this->existsRule($tenant, $owner)],
+            'parent_id' => ['nullable', 'integer', $this->existsRule($workspace, $owner)],
         ]);
 
         $parentId = $request->integer('parent_id') ?: null;
@@ -89,18 +89,18 @@ class EntityFileController extends Controller
         $imageTargets = [];
         $allTargets = [];
 
-        DB::connection((string) config('tenancy.database.central_connection'))->transaction(function () use ($request, $tenant, $owner, $parentId, &$created, &$previewTargets, &$videoTargets, &$imageTargets, &$allTargets): void {
+        DB::connection((string) config('workspaces.database.central_connection'))->transaction(function () use ($request, $workspace, $owner, $parentId, &$created, &$previewTargets, &$videoTargets, &$imageTargets, &$allTargets): void {
             foreach ($request->file('files', []) as $file) {
                 $size = $file->getSize();
                 $item = FileItem::create([
-                    'workspace_id' => $tenant->id,
+                    'workspace_id' => $workspace->id,
                     'user_id' => $request->user()->id,
                     'owner_type' => $owner->getMorphClass(),
                     'owner_id' => $owner->getKey(),
                     'parent_id' => $parentId,
                     'type' => FileItem::TYPE_FILE,
                     'scope' => FileItem::SCOPE_PERSONAL,
-                    'name' => $this->uniqueName($tenant, $owner, $parentId, $file->getClientOriginalName()),
+                    'name' => $this->uniqueName($workspace, $owner, $parentId, $file->getClientOriginalName()),
                     'mime_type' => $file->getClientMimeType(),
                     'size' => $size === false ? 0 : (int) $size,
                 ]);
@@ -147,12 +147,12 @@ class EntityFileController extends Controller
 
     public function update(Request $request, FileItem $file): RedirectResponse
     {
-        $tenant = $this->currentTenant($request);
-        $this->assertFilesEnabled($tenant);
-        Gate::forUser($request->user())->authorize('update', [$file, $tenant]);
+        $workspace = $this->currentTenant($request);
+        $this->assertFilesEnabled($workspace);
+        Gate::forUser($request->user())->authorize('update', [$file, $workspace]);
 
         $data = $request->validate(['name' => 'required|string|min:1|max:255']);
-        $file->name = $this->uniqueName($tenant, $file->owner, $file->parent_id, $data['name'], $file->id);
+        $file->name = $this->uniqueName($workspace, $file->owner, $file->parent_id, $data['name'], $file->id);
         $file->save();
 
         return back()->with('success', __('files.updated'));
@@ -160,9 +160,9 @@ class EntityFileController extends Controller
 
     public function destroy(Request $request, FileItem $file): RedirectResponse
     {
-        $tenant = $this->currentTenant($request);
-        $this->assertFilesEnabled($tenant);
-        Gate::forUser($request->user())->authorize('delete', [$file, $tenant]);
+        $workspace = $this->currentTenant($request);
+        $this->assertFilesEnabled($workspace);
+        Gate::forUser($request->user())->authorize('delete', [$file, $workspace]);
 
         $owner = $file->owner;
         $file->delete();
@@ -176,9 +176,9 @@ class EntityFileController extends Controller
 
     public function download(Request $request, FileItem $file): BinaryFileResponse
     {
-        $tenant = $this->currentTenant($request);
-        $this->assertFilesEnabled($tenant);
-        Gate::forUser($request->user())->authorize('download', [$file, $tenant]);
+        $workspace = $this->currentTenant($request);
+        $this->assertFilesEnabled($workspace);
+        Gate::forUser($request->user())->authorize('download', [$file, $workspace]);
 
         $media = $file->getFirstMedia('file');
         abort_if($media === null, 404);
@@ -186,21 +186,21 @@ class EntityFileController extends Controller
         return response()->download($media->getPath(), $media->file_name);
     }
 
-    private function assertFilesEnabled(Tenant $tenant): void
+    private function assertFilesEnabled(Workspace $workspace): void
     {
         abort_unless(AppSetting::current()->files_feature_enabled, 404);
-        abort_unless($tenant->files_feature_enabled, 404);
+        abort_unless($workspace->files_feature_enabled, 404);
     }
 
-    private function currentTenant(Request $request): Tenant
+    private function currentTenant(Request $request): Workspace
     {
-        $tenant = $request->attributes->get('customer');
-        if ($tenant instanceof Tenant) {
-            return $tenant;
+        $workspace = $request->attributes->get('customer');
+        if ($workspace instanceof Workspace) {
+            return $workspace;
         }
 
-        $slug = config('tenancy.default_customer_slug');
-        $fallback = $slug ? Tenant::query()->where('slug', $slug)->first() : null;
+        $slug = config('workspaces.default_workspace_slug');
+        $fallback = $slug ? Workspace::query()->where('slug', $slug)->first() : null;
         abort_if($fallback === null, 404);
 
         return $fallback;
@@ -211,16 +211,16 @@ class EntityFileController extends Controller
      * — pinned to the central connection (the `exists:` rule would otherwise
      * hit the tenant schema once tenancy is initialised).
      */
-    private function existsRule(Tenant $tenant, Model $owner): Exists
+    private function existsRule(Workspace $workspace, Model $owner): Exists
     {
-        return Rule::exists((string) config('tenancy.database.central_connection').'.file_items', 'id')
-            ->where('workspace_id', $tenant->id)
+        return Rule::exists((string) config('workspaces.database.central_connection').'.file_items', 'id')
+            ->where('workspace_id', $workspace->id)
             ->where('owner_type', $owner->getMorphClass())
             ->where('owner_id', $owner->getKey())
             ->where('type', FileItem::TYPE_FOLDER);
     }
 
-    private function uniqueName(Tenant $tenant, ?Model $owner, ?int $parentId, string $name, ?int $ignoreId = null): string
+    private function uniqueName(Workspace $workspace, ?Model $owner, ?int $parentId, string $name, ?int $ignoreId = null): string
     {
         if ($owner === null) {
             return $name;
@@ -229,7 +229,7 @@ class EntityFileController extends Controller
         $base = $name;
         $i = 1;
         while (FileItem::query()
-            ->where('workspace_id', $tenant->id)
+            ->where('workspace_id', $workspace->id)
             ->where('owner_type', $owner->getMorphClass())
             ->where('owner_id', $owner->getKey())
             ->where('parent_id', $parentId)

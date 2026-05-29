@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Files\Http\Middleware;
 
 use App\Domains\Files\Services\StorageUsageService;
-use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Workspaces\Models\Workspace;
 use Closure;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
@@ -16,7 +16,7 @@ use Symfony\Component\HttpFoundation\Response;
  * Guard company-files upload endpoints against exhausted tenant quotas.
  *
  * Mirrors EnsureStorageAvailable, but scopes to the tenant's company bucket
- * (tenants.storage_quota_bytes) rather than a user's personal override.
+ * (workspaces.storage_quota_bytes) rather than a user's personal override.
  */
 class EnsureCompanyStorageAvailable
 {
@@ -24,12 +24,12 @@ class EnsureCompanyStorageAvailable
 
     public function handle(Request $request, Closure $next): Response
     {
-        $tenant = $request->attributes->get('customer');
-        if (! $tenant instanceof Tenant) {
+        $workspace = $request->attributes->get('customer');
+        if (! $workspace instanceof Workspace) {
             return $next($request);
         }
 
-        $quota = $tenant->storage_quota_bytes;
+        $quota = $workspace->storage_quota_bytes;
 
         // 0 = hard disabled for company uploads. -1 / null = unlimited.
         if ($quota === 0) {
@@ -41,7 +41,7 @@ class EnsureCompanyStorageAvailable
         }
 
         $incoming = $this->incomingUploadBytes($request);
-        $remaining = $this->usage->remainingBytesForTenantCompany($tenant) ?? PHP_INT_MAX;
+        $remaining = $this->usage->remainingBytesForTenantCompany($workspace) ?? PHP_INT_MAX;
 
         if ($incoming > $remaining) {
             $this->fail($request, 'files.company_quota_exceeded');

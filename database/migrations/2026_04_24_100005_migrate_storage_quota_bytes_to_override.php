@@ -25,7 +25,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $conn = (string) config('tenancy.database.central_connection');
+        $conn = (string) config('workspaces.database.central_connection');
 
         DB::connection($conn)->table('user_settings')
             ->orderBy('id')
@@ -49,7 +49,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        $conn = (string) config('tenancy.database.central_connection');
+        $conn = (string) config('workspaces.database.central_connection');
 
         DB::connection($conn)->table('user_settings')
             ->orderBy('id')

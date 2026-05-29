@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Users\Http\Controllers;
 
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
 use App\Domains\Users\Policies\UserProfilePolicy;
+use App\Domains\Workspaces\Models\Workspace;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -35,10 +35,10 @@ class UserProfileController extends Controller
             // Subquery instead of pluck() — the inner SELECT runs as part of
             // the same SQL statement, avoiding a second round-trip and a
             // potentially large WHERE IN payload.
-            $query->whereIn('tenants.id', $viewer->customers()->select('tenants.id'));
+            $query->whereIn('workspaces.id', $viewer->customers()->select('workspaces.id'));
         }
-        /** @var array<int, Tenant> $shared */
-        $shared = $query->orderBy('name')->get(['tenants.id', 'tenants.slug', 'tenants.name'])->all();
+        /** @var array<int, Workspace> $shared */
+        $shared = $query->orderBy('name')->get(['workspaces.id', 'workspaces.slug', 'workspaces.name'])->all();
 
         return Inertia::render('UserProfile', [
             'profile' => [
@@ -54,7 +54,7 @@ class UserProfileController extends Controller
                 'avatar_thumb_url' => $user->avatarUrl('thumb'),
                 'created_at' => $user->created_at,
             ],
-            'shared_customers' => array_map(fn (Tenant $c) => [
+            'shared_customers' => array_map(fn (Workspace $c) => [
                 'id' => $c->id,
                 'slug' => $c->slug,
                 'name' => $c->name,

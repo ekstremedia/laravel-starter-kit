@@ -10,11 +10,11 @@ use App\Domains\Files\Http\Controllers\FileItemController;
 use App\Domains\Files\Http\Controllers\FileShareController;
 use App\Domains\Files\Http\Controllers\FileTrashController;
 use App\Domains\Notifications\Http\Controllers\NotificationController;
-use App\Domains\Tenancy\Http\Controllers\CustomerMembersController;
-use App\Domains\Tenancy\Http\Controllers\CustomerProfileController;
-use App\Domains\Tenancy\Http\Controllers\DashboardController;
-use App\Domains\Tenancy\Http\Controllers\WorkspaceInvitationController;
 use App\Domains\Users\Http\Controllers\AvatarController;
+use App\Domains\Workspaces\Http\Controllers\DashboardController;
+use App\Domains\Workspaces\Http\Controllers\WorkspaceInvitationController;
+use App\Domains\Workspaces\Http\Controllers\WorkspaceMembersController;
+use App\Domains\Workspaces\Http\Controllers\WorkspaceProfileController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -25,9 +25,9 @@ use Inertia\Inertia;
 |
 | This file lists the routes that a logged-in user owns inside a customer.
 | It's mounted from `bootstrap/app.php` in one of two shapes depending on
-| `config('tenancy.enabled')`:
+| `config('workspaces.enabled')`:
 |
-|   - enabled  → prefix `/c/{customer}`, middleware auth+verified+InitializeTenancyByPath,
+|   - enabled  → prefix `/c/{customer}`, middleware auth+verified+ResolveWorkspace,
 |                name prefix `customer.`
 |   - disabled → root paths, middleware auth+verified, no name prefix
 |
@@ -43,10 +43,10 @@ Route::delete('/profile/avatar', [AvatarController::class, 'destroy'])->name('pr
 
 // Customer "About" — the company's own profile card. View is open to any
 // member; edit is gated to customer Admins (and SuperAdmins) by the
-// TenantProfilePolicy inside the controller.
-Route::get('/about', [CustomerProfileController::class, 'show'])->name('about.show');
-Route::get('/about/edit', [CustomerProfileController::class, 'edit'])->name('about.edit');
-Route::put('/about', [CustomerProfileController::class, 'update'])->name('about.update');
+// WorkspaceProfilePolicy inside the controller.
+Route::get('/about', [WorkspaceProfileController::class, 'show'])->name('about.show');
+Route::get('/about/edit', [WorkspaceProfileController::class, 'edit'])->name('about.edit');
+Route::put('/about', [WorkspaceProfileController::class, 'update'])->name('about.update');
 
 Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
 Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
@@ -171,13 +171,13 @@ if (config('assets.enabled')) {
 }
 
 // Customer-Admin — manage the members of the active customer. `role:Admin`
-// resolves against the team id set by InitializeTenancyByPath, so it means
+// resolves against the team id set by ResolveWorkspace, so it means
 // "Admin on THIS customer" (not platform admin).
 Route::middleware('customer.admin')->prefix('members')->name('members.')->group(function () {
-    Route::get('/', [CustomerMembersController::class, 'index'])->name('index');
-    Route::post('/', [CustomerMembersController::class, 'store'])->name('store');
-    Route::patch('/{user}/role', [CustomerMembersController::class, 'setRole'])->name('setRole');
-    Route::delete('/{user}', [CustomerMembersController::class, 'destroy'])->name('destroy');
+    Route::get('/', [WorkspaceMembersController::class, 'index'])->name('index');
+    Route::post('/', [WorkspaceMembersController::class, 'store'])->name('store');
+    Route::patch('/{user}/role', [WorkspaceMembersController::class, 'setRole'])->name('setRole');
+    Route::delete('/{user}', [WorkspaceMembersController::class, 'destroy'])->name('destroy');
 
     // Email invitations: invite an address (existing user or not) to join.
     Route::post('/invitations', [WorkspaceInvitationController::class, 'store'])->name('invitations.store');

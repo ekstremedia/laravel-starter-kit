@@ -1,7 +1,7 @@
 <?php
 
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -9,8 +9,8 @@ beforeEach(function () {
     $this->seed(RoleAndPermissionSeeder::class);
     // Fortify's CreateNewUser attaches new sign-ups to the default customer
     // with the platform's default role, so that customer has to exist.
-    Tenant::firstOrCreate(
-        ['slug' => config('tenancy.default_customer_slug', 'default')],
+    Workspace::firstOrCreate(
+        ['slug' => config('workspaces.default_workspace_slug', 'default')],
         ['name' => 'Default', 'status' => 'active'],
     );
 });
@@ -36,14 +36,14 @@ it('registers a new user', function () {
     expect($user)->not->toBeNull();
     expect($user->first_name)->toBe('John');
     expect($user->last_name)->toBe('Doe');
-    $defaultCustomer = Tenant::where('slug', config('tenancy.default_customer_slug', 'default'))->first();
+    $defaultCustomer = Workspace::where('slug', config('workspaces.default_workspace_slug', 'default'))->first();
     app(PermissionRegistrar::class)->setPermissionsTeamId($defaultCustomer->id);
     expect($user->hasRole('User'))->toBeTrue();
     expect($user->hasVerifiedEmail())->toBeFalse();
 });
 
 it('creates the user their own workspace in create_own mode', function () {
-    config()->set('tenancy.registration_mode', 'create_own');
+    config()->set('workspaces.registration_mode', 'create_own');
 
     $this->post('/register', [
         'first_name' => 'Ada',
@@ -58,9 +58,9 @@ it('creates the user their own workspace in create_own mode', function () {
 
     // A brand-new workspace was created and the user is its admin — not the
     // shared default workspace.
-    $workspace = Tenant::where('name', "Ada's space")->first();
+    $workspace = Workspace::where('name', "Ada's space")->first();
     expect($workspace)->not->toBeNull();
-    expect($workspace->slug)->not->toBe(config('tenancy.default_customer_slug', 'default'));
+    expect($workspace->slug)->not->toBe(config('workspaces.default_workspace_slug', 'default'));
     expect($user->customers()->whereKey($workspace->id)->exists())->toBeTrue();
 
     app(PermissionRegistrar::class)->setPermissionsTeamId($workspace->id);
@@ -68,7 +68,7 @@ it('creates the user their own workspace in create_own mode', function () {
     expect($user->hasRole('Admin'))->toBeTrue();
 
     // They did NOT auto-join the shared default workspace in this mode.
-    $default = Tenant::where('slug', config('tenancy.default_customer_slug', 'default'))->first();
+    $default = Workspace::where('slug', config('workspaces.default_workspace_slug', 'default'))->first();
     expect($user->customers()->whereKey($default->id)->exists())->toBeFalse();
 });
 

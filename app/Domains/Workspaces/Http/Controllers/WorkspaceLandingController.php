@@ -1,0 +1,92 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\Workspaces\Http\Controllers;
+
+use App\Domains\Workspaces\Models\Workspace;
+use App\Domains\Workspaces\Models\WorkspaceInvitation;
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Inertia\Inertia;
+use Inertia\Response;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+
+/**
+ * Post-login landing (`/app`). Central redirects from Fortify, LoginResponse,
+ * RedirectIfAuthenticated, impersonation, and DevLogin all point here:
+ *
+ *   - user has 1 customer  → /c/{slug}/dashboard
+ *   - user has many        → render the picker
+ */
+class WorkspaceLandingController extends Controller
+{
+    public function __invoke(Request $request): RedirectResponse|Response
+    {
+        // `/app` is behind `['auth','verified']`, so `user()` is guaranteed non-null.
+        $user = $request->user();
+
+        // Finish a pending invitation the user started while logged out (they
+        // were sent here after registering / logging in). Convergence point for
+        // both new-account and existing-account invitees.
+        if ($token = $request->session()->pull('workspace_invitation_token')) {
+            $invitation = WorkspaceInvitation::query()->where('token', (string) $token)->first();
+            if ($invitation && $invitation->isPending() && mb_strtolower($invitation->email) === mb_strtolower($user->email)) {
+                WorkspaceInvitationController::acceptFor($user, $invitation);
+
+                return WorkspaceInvitationController::toWorkspace($invitation->workspace)
+                    ->with('success', __('invitations.flash.joined', ['workspace' => $invitation->workspace->name]));
+            }
+        }
+
+        // Single-workspace mode: there's no picker and no slug — go straight to
+        // the (root-mounted) dashboard.
+        if (! config('workspaces.enabled')) {
+            return redirect()->route('customer.dashboard');
+        }
+
+        // SuperAdmins can enter any active customer; regular users only their memberships.
+        /** @var Collection<int, Workspace> $customers */
+        $customers = $user->isSuperAdmin()
+            ? Workspace::query()->where('status', 'active')->orderBy('name')->get()
+            : $user->customers()->where('status', 'active')->orderBy('name')->get();
+
+        if ($customers->count() === 1) {
+            /** @var Workspace $only */
+            $only = $customers->first();
+
+            return redirect()->route('customer.dashboard', ['customer' => $only->slug]);
+        }
+
+        // Prefer the user's most recently visited customer. Falls through to
+        // the picker if the slug is stale (customer suspended, user removed)
+        // or has never been set.
+        $remembered = $user->settings()->resolved()['last_customer_slug'] ?? null;
+        if (is_string($remembered) && $remembered !== '') {
+            $match = $customers->firstWhere('slug', $remembered);
+            if ($match) {
+                return redirect()->route('customer.dashboard', ['customer' => $match->slug]);
+            }
+        }
+
+        // The picker itself handles the empty case with a friendly "ask an admin
+        // to add you" message — let it render so the user sees *why* they can't
+        // enter anywhere rather than getting a bare redirect.
+        return $this->picker($customers);
+    }
+
+    /**
+     * @param  Collection<int, Workspace>  $customers
+     */
+    private function picker($customers): Response
+    {
+        return Inertia::render('Customers/Picker', [
+            'customers' => $customers->map(fn (Workspace $customer) => [
+                'id' => $customer->id,
+                'slug' => $customer->slug,
+                'name' => $customer->name,
+            ])->values(),
+        ]);
+    }
+}

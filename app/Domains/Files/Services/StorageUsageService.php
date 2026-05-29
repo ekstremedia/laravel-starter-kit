@@ -8,8 +8,8 @@ use App\Domains\Chat\Models\Message;
 use App\Domains\Files\Models\FileItem;
 use App\Domains\Notifications\Notifications\ApproachingStorageLimitNotification;
 use App\Domains\Settings\Models\AppSetting;
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
@@ -21,7 +21,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
  *
  *   - **Billable** — uploads where the FileItem is in the `file` collection
  *     and is owned by the model in question. Owners are polymorphic (User,
- *     Tenant, Building, etc.). This is what quota enforcement and the /files
+ *     Workspace, Building, etc.). This is what quota enforcement and the /files
  *     usage bar use. Scoped per-(owner, tenant) so each customer gets its
  *     own bucket.
  *
@@ -54,9 +54,9 @@ class StorageUsageService
     /**
      * Billable bytes for (owner, tenant).
      */
-    public function usedBytesForOwnerInTenant(Model $owner, Tenant $tenant): int
+    public function usedBytesForOwnerInTenant(Model $owner, Workspace $workspace): int
     {
-        return (int) $this->billableQuery($owner, $tenant)->sum('media.size');
+        return (int) $this->billableQuery($owner, $workspace)->sum('media.size');
     }
 
     /**
@@ -65,16 +65,16 @@ class StorageUsageService
      *
      * Resolution order depends on owner type:
      *   - User    → user override → tenant default → app default → unlimited
-     *   - Tenant  → tenant.storage_quota_bytes (no fallback chain)
+     *   - Workspace  → tenant.storage_quota_bytes (no fallback chain)
      *   - other   → null (caller must override via service binding if needed)
      */
-    public function effectiveQuota(Model $owner, ?Tenant $tenant = null): ?int
+    public function effectiveQuota(Model $owner, ?Workspace $workspace = null): ?int
     {
-        if ($owner instanceof User && $tenant !== null) {
-            return $this->effectivePersonalQuota($owner, $tenant);
+        if ($owner instanceof User && $workspace !== null) {
+            return $this->effectivePersonalQuota($owner, $workspace);
         }
 
-        if ($owner instanceof Tenant) {
+        if ($owner instanceof Workspace) {
             $quota = $owner->storage_quota_bytes;
             if ($quota === null) {
                 return null;
@@ -107,16 +107,16 @@ class StorageUsageService
     /**
      * Remaining bytes for this owner in this tenant, or `null` for unlimited.
      */
-    public function remainingBytesForOwner(Model $owner, ?Tenant $tenant = null): ?int
+    public function remainingBytesForOwner(Model $owner, ?Workspace $workspace = null): ?int
     {
-        $quota = $this->effectiveQuota($owner, $tenant);
+        $quota = $this->effectiveQuota($owner, $workspace);
 
         if ($quota === null) {
             return null;
         }
 
-        $used = $tenant !== null
-            ? $this->usedBytesForOwnerInTenant($owner, $tenant)
+        $used = $workspace !== null
+            ? $this->usedBytesForOwnerInTenant($owner, $workspace)
             : $this->usedBytesForOwner($owner);
 
         return max(0, $quota - $used);
@@ -132,7 +132,7 @@ class StorageUsageService
             return $this->recomputeForUser($owner);
         }
 
-        if ($owner instanceof Tenant) {
+        if ($owner instanceof Workspace) {
             return $this->recomputeForTenant($owner);
         }
 
@@ -156,9 +156,9 @@ class StorageUsageService
         return $this->usedBytesForOwner($user);
     }
 
-    public function usedBytesForUserInTenant(User $user, Tenant $tenant): int
+    public function usedBytesForUserInTenant(User $user, Workspace $workspace): int
     {
-        return $this->usedBytesForOwnerInTenant($user, $tenant);
+        return $this->usedBytesForOwnerInTenant($user, $workspace);
     }
 
     /**
@@ -231,7 +231,7 @@ class StorageUsageService
             ->get()
             ->keyBy('workspace_id');
 
-        $tenantsQuery = Tenant::query()->orderBy('name');
+        $tenantsQuery = Workspace::query()->orderBy('name');
 
         if ($search !== null && $search !== '') {
             $escaped = addcslashes($search, '%_\\');
@@ -241,11 +241,11 @@ class StorageUsageService
             });
         }
 
-        /** @var Collection<int, Tenant> $tenants */
+        /** @var Collection<int, Workspace> $tenants */
         $tenants = $tenantsQuery->limit($limit)->get(['id', 'name', 'slug']);
 
         return $tenants
-            ->map(function (Tenant $t) use ($usage): array {
+            ->map(function (Workspace $t) use ($usage): array {
                 $row = $usage->get($t->id);
 
                 return [
@@ -318,7 +318,7 @@ class StorageUsageService
 
     /**
      * Billable file storage grouped by the polymorphic owner entity type
-     * (personal User files, company Tenant files, Asset documents, …). Powers
+     * (personal User files, company Workspace files, Asset documents, …). Powers
      * the "storage by entity type" panel on the admin dashboard.
      *
      * @return array<int, array{type: string, file_count: int, bytes: int}>
@@ -358,21 +358,21 @@ class StorageUsageService
      * Remaining bytes in this tenant under the user's quota. `null` when
      * quota is unlimited, `0` when quota is disabled or cap reached.
      */
-    public function remainingBytesInTenant(User $user, Tenant $tenant): ?int
+    public function remainingBytesInTenant(User $user, Workspace $workspace): ?int
     {
-        return $this->remainingBytesForOwner($user, $tenant);
+        return $this->remainingBytesForOwner($user, $workspace);
     }
 
     /** 0-100(+) percent of quota consumed by this tenant's files. */
-    public function percentUsedInTenant(User $user, Tenant $tenant): float
+    public function percentUsedInTenant(User $user, Workspace $workspace): float
     {
-        $quota = $this->effectivePersonalQuota($user, $tenant);
+        $quota = $this->effectivePersonalQuota($user, $workspace);
 
         if ($quota === null || $quota <= 0) {
             return 0.0;
         }
 
-        return round(($this->usedBytesForOwnerInTenant($user, $tenant) / $quota) * 100, 2);
+        return round(($this->usedBytesForOwnerInTenant($user, $workspace) / $quota) * 100, 2);
     }
 
     /**
@@ -385,7 +385,7 @@ class StorageUsageService
      *   - `0` is a hard block (returns 0) — never inherited past.
      *   - null at a given level means "defer to the next level".
      */
-    public function effectivePersonalQuota(User $user, Tenant $tenant): ?int
+    public function effectivePersonalQuota(User $user, Workspace $workspace): ?int
     {
         $override = $user->settings()->resolved()['storage_quota_override'] ?? null;
         if ($override !== null) {
@@ -397,7 +397,7 @@ class StorageUsageService
             return $override;
         }
 
-        $tenantDefault = $tenant->default_member_storage_bytes;
+        $tenantDefault = $workspace->default_member_storage_bytes;
         if ($tenantDefault !== null) {
             $tenantDefault = (int) $tenantDefault;
             if ($tenantDefault < 0) {
@@ -422,13 +422,13 @@ class StorageUsageService
 
     /**
      * Bytes consumed by the company-shared bucket for this tenant: the sum of
-     * Tenant-owned uploads plus every personal file currently linked into
+     * Workspace-owned uploads plus every personal file currently linked into
      * this tenant's company tree. A linked file counts toward BOTH its
      * owner's personal bucket and the company bucket — intentional: the
      * shared copy increases the tenant's footprint without affecting the
      * user's own storage accounting.
      */
-    public function usedBytesForTenantCompany(Tenant $tenant): int
+    public function usedBytesForTenantCompany(Workspace $workspace): int
     {
         $conn = $this->central();
 
@@ -439,9 +439,9 @@ class StorageUsageService
                     ->where('media.model_type', (new FileItem)->getMorphClass());
             })
             ->where('media.collection_name', self::BILLABLE_COLLECTION)
-            ->where('file_items.owner_type', $tenant->getMorphClass())
-            ->where('file_items.owner_id', $tenant->id)
-            ->where('file_items.workspace_id', $tenant->id)
+            ->where('file_items.owner_type', $workspace->getMorphClass())
+            ->where('file_items.owner_id', $workspace->id)
+            ->where('file_items.workspace_id', $workspace->id)
             ->sum('media.size');
 
         $linked = DB::connection($conn)
@@ -452,7 +452,7 @@ class StorageUsageService
             })
             ->join('company_file_links', 'company_file_links.file_item_id', '=', 'file_items.id')
             ->where('media.collection_name', self::BILLABLE_COLLECTION)
-            ->where('company_file_links.workspace_id', $tenant->id)
+            ->where('company_file_links.workspace_id', $workspace->id)
             ->sum('media.size');
 
         return (int) $native + (int) $linked;
@@ -462,9 +462,9 @@ class StorageUsageService
      * Remaining bytes in the company bucket. `null` = unlimited,
      * `0` = disabled or cap reached.
      */
-    public function remainingBytesForTenantCompany(Tenant $tenant): ?int
+    public function remainingBytesForTenantCompany(Workspace $workspace): ?int
     {
-        $quota = $tenant->storage_quota_bytes;
+        $quota = $workspace->storage_quota_bytes;
 
         if ($quota === null) {
             return null;
@@ -476,18 +476,18 @@ class StorageUsageService
             return null;
         }
 
-        $used = $this->usedBytesForTenantCompany($tenant);
+        $used = $this->usedBytesForTenantCompany($workspace);
 
         return max(0, $quota - $used);
     }
 
-    /** Sync the denormalized `tenants.storage_used_bytes` column from media. */
-    public function recomputeForTenant(Tenant $tenant): int
+    /** Sync the denormalized `workspaces.storage_used_bytes` column from media. */
+    public function recomputeForTenant(Workspace $workspace): int
     {
-        $bytes = $this->usedBytesForTenantCompany($tenant);
+        $bytes = $this->usedBytesForTenantCompany($workspace);
 
-        if ((int) $tenant->storage_used_bytes !== $bytes) {
-            $tenant->forceFill(['storage_used_bytes' => $bytes])->saveQuietly();
+        if ((int) $workspace->storage_used_bytes !== $bytes) {
+            $workspace->forceFill(['storage_used_bytes' => $bytes])->saveQuietly();
         }
 
         return $bytes;
@@ -499,23 +499,23 @@ class StorageUsageService
      * so a user crossing 80% in Company A doesn't suppress an 80% alert for
      * Company B later.
      */
-    public function checkAndNotifyThresholds(User $user, Tenant $tenant): void
+    public function checkAndNotifyThresholds(User $user, Workspace $workspace): void
     {
         $settings = $user->settings();
         $resolved = $settings->resolved();
-        $quota = $this->effectivePersonalQuota($user, $tenant);
+        $quota = $this->effectivePersonalQuota($user, $workspace);
 
         if ($quota === null || $quota <= 0) {
             return;
         }
 
-        $used = $this->usedBytesForOwnerInTenant($user, $tenant);
+        $used = $this->usedBytesForOwnerInTenant($user, $workspace);
         $percent = ($used / $quota) * 100;
 
         $thresholdMap = is_array($resolved['storage_last_alerted_threshold'] ?? null)
             ? $resolved['storage_last_alerted_threshold']
             : [];
-        $key = (string) $tenant->id;
+        $key = (string) $workspace->id;
         $last = $thresholdMap[$key] ?? null;
 
         $current = match (true) {
@@ -539,8 +539,8 @@ class StorageUsageService
                 thresholdPercent: $current,
                 usedBytes: $used,
                 quotaBytes: (int) $quota,
-                tenantId: $tenant->id,
-                tenantName: $tenant->name,
+                tenantId: $workspace->id,
+                tenantName: $workspace->name,
             ));
             $thresholdMap[$key] = $current;
             $settings->merge(['storage_last_alerted_threshold' => $thresholdMap]);
@@ -549,7 +549,7 @@ class StorageUsageService
 
     private function central(): string
     {
-        return (string) config('tenancy.database.central_connection');
+        return (string) config('workspaces.database.central_connection');
     }
 
     /**
@@ -557,7 +557,7 @@ class StorageUsageService
      * collection scoped to one polymorphic owner, optionally narrowed to a
      * single tenant. Previews + chat + avatars are intentionally excluded.
      */
-    private function billableQuery(Model $owner, ?Tenant $tenant): Builder
+    private function billableQuery(Model $owner, ?Workspace $workspace): Builder
     {
         $conn = $this->central();
 
@@ -570,7 +570,7 @@ class StorageUsageService
             ->where('media.collection_name', self::BILLABLE_COLLECTION)
             ->where('file_items.owner_type', $owner->getMorphClass())
             ->where('file_items.owner_id', $owner->getKey())
-            ->when($tenant !== null, fn ($q) => $q->where('file_items.workspace_id', $tenant->id));
+            ->when($workspace !== null, fn ($q) => $q->where('file_items.workspace_id', $workspace->id));
     }
 
     private function bucketFor(string $modelType, string $collection): string

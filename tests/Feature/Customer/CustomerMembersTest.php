@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Domains\Tenancy\Support\CustomerMembership;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Support\WorkspaceMembership;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -67,7 +67,7 @@ it('invites an existing user with a role', function () {
     // `rolesOn` saves/restores the PermissionRegistrar team id internally,
     // so we don't leak the customer's team id into whichever test runs next
     // (the singleton persists across cases in the same process).
-    expect(CustomerMembership::rolesOn($newUser->fresh(), $this->customer))->toContain('Editor');
+    expect(WorkspaceMembership::rolesOn($newUser->fresh(), $this->customer))->toContain('Editor');
 });
 
 it('requires a role when inviting', function () {
@@ -90,7 +90,7 @@ it('changes a member role on the customer', function () {
         ])
         ->assertRedirect();
 
-    expect(CustomerMembership::roleOn($member->fresh(), $this->customer))->toBe('Editor');
+    expect(WorkspaceMembership::roleOn($member->fresh(), $this->customer))->toBe('Editor');
 });
 
 it('prevents demoting the last customer-Admin', function () {
@@ -103,7 +103,7 @@ it('prevents demoting the last customer-Admin', function () {
         ->assertRedirect()
         ->assertSessionHas('error');
 
-    expect(CustomerMembership::roleOn($this->admin->fresh(), $this->customer))->toBe('Admin');
+    expect(WorkspaceMembership::roleOn($this->admin->fresh(), $this->customer))->toBe('Admin');
 });
 
 it('allows demoting when another customer-Admin exists', function () {
@@ -116,7 +116,7 @@ it('allows demoting when another customer-Admin exists', function () {
         ])
         ->assertRedirect();
 
-    expect(CustomerMembership::roleOn($this->admin->fresh(), $this->customer))->toBe('Editor');
+    expect(WorkspaceMembership::roleOn($this->admin->fresh(), $this->customer))->toBe('Editor');
 });
 
 it('removes a member', function () {
@@ -128,7 +128,7 @@ it('removes a member', function () {
         ->assertRedirect();
 
     expect($member->fresh()->belongsToCustomer($this->customer))->toBeFalse();
-    expect(CustomerMembership::roleOn($member->fresh(), $this->customer))->toBeNull();
+    expect(WorkspaceMembership::roleOn($member->fresh(), $this->customer))->toBeNull();
 });
 
 it('prevents removing the last customer-Admin', function () {
@@ -138,9 +138,9 @@ it('prevents removing the last customer-Admin', function () {
         ->assertSessionHas('error');
 
     // Both the membership pivot AND the Admin role assignment must survive —
-    // `CustomerMembership::detach` wipes roles, so if the controller ever
+    // `WorkspaceMembership::detach` wipes roles, so if the controller ever
     // skipped the early `return` but still called detach, the membership
     // alone could look preserved while the role was silently stripped.
     expect($this->admin->fresh()->belongsToCustomer($this->customer))->toBeTrue();
-    expect(CustomerMembership::roleOn($this->admin->fresh(), $this->customer))->toBe('Admin');
+    expect(WorkspaceMembership::roleOn($this->admin->fresh(), $this->customer))->toBe('Admin');
 });

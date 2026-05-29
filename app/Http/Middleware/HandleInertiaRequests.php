@@ -3,10 +3,10 @@
 namespace App\Http\Middleware;
 
 use App\Domains\Settings\Models\AppSetting;
-use App\Domains\Tenancy\Models\Tenant;
-use App\Domains\Tenancy\Support\Tenancy;
 use App\Domains\Users\Models\User;
 use App\Domains\Users\Models\UserSetting;
+use App\Domains\Workspaces\Models\Workspace;
+use App\Domains\Workspaces\Support\WorkspaceContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Http\Request;
@@ -49,7 +49,7 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'request_id' => (string) $request->attributes->get('request_id', ''),
             // `user` resolves lazily so `getRoleNames()` / `getAllPermissions()`
-            // see the team id set by `InitializeTenancyByPath` — Inertia's
+            // see the team id set by `ResolveWorkspace` — Inertia's
             // `share()` runs *before* the rest of the middleware stack, so
             // eagerly reading roles here would yield the pre-tenancy (empty)
             // set on customer-scoped routes.
@@ -104,7 +104,7 @@ class HandleInertiaRequests extends Middleware
             ],
             'app_settings' => fn () => $this->appSettings(),
             'tenancy' => [
-                'enabled' => (bool) config('tenancy.enabled'),
+                'enabled' => (bool) config('workspaces.enabled'),
             ],
             'chat' => [
                 'enabled' => (bool) config('chat.enabled'),
@@ -144,12 +144,12 @@ class HandleInertiaRequests extends Middleware
      */
     private function currentCustomer(): ?array
     {
-        $tenancy = app(Tenancy::class);
+        $tenancy = app(WorkspaceContext::class);
         if (! $tenancy->check()) {
             return null;
         }
 
-        /** @var Tenant $customer */
+        /** @var Workspace $customer */
         $customer = $tenancy->current();
 
         return [
@@ -190,15 +190,15 @@ class HandleInertiaRequests extends Middleware
         // Inside a /c/{slug}/... route the active tenant *is* the workspace,
         // and the Spatie team id is already scoped to it by the tenancy
         // middleware — so read capabilities directly.
-        $tenancy = app(Tenancy::class);
+        $tenancy = app(WorkspaceContext::class);
         if ($tenancy->check()) {
-            /** @var Tenant $customer */
+            /** @var Workspace $customer */
             $customer = $tenancy->current();
 
             return $this->workspacePayload($customer, $user, alreadyScoped: true);
         }
 
-        /** @var Collection<int, Tenant> $accessible */
+        /** @var Collection<int, Workspace> $accessible */
         $accessible = $this->accessibleCustomersQuery($user)->orderBy('name')->get();
 
         if ($accessible->isEmpty()) {
@@ -221,7 +221,7 @@ class HandleInertiaRequests extends Middleware
      *
      * @return array<string, mixed>
      */
-    private function workspacePayload(Tenant $customer, User $user, bool $alreadyScoped): array
+    private function workspacePayload(Workspace $customer, User $user, bool $alreadyScoped): array
     {
         [$isAdmin, $canViewCompanyFiles] = $this->workspaceCapabilities($customer, $user, $alreadyScoped);
 
@@ -241,13 +241,13 @@ class HandleInertiaRequests extends Middleware
      * SuperAdmins short-circuit to true (they bypass membership and pass the
      * customer.admin gate). For everyone else the checks are Spatie
      * team-scoped, so on central routes we temporarily set the permission team
-     * id to the workspace — mirroring InitializeTenancyByPath — and restore it
+     * id to the workspace — mirroring ResolveWorkspace — and restore it
      * afterwards, resetting the cached role/permission relations on both sides
      * so neither the central nor the workspace scope leaks into the other.
      *
      * @return array{0: bool, 1: bool}
      */
-    private function workspaceCapabilities(Tenant $customer, User $user, bool $alreadyScoped): array
+    private function workspaceCapabilities(Workspace $customer, User $user, bool $alreadyScoped): array
     {
         if ($user->isSuperAdmin()) {
             return [true, true];
@@ -276,12 +276,12 @@ class HandleInertiaRequests extends Middleware
      * Eloquent\Builder or a BelongsToMany relation — both honour the
      * orderBy()/limit()/get() calls the callers chain onto it.
      *
-     * @return Builder<Tenant>|BelongsToMany<Tenant, User>
+     * @return Builder<Workspace>|BelongsToMany<Workspace, User>
      */
     private function accessibleCustomersQuery(User $user): Builder|BelongsToMany
     {
         return $user->isSuperAdmin()
-            ? Tenant::query()->where('status', 'active')
+            ? Workspace::query()->where('status', 'active')
             : $user->customers()->where('status', 'active');
     }
 
@@ -293,7 +293,7 @@ class HandleInertiaRequests extends Middleware
      */
     private function availableCustomers(Request $request): array
     {
-        if (! config('tenancy.enabled')) {
+        if (! config('workspaces.enabled')) {
             return [];
         }
 
@@ -303,11 +303,11 @@ class HandleInertiaRequests extends Middleware
             return [];
         }
 
-        /** @var Collection<int, Tenant> $customers */
+        /** @var Collection<int, Workspace> $customers */
         $customers = $this->accessibleCustomersQuery($user)->orderBy('name')->limit(50)->get();
 
         return $customers
-            ->map(fn (Tenant $customer) => [
+            ->map(fn (Workspace $customer) => [
                 'id' => $customer->id,
                 'slug' => $customer->slug,
                 'name' => $customer->name,

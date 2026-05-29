@@ -8,7 +8,7 @@ use App\Domains\Assets\Models\Asset;
 use App\Domains\Files\Http\Resources\FileItemResource;
 use App\Domains\Files\Models\FileItem;
 use App\Domains\Files\Services\StorageUsageService;
-use App\Domains\Tenancy\Models\Tenant;
+use App\Domains\Workspaces\Models\Workspace;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,11 +27,11 @@ class AssetController extends Controller
 
     public function index(Request $request): Response
     {
-        $tenant = $this->currentTenant($request);
-        abort_unless($tenant->canViewFiles($request->user(), $tenant), 403);
+        $workspace = $this->currentTenant($request);
+        abort_unless($workspace->canViewFiles($request->user(), $workspace), 403);
 
         $assets = Asset::query()
-            ->where('workspace_id', $tenant->id)
+            ->where('workspace_id', $workspace->id)
             ->withCount('files')
             ->when($request->string('q')->toString(), function ($query, string $search): void {
                 $like = '%'.addcslashes($search, '%_\\').'%';
@@ -47,36 +47,36 @@ class AssetController extends Controller
 
         return Inertia::render('Assets/Index', [
             'assets' => $assets,
-            'can_manage' => $tenant->canManageFiles($request->user(), $tenant),
+            'can_manage' => $workspace->canManageFiles($request->user(), $workspace),
             'search' => $request->string('q')->toString() ?: null,
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
-        $tenant = $this->currentTenant($request);
-        abort_unless($tenant->canManageFiles($request->user(), $tenant), 403);
+        $workspace = $this->currentTenant($request);
+        abort_unless($workspace->canManageFiles($request->user(), $workspace), 403);
 
         $data = $this->validateAsset($request);
-        $asset = Asset::create([...$data, 'workspace_id' => $tenant->id]);
+        $asset = Asset::create([...$data, 'workspace_id' => $workspace->id]);
 
         return redirect()
-            ->route('customer.assets.show', ['customer' => $tenant->slug, 'asset' => $asset->id])
+            ->route('customer.assets.show', ['customer' => $workspace->slug, 'asset' => $asset->id])
             ->with('success', __('assets.created', ['name' => $asset->name]));
     }
 
     public function show(Request $request, Asset $asset, ?FileItem $folder = null): Response
     {
-        $tenant = $this->currentTenant($request);
-        $this->assertBelongs($asset, $tenant);
-        abort_unless($tenant->canViewFiles($request->user(), $tenant), 403);
+        $workspace = $this->currentTenant($request);
+        $this->assertBelongs($asset, $workspace);
+        abort_unless($workspace->canViewFiles($request->user(), $workspace), 403);
 
         if ($folder !== null && ($folder->owner_id !== $asset->id || $folder->owner_type !== $asset->getMorphClass() || ! $folder->isFolder())) {
             abort(404);
         }
 
         $items = FileItem::query()
-            ->where('workspace_id', $tenant->id)
+            ->where('workspace_id', $workspace->id)
             ->forOwner($asset)
             ->where('parent_id', $folder?->id)
             ->with(['media'])
@@ -84,8 +84,8 @@ class AssetController extends Controller
             ->orderBy('name')
             ->get();
 
-        $quota = $this->usage->effectiveQuota($asset, $tenant);
-        $used = $this->usage->usedBytesForOwnerInTenant($asset, $tenant);
+        $quota = $this->usage->effectiveQuota($asset, $workspace);
+        $used = $this->usage->usedBytesForOwnerInTenant($asset, $workspace);
 
         return Inertia::render('Assets/Show', [
             'asset' => [
@@ -105,15 +105,15 @@ class AssetController extends Controller
                 'quota_bytes' => $quota,
                 'percent' => $quota !== null && $quota > 0 ? min(100.0, round($used / $quota * 100, 1)) : 0.0,
             ],
-            'can_manage' => $tenant->canManageFiles($request->user(), $tenant),
+            'can_manage' => $workspace->canManageFiles($request->user(), $workspace),
         ]);
     }
 
     public function update(Request $request, Asset $asset): RedirectResponse
     {
-        $tenant = $this->currentTenant($request);
-        $this->assertBelongs($asset, $tenant);
-        abort_unless($tenant->canManageFiles($request->user(), $tenant), 403);
+        $workspace = $this->currentTenant($request);
+        $this->assertBelongs($asset, $workspace);
+        abort_unless($workspace->canManageFiles($request->user(), $workspace), 403);
 
         $asset->update($this->validateAsset($request));
 
@@ -122,14 +122,14 @@ class AssetController extends Controller
 
     public function destroy(Request $request, Asset $asset): RedirectResponse
     {
-        $tenant = $this->currentTenant($request);
-        $this->assertBelongs($asset, $tenant);
-        abort_unless($tenant->canManageFiles($request->user(), $tenant), 403);
+        $workspace = $this->currentTenant($request);
+        $this->assertBelongs($asset, $workspace);
+        abort_unless($workspace->canManageFiles($request->user(), $workspace), 403);
 
         $asset->delete();
 
         return redirect()
-            ->route('customer.assets.index', ['customer' => $tenant->slug])
+            ->route('customer.assets.index', ['customer' => $workspace->slug])
             ->with('success', __('assets.deleted'));
     }
 
@@ -151,20 +151,20 @@ class AssetController extends Controller
         return $data;
     }
 
-    private function assertBelongs(Asset $asset, Tenant $tenant): void
+    private function assertBelongs(Asset $asset, Workspace $workspace): void
     {
-        abort_unless($asset->workspace_id === $tenant->id, 404);
+        abort_unless($asset->workspace_id === $workspace->id, 404);
     }
 
-    private function currentTenant(Request $request): Tenant
+    private function currentTenant(Request $request): Workspace
     {
-        $tenant = $request->attributes->get('customer');
-        if ($tenant instanceof Tenant) {
-            return $tenant;
+        $workspace = $request->attributes->get('customer');
+        if ($workspace instanceof Workspace) {
+            return $workspace;
         }
 
-        $slug = config('tenancy.default_customer_slug');
-        $fallback = $slug ? Tenant::query()->where('slug', $slug)->first() : null;
+        $slug = config('workspaces.default_workspace_slug');
+        $fallback = $slug ? Workspace::query()->where('slug', $slug)->first() : null;
         abort_if($fallback === null, 404);
 
         return $fallback;

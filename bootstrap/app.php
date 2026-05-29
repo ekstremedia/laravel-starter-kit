@@ -1,13 +1,13 @@
 <?php
 
-use App\Domains\Access\Http\Middleware\EnsureCustomerAdmin;
 use App\Domains\Access\Http\Middleware\EnsureSuperAdmin;
+use App\Domains\Access\Http\Middleware\EnsureWorkspaceAdmin;
 use App\Domains\Chat\Http\Middleware\EnsureChatEnabled;
 use App\Domains\Files\Http\Middleware\EnsureCompanyStorageAvailable;
 use App\Domains\Files\Http\Middleware\EnsureStorageAvailable;
 use App\Domains\Settings\Http\Middleware\EnforceAppSettings;
-use App\Domains\Tenancy\Http\Middleware\BindDefaultWorkspace;
-use App\Domains\Tenancy\Http\Middleware\InitializeTenancyByPath;
+use App\Domains\Workspaces\Http\Middleware\BindDefaultWorkspace;
+use App\Domains\Workspaces\Http\Middleware\ResolveWorkspace;
 use App\Http\Middleware\EnsureUserIsNotBanned;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RequestId;
@@ -39,9 +39,9 @@ return Application::configure(basePath: dirname(__DIR__))
             // the app reads like a normal Laravel app. Paths that also exist
             // centrally (/profile, /notifications in web.php, registered first)
             // win the match; the workspace duplicates are harmless shadows.
-            if (config('tenancy.enabled')) {
+            if (config('workspaces.enabled')) {
                 Route::prefix('c/{customer}')
-                    ->middleware(['web', 'auth', 'verified', InitializeTenancyByPath::class])
+                    ->middleware(['web', 'auth', 'verified', ResolveWorkspace::class])
                     ->name('customer.')
                     ->group(__DIR__.'/../routes/customer.php');
             } else {
@@ -78,7 +78,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'chat.enabled' => EnsureChatEnabled::class,
             'storage.available' => EnsureStorageAvailable::class,
             'company.storage.available' => EnsureCompanyStorageAvailable::class,
-            'customer.admin' => EnsureCustomerAdmin::class,
+            'customer.admin' => EnsureWorkspaceAdmin::class,
             'super.admin' => EnsureSuperAdmin::class,
         ]);
     })

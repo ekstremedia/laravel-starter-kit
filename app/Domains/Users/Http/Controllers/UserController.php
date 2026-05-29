@@ -4,12 +4,12 @@ namespace App\Domains\Users\Http\Controllers;
 
 use App\Domains\Notifications\Notifications\AccountBannedNotification;
 use App\Domains\Notifications\Notifications\AdminTestNotification;
-use App\Domains\Notifications\Notifications\CustomerMemberAddedNotification;
-use App\Domains\Notifications\Notifications\CustomerMemberRemovedNotification;
-use App\Domains\Tenancy\Models\Tenant;
-use App\Domains\Tenancy\Support\CustomerMembership;
+use App\Domains\Notifications\Notifications\WorkspaceMemberAddedNotification;
+use App\Domains\Notifications\Notifications\WorkspaceMemberRemovedNotification;
 use App\Domains\Users\Models\User;
 use App\Domains\Users\Models\UserSetting;
+use App\Domains\Workspaces\Models\Workspace;
+use App\Domains\Workspaces\Support\WorkspaceMembership;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
@@ -56,7 +56,7 @@ class UserController extends Controller
         // Inertia produces from a paginator, so the Vue page is unchanged.
         $payload = Cache::remember($key, 300, function () use ($search, $sort, $direction) {
             $users = User::query()
-                ->with(['media', 'setting', 'customers:tenants.id,name,slug'])
+                ->with(['media', 'setting', 'customers:workspaces.id,name,slug'])
                 ->when($search !== '', function ($q) use ($search) {
                     $driver = $q->getModel()->getConnection()->getDriverName();
                     $op = $driver === 'pgsql' ? 'ilike' : 'like';
@@ -80,7 +80,7 @@ class UserController extends Controller
 
             // Single batched lookup of (user_id, team_id) → role name for the
             // page worth of users. Avoids an N×M hit from calling
-            // CustomerMembership::rolesOn per row.
+            // WorkspaceMembership::rolesOn per row.
             $pageUserIds = $users->getCollection()->pluck('id')->all();
             $rolesByUserAndTeam = [];
             if ($pageUserIds !== []) {
@@ -93,7 +93,7 @@ class UserController extends Controller
                 // request, so pin raw queries explicitly — a bare DB::table
                 // here would silently hit the tenant schema when reached
                 // from inside `/c/{customer}/...`.
-                $central = (string) config('tenancy.database.central_connection');
+                $central = (string) config('workspaces.database.central_connection');
                 $rows = DB::connection($central)->table($mhr)
                     ->join($rolesTable, "{$rolesTable}.id", '=', "{$mhr}.role_id")
                     ->where("{$mhr}.model_type", (new User)->getMorphClass())
@@ -125,7 +125,7 @@ class UserController extends Controller
                 // Compact per-customer role mapping for the hover tooltip.
                 $customerRoles = [];
                 foreach ($user->customers as $c) {
-                    /** @var Tenant $c */
+                    /** @var Workspace $c */
                     $customerRoles[] = [
                         'id' => $c->id,
                         'name' => $c->name,
@@ -180,7 +180,7 @@ class UserController extends Controller
         // `is_super_admin` through a locked SELECT inside the transaction
         // so a concurrent flip between route-model binding and this block
         // can't make us take the wrong branch.
-        $central = (string) config('tenancy.database.central_connection');
+        $central = (string) config('workspaces.database.central_connection');
         $locked = DB::connection($central)->transaction(function () use ($user, $data, $central) {
             $current = (bool) DB::connection($central)->table('users')
                 ->where('id', $user->id)
@@ -374,7 +374,7 @@ class UserController extends Controller
             ]);
 
         // Per-customer role for each customer the user belongs to. Resolved in
-        // one batch lookup rather than N queries through CustomerMembership,
+        // one batch lookup rather than N queries through WorkspaceMembership,
         // since the admin show page is SuperAdmin-only and we want it to
         // render fast regardless of membership size.
         $customerIds = $user->customers->pluck('id')->all();
@@ -389,7 +389,7 @@ class UserController extends Controller
             // every reference has to be fully qualified — otherwise Postgres
             // raises "column reference team_id is ambiguous". Pin to central
             // since these tables live in the landlord schema.
-            $central = (string) config('tenancy.database.central_connection');
+            $central = (string) config('workspaces.database.central_connection');
             $rows = DB::connection($central)->table($mhr)
                 ->join($rolesTable, "{$rolesTable}.id", '=', "{$mhr}.role_id")
                 ->where("{$mhr}.model_type", (new User)->getMorphClass())
@@ -421,10 +421,10 @@ class UserController extends Controller
                 'avatar_thumb_url' => $user->avatarUrl('thumb'),
                 'unread_notifications_count' => $user->unreadNotifications()->count(),
                 'customers' => (function () use ($user, $rolesByTeam): array {
-                    /** @var array<int, Tenant> $list */
+                    /** @var array<int, Workspace> $list */
                     $list = $user->customers->all();
 
-                    return array_map(fn (Tenant $c) => [
+                    return array_map(fn (Workspace $c) => [
                         'id' => $c->id,
                         'name' => $c->name,
                         'slug' => $c->slug,
@@ -432,16 +432,16 @@ class UserController extends Controller
                     ], $list);
                 })(),
             ],
-            'assignable_roles' => CustomerMembership::assignableRoles(),
+            'assignable_roles' => WorkspaceMembership::assignableRoles(),
             'activity' => $recentActivity,
         ]);
     }
 
     public function edit(User $user): Response
     {
-        /** @var array<int, Tenant> $customersList */
-        $customersList = $user->customers()->orderBy('name')->get(['tenants.id', 'name', 'slug'])->all();
-        $customerIds = array_map(fn (Tenant $c) => $c->id, $customersList);
+        /** @var array<int, Workspace> $customersList */
+        $customersList = $user->customers()->orderBy('name')->get(['workspaces.id', 'name', 'slug'])->all();
+        $customerIds = array_map(fn (Workspace $c) => $c->id, $customersList);
 
         $rolesByTeam = [];
         if ($customerIds !== []) {
@@ -449,7 +449,7 @@ class UserController extends Controller
             $rolesTable = config('permission.table_names.roles');
             $teamKey = config('permission.column_names.team_foreign_key');
 
-            $central = (string) config('tenancy.database.central_connection');
+            $central = (string) config('workspaces.database.central_connection');
             $rows = DB::connection($central)->table($mhr)
                 ->join($rolesTable, "{$rolesTable}.id", '=', "{$mhr}.role_id")
                 ->where("{$mhr}.model_type", (new User)->getMorphClass())
@@ -468,15 +468,15 @@ class UserController extends Controller
                 'first_name' => $user->first_name,
                 'last_name' => $user->last_name,
                 'email' => $user->email,
-                'customers' => array_map(fn (Tenant $c) => [
+                'customers' => array_map(fn (Workspace $c) => [
                     'id' => $c->id,
                     'name' => $c->name,
                     'slug' => $c->slug,
                     'roles' => array_values(array_unique($rolesByTeam[$c->id] ?? [])),
                 ], $customersList),
             ],
-            'assignable_roles' => CustomerMembership::assignableRoles(),
-            'all_customers' => Tenant::query()->where('status', 'active')->orderBy('name')->get(['id', 'name', 'slug'])->toArray(),
+            'assignable_roles' => WorkspaceMembership::assignableRoles(),
+            'all_customers' => Workspace::query()->where('status', 'active')->orderBy('name')->get(['id', 'name', 'slug'])->toArray(),
         ]);
     }
 
@@ -642,14 +642,14 @@ class UserController extends Controller
     public function attachCustomer(Request $request, User $user): RedirectResponse
     {
         // `exists:tenants,id` would resolve through the default DB connection,
-        // which swaps to the tenant mid-request. Tenant lives on the central
+        // which swaps to the tenant mid-request. Workspace lives on the central
         // schema — use a closure against the Eloquent model so the check
-        // honours `Tenant::$connection` regardless of ambient tenancy state.
+        // honours `Workspace::$connection` regardless of ambient tenancy state.
         $data = $request->validate([
             'customer_ids' => ['required', 'array', 'min:1'],
             'customer_ids.*' => [
                 function (string $attribute, mixed $value, \Closure $fail): void {
-                    $exists = Tenant::query()
+                    $exists = Workspace::query()
                         ->where('id', $value)
                         ->where('status', 'active')
                         ->exists();
@@ -659,32 +659,32 @@ class UserController extends Controller
                 },
             ],
             'roles' => ['required', 'array', 'min:1'],
-            'roles.*' => ['string', Rule::in(CustomerMembership::assignableRoles())],
+            'roles.*' => ['string', Rule::in(WorkspaceMembership::assignableRoles())],
             'notify' => ['boolean'],
         ]);
 
-        /** @var Collection<int, Tenant> $customers */
-        $customers = Tenant::query()
+        /** @var Collection<int, Workspace> $customers */
+        $customers = Workspace::query()
             ->where('status', 'active')
             ->whereIn('id', $data['customer_ids'])
             ->get();
 
-        $existingIds = $user->customers()->pluck('tenants.id')->all();
-        $newCustomers = $customers->reject(fn (Tenant $c) => in_array($c->id, $existingIds, true));
+        $existingIds = $user->customers()->pluck('workspaces.id')->all();
+        $newCustomers = $customers->reject(fn (Workspace $c) => in_array($c->id, $existingIds, true));
 
         $roles = array_values(array_unique($data['roles']));
         foreach ($customers as $attaching) {
-            /** @var Tenant $attaching */
-            CustomerMembership::attach($user, $attaching, $roles);
+            /** @var Workspace $attaching */
+            WorkspaceMembership::attach($user, $attaching, $roles);
         }
 
         $newNames = [];
         foreach ($newCustomers as $customer) {
-            /** @var Tenant $customer */
+            /** @var Workspace $customer */
             $newNames[] = $customer->name;
 
             if ($data['notify'] ?? false) {
-                $user->notify(new CustomerMemberAddedNotification($customer));
+                $user->notify(new WorkspaceMemberAddedNotification($customer));
             }
 
             activity('user')
@@ -707,16 +707,16 @@ class UserController extends Controller
         return back()->with('success', __('flash.users.customers_attached', ['email' => $user->email, 'names' => $names]));
     }
 
-    public function setCustomerRole(Request $request, User $user, Tenant $customer): RedirectResponse
+    public function setCustomerRole(Request $request, User $user, Workspace $customer): RedirectResponse
     {
         // Require at least one role — posting `roles: []` would otherwise
         // leave the user as a member with zero roles (matching nothing in
         // `can()` checks), which breaks the pivot+role atomicity that
-        // `CustomerMembership` explicitly promises. Removing membership is
+        // `WorkspaceMembership` explicitly promises. Removing membership is
         // a separate flow (`detachCustomer`).
         $data = $request->validate([
             'roles' => ['required', 'array', 'min:1'],
-            'roles.*' => ['string', Rule::in(CustomerMembership::assignableRoles())],
+            'roles.*' => ['string', Rule::in(WorkspaceMembership::assignableRoles())],
         ]);
 
         if (! $user->belongsToCustomer($customer)) {
@@ -724,7 +724,7 @@ class UserController extends Controller
         }
 
         $roles = array_values(array_unique($data['roles']));
-        CustomerMembership::syncRoles($user, $customer, $roles);
+        WorkspaceMembership::syncRoles($user, $customer, $roles);
 
         activity('user')
             ->performedOn($user)
@@ -741,7 +741,7 @@ class UserController extends Controller
         ]));
     }
 
-    public function detachCustomer(Request $request, User $user, Tenant $customer): RedirectResponse
+    public function detachCustomer(Request $request, User $user, Workspace $customer): RedirectResponse
     {
         $data = $request->validate([
             'notify' => ['boolean'],
@@ -753,10 +753,10 @@ class UserController extends Controller
             return back()->with('error', __('flash.customers.not_member', ['email' => $user->email, 'name' => $customerName]));
         }
 
-        CustomerMembership::detach($user, $customer);
+        WorkspaceMembership::detach($user, $customer);
 
         if ($data['notify'] ?? false) {
-            $user->notify(new CustomerMemberRemovedNotification($customerName));
+            $user->notify(new WorkspaceMemberRemovedNotification($customerName));
         }
 
         activity('user')

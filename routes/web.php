@@ -21,13 +21,13 @@ use App\Domains\Operations\Http\Controllers\StorageDashboardController;
 use App\Domains\Operations\Http\Controllers\SystemInfoController;
 use App\Domains\Settings\Http\Controllers\AppSettingsController;
 use App\Domains\Settings\Http\Controllers\SettingsController;
-use App\Domains\Tenancy\Http\Controllers\CustomerController;
-use App\Domains\Tenancy\Http\Controllers\CustomerLandingController;
-use App\Domains\Tenancy\Http\Controllers\WorkspaceInvitationController;
 use App\Domains\Users\Http\Controllers\AvatarController;
 use App\Domains\Users\Http\Controllers\PersonalAccessTokenController;
 use App\Domains\Users\Http\Controllers\UserController;
 use App\Domains\Users\Http\Controllers\UserProfileController;
+use App\Domains\Workspaces\Http\Controllers\WorkspaceController;
+use App\Domains\Workspaces\Http\Controllers\WorkspaceInvitationController;
+use App\Domains\Workspaces\Http\Controllers\WorkspaceLandingController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -54,7 +54,7 @@ Route::get('/share/signed/file/{file}', [PublicShareController::class, 'signedDo
 
 // Accept a workspace invitation. Public so a brand-new invitee reaches it
 // before they have an account — the controller threads guests through
-// registration/login and finishes the join via CustomerLandingController.
+// registration/login and finishes the join via WorkspaceLandingController.
 Route::get('/invitations/{token}', [WorkspaceInvitationController::class, 'accept'])
     ->name('workspace.invitations.accept');
 
@@ -129,7 +129,7 @@ Route::middleware('auth')->group(function () {
 
 // Post-login landing — redirects to the user's customer or renders the picker.
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/app', CustomerLandingController::class)->name('app.landing');
+    Route::get('/app', WorkspaceLandingController::class)->name('app.landing');
 
     // Command-design "Min side" — user overview inside the CommandLayout shell.
     Route::get('/home', [HomeController::class, 'index'])->name('home.me');
@@ -192,9 +192,9 @@ Route::middleware(['auth', 'verified', 'super.admin'])
         Route::post('backups/prepare-restore', [BackupController::class, 'prepareRestore'])->name('backups.prepareRestore');
 
         // Landlord — customer management.
-        Route::resource('customers', CustomerController::class)->except(['show']);
-        Route::post('customers/{customer}/members', [CustomerController::class, 'attachMember'])->name('customers.members.attach');
-        Route::delete('customers/{customer}/members/{user}', [CustomerController::class, 'detachMember'])->name('customers.members.detach');
+        Route::resource('customers', WorkspaceController::class)->except(['show']);
+        Route::post('customers/{customer}/members', [WorkspaceController::class, 'attachMember'])->name('customers.members.attach');
+        Route::delete('customers/{customer}/members/{user}', [WorkspaceController::class, 'detachMember'])->name('customers.members.detach');
 
         Route::post('users/{user}/customers', [UserController::class, 'attachCustomer'])->name('users.customers.attach');
         Route::patch('users/{user}/customers/{customer}/role', [UserController::class, 'setCustomerRole'])->name('users.customers.setRole');

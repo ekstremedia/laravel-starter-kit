@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
 use Faker\Factory as Faker;
 use Faker\Generator;
 use Illuminate\Database\Seeder;
@@ -16,8 +16,8 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        $defaultCustomer = Tenant::query()
-            ->where('slug', config('tenancy.default_customer_slug', 'default'))
+        $defaultCustomer = Workspace::query()
+            ->where('slug', config('workspaces.default_workspace_slug', 'default'))
             ->first();
 
         // SuperAdmin (from .env) — platform super-user. The `is_super_admin`
@@ -68,7 +68,7 @@ class UserSeeder extends Seeder
         $this->assignCustomerRole($unverified, 'User', $defaultCustomer);
     }
 
-    private function seedRole(Generator $faker, string $role, int $count, string $password, ?Tenant $customer): void
+    private function seedRole(Generator $faker, string $role, int $count, string $password, ?Workspace $customer): void
     {
         for ($i = 0; $i < $count; $i++) {
             $first = $faker->firstName();
@@ -94,7 +94,7 @@ class UserSeeder extends Seeder
         }
     }
 
-    private function attachToCustomer(User $user, ?Tenant $customer): void
+    private function attachToCustomer(User $user, ?Workspace $customer): void
     {
         if ($customer === null) {
             return;
@@ -107,7 +107,7 @@ class UserSeeder extends Seeder
      * Assigns a customer-scoped role with team_id = customer.id so the
      * assignment only applies while that customer is the active team context.
      */
-    private function assignCustomerRole(User $user, string $role, ?Tenant $customer): void
+    private function assignCustomerRole(User $user, string $role, ?Workspace $customer): void
     {
         if ($customer === null) {
             return;

@@ -3,9 +3,9 @@
 namespace App\Domains\Users\Console;
 
 use App\Domains\Access\Models\Role;
-use App\Domains\Tenancy\Models\Tenant;
-use App\Domains\Tenancy\Support\CustomerMembership;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
+use App\Domains\Workspaces\Support\WorkspaceMembership;
 use Illuminate\Console\Command;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -45,7 +45,7 @@ class UserGrantRole extends Command
             return self::FAILURE;
         }
 
-        $customer = Tenant::query()->where('slug', $customerSlug)->first();
+        $customer = Workspace::query()->where('slug', $customerSlug)->first();
         if (! $customer) {
             $this->error("No customer with slug [{$customerSlug}].");
 
@@ -69,7 +69,7 @@ class UserGrantRole extends Command
             }
             $this->info("Revoked {$role} from {$user->email} on [{$customer->slug}].");
         } else {
-            CustomerMembership::attach($user, $customer, $role);
+            WorkspaceMembership::attach($user, $customer, $role);
             $this->info("Granted {$role} to {$user->email} on [{$customer->slug}].");
         }
 

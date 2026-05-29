@@ -2,8 +2,8 @@
 
 namespace App\Domains\Operations\Http\Controllers;
 
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -58,8 +58,8 @@ class HomeController extends Controller
      */
     private function customerRolesFor(User $user): array
     {
-        /** @var array<int, Tenant> $customers */
-        $customers = $user->customers()->orderBy('name')->get(['tenants.id', 'name', 'slug'])->all();
+        /** @var array<int, Workspace> $customers */
+        $customers = $user->customers()->orderBy('name')->get(['workspaces.id', 'name', 'slug'])->all();
         if ($customers === []) {
             return [];
         }
@@ -68,12 +68,12 @@ class HomeController extends Controller
         $rolesTable = config('permission.table_names.roles');
         $teamKey = config('permission.column_names.team_foreign_key');
 
-        $central = (string) config('tenancy.database.central_connection');
+        $central = (string) config('workspaces.database.central_connection');
         $rows = DB::connection($central)->table($mhr)
             ->join($rolesTable, "{$rolesTable}.id", '=', "{$mhr}.role_id")
             ->where("{$mhr}.model_type", (new User)->getMorphClass())
             ->where("{$mhr}.model_id", $user->getKey())
-            ->whereIn("{$mhr}.{$teamKey}", array_map(fn (Tenant $c) => $c->id, $customers))
+            ->whereIn("{$mhr}.{$teamKey}", array_map(fn (Workspace $c) => $c->id, $customers))
             ->get([$mhr.'.'.$teamKey.' as team_id', $rolesTable.'.name as name']);
 
         $rolesByTeam = [];
@@ -81,7 +81,7 @@ class HomeController extends Controller
             $rolesByTeam[$row->team_id][] = $row->name;
         }
 
-        return array_map(fn (Tenant $c) => [
+        return array_map(fn (Workspace $c) => [
             'id' => $c->id,
             'name' => $c->name,
             'slug' => $c->slug,

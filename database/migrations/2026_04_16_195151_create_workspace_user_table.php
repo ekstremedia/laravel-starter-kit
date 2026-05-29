@@ -11,7 +11,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('workspace_user', function (Blueprint $table) {
-            $table->foreignId('workspace_id')->constrained('tenants')->cascadeOnDelete();
+            $table->foreignId('workspace_id')->constrained('workspaces')->cascadeOnDelete();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->timestamps();
 

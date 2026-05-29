@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domains\Operations\Models;
 
-use App\Domains\Tenancy\Models\Tenant;
 use Spatie\Activitylog\Models\Activity as BaseActivity;
 
 /**
@@ -25,6 +24,6 @@ class Activity extends BaseActivity
 {
     public function getConnectionName(): ?string
     {
-        return config('tenancy.database.central_connection');
+        return config('workspaces.database.central_connection');
     }
 }

@@ -215,9 +215,9 @@ class ChatController extends Controller
             ->whereIn('id', $participantIds);
 
         if (! $user->isSuperAdmin()) {
-            $customerIds = $user->customers()->pluck('tenants.id');
+            $customerIds = $user->customers()->pluck('workspaces.id');
             $allowedQuery->whereHas('customers', function ($q) use ($customerIds) {
-                $q->whereIn('tenants.id', $customerIds);
+                $q->whereIn('workspaces.id', $customerIds);
             });
         }
 
@@ -465,9 +465,9 @@ class ChatController extends Controller
         // When tenancy is enabled and user is not admin, limit to users
         // who share at least one customer (company) with the searcher.
         if (! $user->isSuperAdmin()) {
-            $customerIds = $user->customers()->pluck('tenants.id');
+            $customerIds = $user->customers()->pluck('workspaces.id');
             $usersQuery->whereHas('customers', function ($q) use ($customerIds) {
-                $q->whereIn('tenants.id', $customerIds);
+                $q->whereIn('workspaces.id', $customerIds);
             });
         }
 

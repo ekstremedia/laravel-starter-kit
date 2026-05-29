@@ -11,10 +11,10 @@ use App\Domains\Files\Models\CompanyFileLink;
 use App\Domains\Files\Models\FileItem;
 use App\Domains\Files\Models\FileShare;
 use App\Domains\Operations\Models\Activity;
-use App\Domains\Tenancy\Models\Tenant;
-use App\Domains\Tenancy\Support\Tenancy;
 use App\Domains\Users\Models\PersonalAccessToken;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
+use App\Domains\Workspaces\Support\WorkspaceContext;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Model;
@@ -43,7 +43,7 @@ class AppServiceProvider extends ServiceProvider
         // Current-workspace context (replaces stancl's tenancy() helper). A
         // singleton so the resolving middleware and the global tenant scope
         // read the same active workspace for the request.
-        $this->app->singleton(Tenancy::class);
+        $this->app->singleton(WorkspaceContext::class);
     }
 
     /**
@@ -69,7 +69,10 @@ class AppServiceProvider extends ServiceProvider
         // zero data backfill. When a model moves, only update its VALUE below.
         Relation::morphMap([
             'App\\Models\\User' => User::class,
-            'App\\Models\\Tenant' => Tenant::class,
+            // KEY stays the historical `App\Models\Tenant` string already stored
+            // in `*_type` columns (e.g. file_items.owner_type for company files);
+            // only the VALUE moved from Tenant to the renamed Workspace model.
+            'App\\Models\\Tenant' => Workspace::class,
             'App\\Models\\FileItem' => FileItem::class,
             'App\\Models\\FileShare' => FileShare::class,
             'App\\Models\\CompanyFileLink' => CompanyFileLink::class,
@@ -124,7 +127,7 @@ class AppServiceProvider extends ServiceProvider
                 return;
             }
 
-            $tenancy = app(Tenancy::class);
+            $tenancy = app(WorkspaceContext::class);
             if ($activity->workspace_id === null && $tenancy->check()) {
                 $activity->workspace_id = $tenancy->id();
             }

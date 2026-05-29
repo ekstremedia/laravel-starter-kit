@@ -1,8 +1,8 @@
 <?php
 
 use App\Domains\Assets\Models\Asset;
-use App\Domains\Tenancy\Models\Tenant;
 use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
 
 /**
  * File-system module configuration.
@@ -28,7 +28,7 @@ return [
     // prevent crafted owner_type payloads from probing arbitrary classes.
     'allowed_owner_types' => [
         User::class,
-        Tenant::class,
+        Workspace::class,
         Asset::class,
     ],
 

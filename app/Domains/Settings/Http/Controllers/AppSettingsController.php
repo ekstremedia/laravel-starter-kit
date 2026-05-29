@@ -4,7 +4,7 @@ namespace App\Domains\Settings\Http\Controllers;
 
 use App\Domains\Files\Support\UploadLimits;
 use App\Domains\Settings\Models\AppSetting;
-use App\Domains\Tenancy\Support\CustomerMembership;
+use App\Domains\Workspaces\Support\WorkspaceMembership;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,9 +30,9 @@ class AppSettingsController extends Controller
             // larger value is rejected).
             'php_upload_ceiling_bytes' => UploadLimits::phpCeilingBytes(),
             // Only customer-scoped roles are valid as a Fortify default — the
-            // registration flow hands the new user off to `CustomerMembership`,
+            // registration flow hands the new user off to `WorkspaceMembership`,
             // which would reject SuperAdmin (a platform flag, not a role).
-            'roles' => CustomerMembership::assignableRoles(),
+            'roles' => WorkspaceMembership::assignableRoles(),
         ]);
     }
 
@@ -43,7 +43,7 @@ class AppSettingsController extends Controller
             'registration_open' => ['required', 'boolean'],
             'login_enabled' => ['required', 'boolean'],
             'require_email_verification' => ['required', 'boolean'],
-            'default_role' => ['required', 'string', Rule::in(CustomerMembership::assignableRoles())],
+            'default_role' => ['required', 'string', Rule::in(WorkspaceMembership::assignableRoles())],
             'require_2fa_for_admins' => ['required', 'boolean'],
             'send_welcome_notification' => ['required', 'boolean'],
             'maintenance_message' => ['nullable', 'string', 'max:500'],
