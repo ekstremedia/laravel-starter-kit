@@ -1380,7 +1380,7 @@ export default {
         no_category: 'Uncategorized',
         tab_details: 'Details',
         tab_files: 'Files',
-        tab_activity: 'Activity',
+        tab_log: 'Log',
         activity_system: 'System',
         confirm_delete: 'Delete "{name}"? This also removes its documents.',
         back_to_assets: 'Back to equipment',

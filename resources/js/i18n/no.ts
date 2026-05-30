@@ -1378,7 +1378,7 @@ export default {
         no_category: 'Uten kategori',
         tab_details: 'Detaljer',
         tab_files: 'Filer',
-        tab_activity: 'Aktivitet',
+        tab_log: 'Logg',
         activity_system: 'System',
         confirm_delete: 'Slette «{name}»? Dette fjerner også dokumentene.',
         back_to_assets: 'Tilbake til utstyr',

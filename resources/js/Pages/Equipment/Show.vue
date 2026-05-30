@@ -52,7 +52,7 @@ const confirm = useConfirm();
 const tabs = computed<{ key: string; label: string; icon?: IconName }[]>(() => [
     { key: 'details', label: t('equipment.tab_details'), icon: 'box' },
     { key: 'files', label: t('equipment.tab_files'), icon: 'disk' },
-    { key: 'activity', label: t('equipment.tab_activity'), icon: 'log' },
+    { key: 'activity', label: t('equipment.tab_log'), icon: 'log' },
 ]);
 function initialTab(): string {
     if (typeof window !== 'undefined') {
