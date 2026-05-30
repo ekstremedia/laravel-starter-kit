@@ -117,7 +117,7 @@ class MakeModuleCommand extends Command
         // module name (e.g. import ordering, which depends on the class name).
         $this->formatGenerated($generatedPhp);
 
-        $this->printChecklist($studly, $key, $route, $pluralStudly, $label, $withFiles, $withLog);
+        $this->printChecklist($studly, $key, $route, $label, $withFiles, $withLog);
 
         return self::SUCCESS;
     }
@@ -217,7 +217,7 @@ class MakeModuleCommand extends Command
         return true;
     }
 
-    private function printChecklist(string $studly, string $key, string $route, string $pluralStudly, string $label, bool $withFiles, bool $withLog): void
+    private function printChecklist(string $studly, string $key, string $route, string $label, bool $withFiles, bool $withLog): void
     {
         $ns = "App\\Domains\\{$studly}";
         // Capabilities the generated code ships, for the ModuleSeeder row.

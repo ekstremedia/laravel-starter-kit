@@ -68,6 +68,30 @@ it('blocks non-members', function () {
         ->assertForbidden();
 });
 
+it('lets a workspace editor manage equipment', function () {
+    $editor = User::factory()->create();
+    joinWorkspace($editor, $this->workspace, 'Editor');
+    $category = EquipmentCategory::factory()->create(['workspace_id' => $this->workspace->id]);
+
+    // Editors hold `manage equipment` (not the admin-level `manage company files`).
+    $this->actingAs($editor)
+        ->post(workspaceUrl($this->workspace, '/equipment'), ['name' => 'Editor Forklift', 'equipment_category_id' => $category->id])
+        ->assertRedirect();
+
+    expect(Equipment::where('workspace_id', $this->workspace->id)->where('name', 'Editor Forklift')->exists())->toBeTrue();
+});
+
+it('lets a plain member view but not manage equipment', function () {
+    $member = User::factory()->create();
+    joinWorkspace($member, $this->workspace, 'User');
+    Equipment::factory()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->actingAs($member)->get(workspaceUrl($this->workspace, '/equipment'))->assertOk();
+    $this->actingAs($member)
+        ->post(workspaceUrl($this->workspace, '/equipment'), ['name' => 'Nope'])
+        ->assertForbidden();
+});
+
 it('uploads a document owned by the item', function () {
     $equipment = Equipment::factory()->create(['workspace_id' => $this->workspace->id]);
 

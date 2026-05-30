@@ -33,7 +33,7 @@ class MailLayoutController extends Controller
             ->event('layout_updated')
             ->log('Updated email layout');
 
-        return back()->with('success', __('flash.email_layout.saved'));
+        return back();
     }
 
     public function preview(Request $request): JsonResponse

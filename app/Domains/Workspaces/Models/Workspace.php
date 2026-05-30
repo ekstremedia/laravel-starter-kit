@@ -109,6 +109,26 @@ class Workspace extends Model implements FileOwner
     }
 
     /**
+     * Can the user manage the Equipment module's content in this workspace —
+     * create/edit/delete items, their categories, and their documents? Held by
+     * Admins and Editors via the `manage equipment` permission (super-admins and
+     * "manage all files" holders always pass), so a content editor can run the
+     * module without the admin-level `manage company files`.
+     */
+    public function canManageEquipment(User $user, ?Workspace $workspace = null): bool
+    {
+        if ($user->isSuperAdmin() || $user->can('manage all files')) {
+            return true;
+        }
+
+        if (! $user->belongsToWorkspace($this)) {
+            return false;
+        }
+
+        return $this->checkScopedPermission($user, 'manage equipment');
+    }
+
+    /**
      * Run a Spatie permission check with this tenant active as the team scope,
      * then restore the previous scope. Avoids leaking the current request's
      * team id into authorization questions about *this* tenant.

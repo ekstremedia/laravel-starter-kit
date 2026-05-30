@@ -97,7 +97,8 @@ class WorkspaceModuleController extends Controller
         $row->features = $features;
         $row->save();
 
-        return back()->with('success', __('workspace_modules.updated', ['name' => $module->name]));
+        // The toggle + "Overridden" badge are the feedback — no success toast.
+        return back();
     }
 
     public function reset(Request $request, Module $module): RedirectResponse
@@ -109,7 +110,7 @@ class WorkspaceModuleController extends Controller
             ->where('module_id', $module->id)
             ->delete();
 
-        return back()->with('success', __('workspace_modules.reset', ['name' => $module->name]));
+        return back();
     }
 
     private function tenant(Request $request): Workspace

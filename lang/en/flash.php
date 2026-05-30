@@ -38,6 +38,9 @@ return [
         'member_added' => 'Added :email to :name.',
         'already_member' => ':email is already a member of :name — edit their role from the members list instead.',
         'member_removed' => 'Removed :email from :name.',
+        'member_role_updated' => "Updated :email's roles to :role.",
+        'last_admin' => 'A workspace must keep at least one admin.',
+        'not_member' => ':email is not a member of :name.',
     ],
 
     'email_templates' => [

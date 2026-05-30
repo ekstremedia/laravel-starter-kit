@@ -41,6 +41,7 @@ const emit = defineEmits<{ 'update:modelValue': [value: T | ''] }>();
 const open = ref(false);
 const wrap = ref<HTMLElement | null>(null);
 const panel = ref<HTMLElement | null>(null);
+const trigger = ref<HTMLButtonElement | null>(null);
 
 const selected = computed(() =>
     props.modelValue === '' || props.modelValue === null
@@ -60,15 +61,21 @@ function toggle() {
 function choose(value: T | '') {
     emit('update:modelValue', value);
     open.value = false;
+    // Restore focus to the trigger so keyboard users keep their place (the
+    // active menuitem is about to unmount).
+    trigger.value?.focus();
 }
 
 function onDocPointerDown(e: PointerEvent) {
+    // Outside click: just close — don't steal focus back to the trigger, the
+    // user is interacting elsewhere.
     if (open.value && wrap.value && !wrap.value.contains(e.target as Node)) open.value = false;
 }
 function onKeydown(e: KeyboardEvent) {
     if (!open.value) return;
     if (e.key === 'Escape') {
         open.value = false;
+        trigger.value?.focus();
         return;
     }
     // Roving focus across the menu items.
@@ -131,6 +138,7 @@ const itemStyle = {
 <template>
     <div ref="wrap" :style="{ position: 'relative', width: block ? '100%' : undefined }">
         <button
+            ref="trigger"
             type="button"
             aria-haspopup="menu"
             :aria-expanded="open"

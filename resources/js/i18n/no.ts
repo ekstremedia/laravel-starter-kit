@@ -249,6 +249,8 @@ export default {
         no: 'Nei',
         confirm: 'Bekreft',
         close: 'Lukk',
+        create: 'Opprett',
+        error: 'Noe gikk galt.',
         view: 'Vis',
         view_all: 'Vis alle',
         breadcrumb: 'Brødsmulesti',
@@ -1248,6 +1250,7 @@ export default {
     files: {
         title: 'Filer',
         root: 'Mine filer',
+        folder_created: 'Mappen «{name}» ble opprettet.',
         new_folder: 'Ny mappe',
         upload: 'Last opp',
         search_placeholder: 'Søk i filer …',

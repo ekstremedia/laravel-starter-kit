@@ -6,6 +6,7 @@ return [
     'quota_exceeded' => 'Upload would exceed your storage quota.',
     'not_enabled' => 'File storage is not enabled for your account.',
     'permission_denied' => 'You do not have permission to perform this action.',
+    'share_revoked' => 'Share link revoked.',
     'drop_to_upload' => 'Drop files to upload',
     'preview_processing' => 'Generating preview…',
     'preview_title' => 'Preview · :name',

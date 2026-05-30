@@ -102,7 +102,7 @@ class MailSettingsController extends Controller
             ->event('updated')
             ->log('Updated mail settings');
 
-        return back()->with('success', __('flash.mail_settings.saved'));
+        return back();
     }
 
     public function test(Request $request): RedirectResponse

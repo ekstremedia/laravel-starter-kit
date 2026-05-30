@@ -86,7 +86,7 @@ class EquipmentController extends Controller
 
         return Inertia::render('Equipment/Index', [
             'equipment' => $items,
-            'can_manage' => $workspace->canManageFiles($request->user(), $workspace),
+            'can_manage' => $workspace->canManageEquipment($request->user(), $workspace),
             'search' => $request->string('q')->toString() ?: null,
             'categories' => $this->categories($workspace),
             'stats' => $this->workspaceStats($workspace),
@@ -96,7 +96,7 @@ class EquipmentController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $workspace = $this->currentTenant($request);
-        abort_unless($workspace->canManageFiles($request->user(), $workspace), 403);
+        abort_unless($workspace->canManageEquipment($request->user(), $workspace), 403);
 
         $data = $this->validateEquipment($request);
         $equipment = Equipment::create([...$data, 'workspace_id' => $workspace->id]);
@@ -148,7 +148,7 @@ class EquipmentController extends Controller
             'activities' => app(ModuleRegistry::class)->featureEnabled('equipment', 'log', $workspace)
                 ? $this->activities($equipment)
                 : [],
-            'can_manage' => $workspace->canManageFiles($request->user(), $workspace),
+            'can_manage' => $workspace->canManageEquipment($request->user(), $workspace),
         ]);
     }
 
@@ -156,7 +156,7 @@ class EquipmentController extends Controller
     {
         $workspace = $this->currentTenant($request);
         $this->assertBelongs($equipment, $workspace);
-        abort_unless($workspace->canManageFiles($request->user(), $workspace), 403);
+        abort_unless($workspace->canManageEquipment($request->user(), $workspace), 403);
 
         $equipment->update($this->validateEquipment($request));
 
@@ -167,7 +167,7 @@ class EquipmentController extends Controller
     {
         $workspace = $this->currentTenant($request);
         $this->assertBelongs($equipment, $workspace);
-        abort_unless($workspace->canManageFiles($request->user(), $workspace), 403);
+        abort_unless($workspace->canManageEquipment($request->user(), $workspace), 403);
 
         $equipment->delete();
 
@@ -181,7 +181,7 @@ class EquipmentController extends Controller
     public function bulkDestroy(Request $request): RedirectResponse
     {
         $workspace = $this->currentTenant($request);
-        abort_unless($workspace->canManageFiles($request->user(), $workspace), 403);
+        abort_unless($workspace->canManageEquipment($request->user(), $workspace), 403);
 
         // Iterate so each model's deleting hook cascades its documents. lazyById
         // keeps "select all matching" memory-safe on large workspaces.
@@ -197,7 +197,7 @@ class EquipmentController extends Controller
     public function bulkUpdate(Request $request): RedirectResponse
     {
         $workspace = $this->currentTenant($request);
-        abort_unless($workspace->canManageFiles($request->user(), $workspace), 403);
+        abort_unless($workspace->canManageEquipment($request->user(), $workspace), 403);
 
         // `category_id` is the new category (null = clear it); the filter params
         // (q/category) below resolve the target set in "select all matching" mode
@@ -270,7 +270,7 @@ class EquipmentController extends Controller
     {
         $workspace = $this->currentTenant($request);
         $this->assertBelongs($equipment, $workspace);
-        abort_unless($workspace->canManageFiles($request->user(), $workspace), 403);
+        abort_unless($workspace->canManageEquipment($request->user(), $workspace), 403);
 
         $data = $request->validate(['file_item_id' => ['nullable', 'integer']]);
 
@@ -330,7 +330,7 @@ class EquipmentController extends Controller
     public function trash(Request $request): Response
     {
         $workspace = $this->currentTenant($request);
-        abort_unless($workspace->canManageFiles($request->user(), $workspace), 403);
+        abort_unless($workspace->canManageEquipment($request->user(), $workspace), 403);
 
         $items = Equipment::onlyTrashed()
             ->where('workspace_id', $workspace->id)
@@ -347,7 +347,7 @@ class EquipmentController extends Controller
     public function restore(Request $request, int $id): RedirectResponse
     {
         $workspace = $this->currentTenant($request);
-        abort_unless($workspace->canManageFiles($request->user(), $workspace), 403);
+        abort_unless($workspace->canManageEquipment($request->user(), $workspace), 403);
 
         $equipment = Equipment::onlyTrashed()->where('workspace_id', $workspace->id)->findOrFail($id);
         $equipment->restore();
@@ -358,7 +358,7 @@ class EquipmentController extends Controller
     public function forceDelete(Request $request, int $id): RedirectResponse
     {
         $workspace = $this->currentTenant($request);
-        abort_unless($workspace->canManageFiles($request->user(), $workspace), 403);
+        abort_unless($workspace->canManageEquipment($request->user(), $workspace), 403);
 
         $equipment = Equipment::onlyTrashed()->where('workspace_id', $workspace->id)->findOrFail($id);
         $equipment->forceDelete();

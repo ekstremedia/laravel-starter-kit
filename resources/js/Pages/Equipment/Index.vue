@@ -125,7 +125,8 @@ function readHiddenColumns(): string[] {
     if (typeof window === 'undefined') return [];
     try {
         const stored = window.localStorage.getItem(STORAGE_KEY);
-        return stored ? JSON.parse(stored) : [];
+        const parsed = stored ? JSON.parse(stored) : [];
+        return Array.isArray(parsed) ? parsed.filter((k): k is string => typeof k === 'string') : [];
     } catch {
         return [];
     }
@@ -597,7 +598,7 @@ function iconFor(file: MediaFileRow): string {
                     type="button"
                     :aria-label="t('files.details.title')"
                     :title="t('files.details.title')"
-                    class="rounded-lg bg-white/10 p-2 text-white transition-colors hover:bg-white/20"
+                    class="cmd-lightbox-action"
                     @click.stop="openDetailsById(item.id)"
                 >
                     <i class="pi pi-info-circle" :style="{ fontSize: '18px' }" />
@@ -674,5 +675,19 @@ function iconFor(file: MediaFileRow): string {
 }
 .cmd-bulk-link:hover {
     text-decoration: underline;
+}
+.cmd-lightbox-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--fg);
+    transition: background-color 0.15s ease;
+}
+.cmd-lightbox-action:hover {
+    background: var(--panel2);
 }
 </style>

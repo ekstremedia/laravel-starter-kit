@@ -24,7 +24,7 @@ Scaffold the whole module (migration, model, controller, factory, seeder, config
 widget, Vue Index/Show/Trash) from these same bare bones, then follow the printed wiring
 checklist:
 
-```
+```bash
 php artisan make:module Car              # full: files + log (like Equipment)
 php artisan make:module Tag --no-files   # lean: a Log but no file area (like EquipmentCategory)
 php artisan make:module Note --no-log    # no activity log

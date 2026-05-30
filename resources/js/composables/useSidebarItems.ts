@@ -75,7 +75,7 @@ export function useSidebarItems() {
                 { id: 'equipment', href: wsHref('/equipment'), label: t('rail.equipment'), icon: 'box', match: railMatch((s) => s === '/equipment' || s.startsWith('/equipment/')), hideWhen: () => !equipmentEnabled.value || !canViewCompanyFiles.value },
                 // Categories — a sub-item nested under Equipment (the demo
                 // related entity). Its own module, gated independently.
-                { id: 'equipment-categories', href: wsHref('/equipment-categories'), label: t('rail.equipment_categories'), icon: 'role', indent: true, match: railMatch((s) => s.startsWith('/equipment-categories')), hideWhen: () => !equipmentCategoryEnabled.value || !canViewCompanyFiles.value },
+                { id: 'equipment-categories', href: wsHref('/equipment-categories'), label: t('rail.equipment_categories'), icon: 'tag', indent: true, match: railMatch((s) => s.startsWith('/equipment-categories')), hideWhen: () => !equipmentCategoryEnabled.value || !canViewCompanyFiles.value },
             );
 
             if (isWorkspaceAdmin.value) {

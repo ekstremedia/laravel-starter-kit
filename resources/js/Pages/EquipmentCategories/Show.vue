@@ -51,7 +51,7 @@ const { logEnabled } = useModuleFeatures('equipment_category');
 
 // ── Tabs: Details (default) + Log (when enabled).
 const tabs = computed<{ key: string; label: string; icon?: IconName }[]>(() => [
-    { key: 'details', label: t('equipment_category.tab_details'), icon: 'role' as IconName },
+    { key: 'details', label: t('equipment_category.tab_details'), icon: 'tag' as IconName },
     ...(logEnabled.value ? [{ key: 'activity', label: t('equipment_category.tab_log'), icon: 'log' as IconName }] : []),
 ]);
 function initialTab(): string {

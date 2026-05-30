@@ -6,6 +6,7 @@ return [
     'quota_exceeded' => 'Opplastingen ville overskride lagringsgrensen din.',
     'not_enabled' => 'Fillagring er ikke aktivert for kontoen din.',
     'permission_denied' => 'Du har ikke tilgang til å utføre denne handlingen.',
+    'share_revoked' => 'Delingslenke tilbakekalt.',
     'drop_to_upload' => 'Slipp filer for å laste opp',
     'preview_processing' => 'Genererer forhåndsvisning…',
     'preview_title' => 'Forhåndsvisning · :name',

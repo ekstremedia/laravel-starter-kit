@@ -68,6 +68,27 @@ it('blocks non-members', function () {
         ->assertForbidden();
 });
 
+it('lets a workspace editor manage categories', function () {
+    $editor = User::factory()->create();
+    joinWorkspace($editor, $this->workspace, 'Editor');
+
+    $this->actingAs($editor)
+        ->post(workspaceUrl($this->workspace, '/equipment-categories'), ['name' => 'Editor Category'])
+        ->assertRedirect();
+
+    expect(EquipmentCategory::where('workspace_id', $this->workspace->id)->where('name', 'Editor Category')->exists())->toBeTrue();
+});
+
+it('lets a plain member view but not manage categories', function () {
+    $member = User::factory()->create();
+    joinWorkspace($member, $this->workspace, 'User');
+
+    $this->actingAs($member)->get(workspaceUrl($this->workspace, '/equipment-categories'))->assertOk();
+    $this->actingAs($member)
+        ->post(workspaceUrl($this->workspace, '/equipment-categories'), ['name' => 'Nope'])
+        ->assertForbidden();
+});
+
 it('updates and deletes a category', function () {
     $category = EquipmentCategory::factory()->create(['workspace_id' => $this->workspace->id]);
 

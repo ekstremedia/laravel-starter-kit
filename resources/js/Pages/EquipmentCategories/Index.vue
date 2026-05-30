@@ -86,7 +86,8 @@ function readHiddenColumns(): string[] {
     if (typeof window === 'undefined') return [];
     try {
         const stored = window.localStorage.getItem(STORAGE_KEY);
-        return stored ? JSON.parse(stored) : [];
+        const parsed = stored ? JSON.parse(stored) : [];
+        return Array.isArray(parsed) ? parsed.filter((k): k is string => typeof k === 'string') : [];
     } catch {
         return [];
     }

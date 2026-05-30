@@ -249,6 +249,8 @@ export default {
         no: 'No',
         confirm: 'Confirm',
         close: 'Close',
+        create: 'Create',
+        error: 'Something went wrong.',
         view: 'View',
         view_all: 'View all',
         breadcrumb: 'Breadcrumb',
@@ -1248,6 +1250,7 @@ export default {
     files: {
         title: 'Files',
         root: 'My files',
+        folder_created: 'Folder "{name}" created.',
         new_folder: 'New folder',
         upload: 'Upload',
         search_placeholder: 'Search files…',

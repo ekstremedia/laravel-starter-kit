@@ -38,6 +38,9 @@ return [
         'member_added' => 'La til :email i :name.',
         'already_member' => ':email er allerede medlem av :name — endre rollen fra medlemslisten i stedet.',
         'member_removed' => 'Fjernet :email fra :name.',
+        'member_role_updated' => 'Oppdaterte rollene til :email til :role.',
+        'last_admin' => 'Et arbeidsområde må ha minst én administrator.',
+        'not_member' => ':email er ikke medlem av :name.',
     ],
 
     'email_templates' => [

@@ -60,7 +60,8 @@ class ModuleController extends Controller
             ->event($module->enabled ? 'enabled' : 'disabled')
             ->log($module->enabled ? 'Enabled module' : 'Disabled module');
 
-        return back()->with('success', __('admin_modules.toggled', ['name' => $module->name]));
+        // The toggle itself is the feedback — no success toast for a routine flip.
+        return back();
     }
 
     public function purge(Module $module): RedirectResponse

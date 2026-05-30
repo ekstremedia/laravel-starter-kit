@@ -163,14 +163,15 @@ class Equipment extends Model implements FileOwner
     }
 
     /**
-     * File access mirrors company-file semantics: a member of the item's
-     * workspace with the right role (or a super-admin / "manage all files"
-     * holder) can manage the item's documents. Delegating to the Workspace
-     * reuses its team-scoped permission resolution.
+     * Document access follows the Equipment module's own capability: a holder of
+     * `manage equipment` (Admins + Editors, or a super-admin / "manage all files"
+     * holder) can manage the item's documents — not the admin-level
+     * `manage company files`, so content editors can run the module. Delegating
+     * to the Workspace reuses its team-scoped permission resolution.
      */
     public function canManageFiles(User $user, ?Workspace $workspace = null): bool
     {
-        return $this->workspace->canManageFiles($user, $workspace ?? $this->workspace);
+        return $this->workspace->canManageEquipment($user, $workspace ?? $this->workspace);
     }
 
     public function canViewFiles(User $user, ?Workspace $workspace = null): bool
