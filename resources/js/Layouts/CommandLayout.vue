@@ -89,9 +89,10 @@ useCommandKeyboard({
         :style="{
             display: 'flex',
             flexDirection: 'column',
-            minHeight: '100vh',
+            height: '100vh',
             width: '100%',
             position: 'relative',
+            overflow: 'hidden',
         }"
     >
         <Toast position="top-right" />
@@ -157,7 +158,7 @@ useCommandKeyboard({
         <div :style="{ display: 'flex', flex: 1, minHeight: 0 }">
             <Rail :mobile-open="mobileNavOpen" @close="mobileNavOpen = false" />
 
-        <div :style="{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }">
+        <div :style="{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }">
             <Topbar
                 :on-open-palette="() => (paletteOpen = true)"
                 :on-toggle-nav="() => (mobileNavOpen = !mobileNavOpen)"
