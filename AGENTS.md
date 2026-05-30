@@ -4,7 +4,7 @@ An opinionated, batteries-included Laravel starter. Generic foundation — resha
 
 ## Stack
 
-- **Backend:** Laravel 13 · PHP 8.4 · PostgreSQL 17 · Redis 7
+- **Backend:** Laravel 13 · PHP 8.5 · PostgreSQL 17 · Redis 7
 - **Frontend:** Vue 3 + TypeScript · Inertia.js v3 (SSR-ready, opt-in) · Pinia · Tailwind v4 · PrimeVue v4 (escape hatch only — see Command design system) · vite-plugin-pwa (opt-in)
 - **Auth:** Fortify (headless) + Sanctum · Spatie Permission (teams) · Socialite
 - **Async/real-time:** Redis queues + Horizon · Reverb (WebSockets) + Laravel Echo · generic live-update broadcasts (see Real-time)

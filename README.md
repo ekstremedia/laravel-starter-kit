@@ -4,7 +4,7 @@ A Laravel 13 + Inertia/Vue starter with the usual production pieces already wire
 
 ## Stack
 
-- **Laravel 13 · PHP 8.4** · PostgreSQL 17 · Redis 7 · Mailpit
+- **Laravel 13 · PHP 8.5** · PostgreSQL 17 · Redis 7 · Mailpit
 - **Inertia.js v3 + Vue 3 + TypeScript** (code-split, SSR-ready) · Pinia · Tailwind v4 · PrimeVue v4 · optional PWA
 - **Docker** — php-fpm, nginx, Vite, Reverb, Horizon, Pulse, and the scheduler under supervisor
 - **Fortify** (login, register, email verification, password reset, TOTP 2FA + recovery codes) · **Sanctum** · **Spatie Permission** (`Admin` / `Editor` / `User` seeded)

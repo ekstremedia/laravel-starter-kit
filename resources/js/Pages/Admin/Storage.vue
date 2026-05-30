@@ -171,10 +171,10 @@ const inputStyle = {
     >
         <div
             v-for="(kpi, i) in [
-                { label: t('admin.storage.total_used'), value: formatBytes(props.totals.bytes) },
-                { label: t('admin.storage.file_count'), value: props.totals.file_count.toLocaleString() },
-                { label: t('admin.storage.users'), value: props.totals.user_count.toLocaleString() },
-                { label: t('admin.storage.workspaces'), value: props.totals.workspace_count.toLocaleString() },
+                { label: t('admin.storage.total_used'), value: formatBytes(props.totals.bytes), hint: '' },
+                { label: t('admin.storage.file_count'), value: props.totals.file_count.toLocaleString(), hint: '' },
+                { label: t('admin.storage.users'), value: props.totals.user_count.toLocaleString(), hint: '' },
+                { label: t('admin.storage.workspaces'), value: props.totals.workspace_count.toLocaleString(), hint: '' },
                 { label: t('admin.storage.disk_usage'), value: `${diskPercent.toFixed(0)}%`, hint: `${formatBytes(props.totals.disk_total - props.totals.disk_free)} / ${formatBytes(props.totals.disk_total)}` },
             ]"
             :key="i"

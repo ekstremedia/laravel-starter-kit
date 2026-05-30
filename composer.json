@@ -6,7 +6,7 @@
     "keywords": ["laravel", "starter-kit", "inertia", "vue"],
     "license": "MIT",
     "require": {
-        "php": "^8.4",
+        "php": "^8.5",
         "blade-ui-kit/blade-heroicons": "^2.7",
         "blade-ui-kit/blade-icons": "^1.9",
         "inertiajs/inertia-laravel": "^3.0",

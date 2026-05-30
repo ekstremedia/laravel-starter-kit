@@ -24,7 +24,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4'
+          php-version: '8.5'
           extensions: pdo_pgsql, pgsql, mbstring, bcmath, gd, zip, redis, imagick
           coverage: none
 
@@ -38,8 +38,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: vendor
-          key: vendor-${{ runner.os }}-php8.4-${{ hashFiles('composer.lock') }}
-          restore-keys: vendor-${{ runner.os }}-php8.4-
+          key: vendor-${{ runner.os }}-php8.5-${{ hashFiles('composer.lock') }}
+          restore-keys: vendor-${{ runner.os }}-php8.5-
 
       - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
