@@ -171,6 +171,7 @@ Route::middleware('module:equipment')->group(function (): void {
     Route::post('/equipment/trash/{id}/restore', [EquipmentController::class, 'restore'])->whereNumber('id')->name('equipment.trash.restore');
     Route::delete('/equipment/trash/{id}', [EquipmentController::class, 'forceDelete'])->whereNumber('id')->name('equipment.trash.forceDelete');
 
+    Route::get('/equipment/{equipment}/live-row', [EquipmentController::class, 'liveRow'])->whereNumber('equipment')->name('equipment.live-row');
     Route::get('/equipment/{equipment}', [EquipmentController::class, 'show'])->whereNumber('equipment')->name('equipment.show');
     Route::get('/equipment/{equipment}/folders/{folder}', [EquipmentController::class, 'show'])
         ->whereNumber('equipment')->whereNumber('folder')->name('equipment.folder');
@@ -192,6 +193,7 @@ Route::middleware('module:equipment_category')->group(function (): void {
     Route::post('/equipment-categories/trash/{id}/restore', [EquipmentCategoryController::class, 'restore'])->whereNumber('id')->name('equipment-categories.trash.restore');
     Route::delete('/equipment-categories/trash/{id}', [EquipmentCategoryController::class, 'forceDelete'])->whereNumber('id')->name('equipment-categories.trash.forceDelete');
 
+    Route::get('/equipment-categories/{equipmentCategory}/live-row', [EquipmentCategoryController::class, 'liveRow'])->whereNumber('equipmentCategory')->name('equipment-categories.live-row');
     Route::get('/equipment-categories/{equipmentCategory}', [EquipmentCategoryController::class, 'show'])->whereNumber('equipmentCategory')->name('equipment-categories.show');
     Route::put('/equipment-categories/{equipmentCategory}', [EquipmentCategoryController::class, 'update'])->whereNumber('equipmentCategory')->name('equipment-categories.update');
     Route::delete('/equipment-categories/{equipmentCategory}', [EquipmentCategoryController::class, 'destroy'])->whereNumber('equipmentCategory')->name('equipment-categories.destroy');
@@ -202,6 +204,7 @@ Route::middleware('module:equipment_category')->group(function (): void {
 // "Admin on THIS workspace" (not platform admin).
 Route::middleware('workspace.admin')->prefix('members')->name('members.')->group(function () {
     Route::get('/', [WorkspaceMembersController::class, 'index'])->name('index');
+    Route::get('/{user}/live-row', [WorkspaceMembersController::class, 'liveRow'])->name('live-row');
     Route::post('/', [WorkspaceMembersController::class, 'store'])->name('store');
     Route::patch('/{user}/role', [WorkspaceMembersController::class, 'setRole'])->name('setRole');
     Route::delete('/{user}', [WorkspaceMembersController::class, 'destroy'])->name('destroy');

@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Inertia\Inertia;
 use Inertia\Middleware;
 use Spatie\Permission\PermissionRegistrar;
 use Throwable;
@@ -136,7 +137,13 @@ class HandleInertiaRequests extends Middleware
             //
             // Keyed under `available_workspaces` to avoid being shadowed by the
             // `workspaces` paginator prop on /admin/workspaces and similar pages.
-            'available_workspaces' => fn () => $this->availableWorkspaces($request),
+            //
+            // Deferred: the switcher dropdown / command palette only need this
+            // list on interaction, so it loads in a follow-up request after the
+            // page paints instead of running its query on the critical path.
+            // Every consumer reads it null-safe (`?? []`), so the brief absence
+            // before it arrives is harmless.
+            'available_workspaces' => Inertia::defer(fn () => $this->availableWorkspaces($request)),
         ];
     }
 

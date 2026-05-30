@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference types="vite-plugin-pwa/client" />
 
 import type axios from 'axios';
 import type Echo from 'laravel-echo';

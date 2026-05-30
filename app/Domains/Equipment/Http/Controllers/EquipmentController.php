@@ -13,7 +13,9 @@ use App\Domains\Modules\Services\ModuleRegistry;
 use App\Domains\Operations\Models\Activity;
 use App\Domains\Workspaces\Models\Workspace;
 use App\Http\Controllers\Controller;
+use App\Support\Concerns\BroadcastsResourceChanges;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -35,6 +37,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  */
 class EquipmentController extends Controller
 {
+    use BroadcastsResourceChanges;
+
     /** Page size for the index datatable; the seeder fills past this to show pagination. */
     private const PER_PAGE = 20;
 
@@ -93,6 +97,26 @@ class EquipmentController extends Controller
         ]);
     }
 
+    /**
+     * One row in the exact index list-shape, for surgical live updates — the
+     * client fetches just the changed row instead of reloading the whole page.
+     */
+    public function liveRow(Request $request, Equipment $equipment): JsonResponse
+    {
+        $workspace = $this->currentTenant($request);
+        $this->assertBelongs($equipment, $workspace);
+        abort_unless($workspace->canViewFiles($request->user(), $workspace), 403);
+
+        $equipment->loadCount('files');
+        $equipment->loadMissing('category:id,name,color');
+
+        $previews = $this->previewsFor([$equipment->id], $workspace);
+        $equipment->setAttribute('files_preview', $previews[$equipment->id] ?? []);
+        $equipment->setAttribute('cover', $this->coversFor([$equipment], $previews)[$equipment->id] ?? null);
+
+        return response()->json($equipment);
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $workspace = $this->currentTenant($request);
@@ -100,6 +124,8 @@ class EquipmentController extends Controller
 
         $data = $this->validateEquipment($request);
         $equipment = Equipment::create([...$data, 'workspace_id' => $workspace->id]);
+
+        $this->broadcastResourceChanged('equipment', 'created', $equipment->id, $workspace->id);
 
         return redirect()
             ->route('workspace.equipment.show', ['workspace' => $workspace->slug, 'equipment' => $equipment->id])
@@ -160,6 +186,8 @@ class EquipmentController extends Controller
 
         $equipment->update($this->validateEquipment($request));
 
+        $this->broadcastResourceChanged('equipment', 'updated', $equipment->id, $workspace->id);
+
         return back()->with('success', __('equipment.updated'));
     }
 
@@ -170,6 +198,8 @@ class EquipmentController extends Controller
         abort_unless($workspace->canManageEquipment($request->user(), $workspace), 403);
 
         $equipment->delete();
+
+        $this->broadcastResourceChanged('equipment', 'deleted', $equipment->id, $workspace->id);
 
         return redirect()
             ->route('workspace.equipment.index', ['workspace' => $workspace->slug])
@@ -191,6 +221,10 @@ class EquipmentController extends Controller
             $count++;
         });
 
+        if ($count > 0) {
+            $this->broadcastResourceChanged('equipment', 'deleted', null, $workspace->id);
+        }
+
         return back()->with('success', trans_choice('equipment.bulk_deleted', $count, ['count' => $count]));
     }
 
@@ -208,6 +242,10 @@ class EquipmentController extends Controller
 
         $count = $this->targetQuery($request, $workspace)
             ->update(['equipment_category_id' => $data['category_id'] ?? null]);
+
+        if ($count > 0) {
+            $this->broadcastResourceChanged('equipment', 'updated', null, $workspace->id);
+        }
 
         return back()->with('success', trans_choice('equipment.bulk_updated', $count, ['count' => $count]));
     }
@@ -288,6 +326,8 @@ class EquipmentController extends Controller
 
         $equipment->update(['cover_file_item_id' => $coverId]);
 
+        $this->broadcastResourceChanged('equipment', 'updated', $equipment->id, $workspace->id);
+
         return back()->with('success', __('equipment.cover_set'));
     }
 
@@ -352,6 +392,8 @@ class EquipmentController extends Controller
         $equipment = Equipment::onlyTrashed()->where('workspace_id', $workspace->id)->findOrFail($id);
         $equipment->restore();
 
+        $this->broadcastResourceChanged('equipment', 'updated', $equipment->id, $workspace->id);
+
         return back()->with('success', __('equipment.restored'));
     }
 
@@ -362,6 +404,8 @@ class EquipmentController extends Controller
 
         $equipment = Equipment::onlyTrashed()->where('workspace_id', $workspace->id)->findOrFail($id);
         $equipment->forceDelete();
+
+        $this->broadcastResourceChanged('equipment', 'deleted', $id, $workspace->id);
 
         return back()->with('success', __('equipment.purged'));
     }

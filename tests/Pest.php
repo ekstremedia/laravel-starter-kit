@@ -5,12 +5,18 @@ use App\Domains\Users\Models\User;
 use App\Domains\Workspaces\Models\Workspace;
 use App\Domains\Workspaces\Support\WorkspaceMembership;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->beforeEach(function () {
+        // RefreshDatabase rolls back the DB between tests but leaves the (array)
+        // cache, so cached singletons like AppSetting::current() would leak a
+        // stale model into the next test. Flush so each test starts clean.
+        Cache::flush();
+
         // Multi-tenancy is row-level (a workspace_id column + the BelongsToWorkspace
         // global scope) — there are no per-tenant schemas/databases to create,
         // so creating a workspace is just a plain `workspaces`/`tenants` row in

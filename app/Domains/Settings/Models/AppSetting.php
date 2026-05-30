@@ -3,10 +3,25 @@
 namespace App\Domains\Settings\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 
 class AppSetting extends Model
 {
+    /**
+     * Cache key for the singleton settings row. `current()` is read on every
+     * request (Inertia share + EnforceAppSettings), so we cache it in Redis and
+     * bust the cache whenever the row is written.
+     */
+    public const CACHE_KEY = 'app_settings:current';
+
     protected $guarded = ['id'];
+
+    protected static function booted(): void
+    {
+        $forget = static fn () => Cache::forget(self::CACHE_KEY);
+        static::saved($forget);
+        static::deleted($forget);
+    }
 
     public function getConnectionName(): ?string
     {
@@ -30,7 +45,13 @@ class AppSetting extends Model
 
     public static function current(): self
     {
-        return static::query()->firstOrCreate([], [
+        // Cache the attribute ARRAY, not the model — phpredis can't round-trip a
+        // serialized Eloquent model (it comes back as __PHP_Incomplete_Class,
+        // the same reason Pulse uses the database cache). An array of scalars is
+        // safe. Rehydrate into a model marked as existing so callers can still
+        // ->update() it.
+        /** @var array<string, mixed> $attributes */
+        $attributes = Cache::rememberForever(self::CACHE_KEY, fn (): array => static::query()->firstOrCreate([], [
             'site_up' => true,
             'registration_open' => true,
             'login_enabled' => true,
@@ -52,6 +73,8 @@ class AppSetting extends Model
             'max_upload_bytes' => 50 * 1024 * 1024,
             // 10 MB per chat attachment out of the box.
             'chat_max_upload_bytes' => 10 * 1024 * 1024,
-        ]);
+        ])->getAttributes());
+
+        return (new self)->newFromBuilder($attributes);
     }
 }

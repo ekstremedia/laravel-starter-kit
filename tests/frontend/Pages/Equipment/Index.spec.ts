@@ -8,7 +8,7 @@ beforeEach(() => {
 });
 
 vi.mock('@/composables/useWorkspace', () => ({
-    useWorkspace: () => ({ workspaceUrl: (p: string) => `/w/acme${p}` }),
+    useWorkspace: () => ({ workspace: { value: null }, workspaceUrl: (p: string) => `/w/acme${p}` }),
 }));
 
 // Local Inertia mock with a no-op <Head> (its head manager isn't set up in unit

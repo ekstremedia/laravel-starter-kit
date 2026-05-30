@@ -14,7 +14,9 @@ use App\Domains\Workspaces\Support\WorkspaceMembership;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
+use App\Support\Concerns\BroadcastsResourceChanges;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -31,6 +33,8 @@ use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
+    use BroadcastsResourceChanges;
+
     public function index(Request $request): Response
     {
         $search = $request->string('search')->toString();
@@ -84,59 +88,11 @@ class UserController extends Controller
             // page worth of users. Avoids an N×M hit from calling
             // WorkspaceMembership::rolesOn per row.
             $pageUserIds = $users->getCollection()->pluck('id')->all();
-            $rolesByUserAndTeam = [];
-            if ($pageUserIds !== []) {
-                $mhr = config('permission.table_names.model_has_roles');
-                $rolesTable = config('permission.table_names.roles');
-                $teamKey = config('permission.column_names.team_foreign_key');
+            $rolesByUserAndTeam = $this->rolesByUserAndTeam($pageUserIds);
 
-                // `model_has_roles` / `roles` live in the one shared database.
-                // The explicit central connection is vestigial and resolves to
-                // the default connection.
-                $central = (string) config('workspaces.database.central_connection');
-                $rows = DB::connection($central)->table($mhr)
-                    ->join($rolesTable, "{$rolesTable}.id", '=', "{$mhr}.role_id")
-                    ->where("{$mhr}.model_type", (new User)->getMorphClass())
-                    ->whereIn("{$mhr}.model_id", $pageUserIds)
-                    ->get([
-                        "{$mhr}.model_id as user_id",
-                        "{$mhr}.{$teamKey} as team_id",
-                        "{$rolesTable}.name as name",
-                    ]);
-
-                foreach ($rows as $row) {
-                    $rolesByUserAndTeam[$row->user_id][$row->team_id][] = $row->name;
-                }
-            }
-
-            $users->getCollection()->transform(function (User $user) use ($rolesByUserAndTeam) {
-                $user->setAttribute('avatar_thumb_url', $user->avatarUrl('thumb'));
-                // `setting` is eager-loaded above — reach through it directly so
-                // each row doesn't hit firstOrCreate (N+1 across a 15-row page).
-                $resolved = $user->setting
-                    ? array_merge(UserSetting::$defaults, $user->setting->settings ?? [])
-                    : UserSetting::$defaults;
-                // Expose the raw override so the admin list can distinguish
-                // explicit caps (N>0) from explicit unlimited (-1) and
-                // inheriting (null). Resolution to the effective cap for
-                // display happens on the Vue side.
-                $user->setAttribute('storage_quota_override', $resolved['storage_quota_override'] ?? null);
-
-                // Compact per-workspace role mapping for the hover tooltip.
-                $workspaceRoles = [];
-                foreach ($user->workspaces as $c) {
-                    /** @var Workspace $c */
-                    $workspaceRoles[] = [
-                        'id' => $c->id,
-                        'name' => $c->name,
-                        'slug' => $c->slug,
-                        'roles' => array_values(array_unique($rolesByUserAndTeam[$user->id][$c->id] ?? [])),
-                    ];
-                }
-                $user->setAttribute('workspace_roles', $workspaceRoles);
-
-                return $user;
-            });
+            $users->getCollection()->transform(
+                fn (User $user) => $this->shapeUserRow($user, $rolesByUserAndTeam)
+            );
 
             return [
                 'users' => $users->toArray(),
@@ -156,6 +112,23 @@ class UserController extends Controller
             'allRoles' => $payload['allRoles'],
             'userStats' => $payload['userStats'],
         ]);
+    }
+
+    /**
+     * Return a single user in the exact shape of one index() list row, so the
+     * admin Vue table can drop the changed row in place without a full reload.
+     * Super-admin gated at the route layer (same as index), so no extra
+     * in-controller authorization is needed.
+     */
+    public function liveRow(User $user): JsonResponse
+    {
+        // Mirror the eager-loads index() applies to each row.
+        $user->loadMissing(['media', 'setting', 'workspaces:workspaces.id,name,slug']);
+
+        $rolesByUserAndTeam = $this->rolesByUserAndTeam([$user->id]);
+        $this->shapeUserRow($user, $rolesByUserAndTeam);
+
+        return response()->json($user);
     }
 
     public function setRole(Request $request, User $user): RedirectResponse
@@ -219,6 +192,8 @@ class UserController extends Controller
             ->event('role_changed')
             ->log('User role changed');
 
+        $this->broadcastResourceChanged('users', 'updated', $user->id);
+
         return back()->with('success', __('flash.users.role_updated', ['role' => $data['role']]));
     }
 
@@ -266,6 +241,8 @@ class UserController extends Controller
             ->event('platform_permission_changed')
             ->log('User platform permission changed');
 
+        $this->broadcastResourceChanged('users', 'updated', $user->id);
+
         return back()->with('success', __('flash.users.platform_permission_updated'));
     }
 
@@ -310,6 +287,8 @@ class UserController extends Controller
         // up to the full TTL.
         User::bumpUsersListVersion();
 
+        $this->broadcastResourceChanged('users', 'updated', $user->id);
+
         return back()->with('success', __('admin.users.quota_updated'));
     }
 
@@ -340,6 +319,8 @@ class UserController extends Controller
             ->performedOn($user)
             ->event('created')
             ->log("Created user {$user->email}");
+
+        $this->broadcastResourceChanged('users', 'created', $user->id);
 
         return redirect()->route('admin.users.index')->with('success', __('flash.users.created'));
     }
@@ -490,6 +471,8 @@ class UserController extends Controller
                 ->log("Admin marked {$user->email} as verified");
         }
 
+        $this->broadcastResourceChanged('users', 'updated', $user->id);
+
         return back()->with('success', __('flash.users.verified'));
     }
 
@@ -501,6 +484,8 @@ class UserController extends Controller
             activity('user')->performedOn($user)->event('email_unverified')
                 ->log("Admin cleared verification for {$user->email}");
         }
+
+        $this->broadcastResourceChanged('users', 'updated', $user->id);
 
         return back()->with('success', __('flash.users.unverified'));
     }
@@ -527,6 +512,8 @@ class UserController extends Controller
             ->event('banned')
             ->log("Banned {$user->email}");
 
+        $this->broadcastResourceChanged('users', 'updated', $user->id);
+
         return back()->with('success', __('flash.users.banned'));
     }
 
@@ -536,6 +523,8 @@ class UserController extends Controller
 
         activity('user')->performedOn($user)->event('unbanned')
             ->log("Unbanned {$user->email}");
+
+        $this->broadcastResourceChanged('users', 'updated', $user->id);
 
         return back()->with('success', __('flash.users.unbanned'));
     }
@@ -663,6 +652,8 @@ class UserController extends Controller
                 ->log("Admin updated user {$user->email}");
         }
 
+        $this->broadcastResourceChanged('users', 'updated', $user->id);
+
         return redirect()->route('admin.users.index')->with('success', __('flash.users.updated'));
     }
 
@@ -727,6 +718,8 @@ class UserController extends Controller
 
         $names = implode(', ', $newNames);
 
+        $this->broadcastResourceChanged('users', 'updated', $user->id);
+
         if (count($newNames) === 1) {
             return back()->with('success', __('flash.users.workspace_attached', ['email' => $user->email, 'name' => $names]));
         }
@@ -761,6 +754,8 @@ class UserController extends Controller
 
         User::bumpUsersListVersion();
 
+        $this->broadcastResourceChanged('users', 'updated', $user->id);
+
         return back()->with('success', __('flash.users.workspace_role_updated', [
             'email' => $user->email,
             'name' => $workspace->name,
@@ -792,6 +787,8 @@ class UserController extends Controller
             ->event('workspace_detached')
             ->log("Removed {$user->email} from {$workspaceName}");
 
+        $this->broadcastResourceChanged('users', 'updated', $user->id);
+
         return back()->with('success', __('flash.users.workspace_detached', ['email' => $user->email, 'name' => $workspaceName]));
     }
 
@@ -818,6 +815,87 @@ class UserController extends Controller
             ->event('deleted')
             ->log("Deleted user {$email}");
 
+        $this->broadcastResourceChanged('users', 'deleted', $user->id);
+
         return redirect()->route('admin.users.index')->with('success', __('flash.users.deleted'));
+    }
+
+    /**
+     * Batched (user_id, team_id) → [role names] lookup for the given user ids.
+     * One query regardless of count; reused by both the index list and the
+     * single-row liveRow shaper so they stay identical.
+     *
+     * @param  array<int, int>  $userIds
+     * @return array<int, array<int, array<int, string>>>
+     */
+    private function rolesByUserAndTeam(array $userIds): array
+    {
+        $rolesByUserAndTeam = [];
+        if ($userIds === []) {
+            return $rolesByUserAndTeam;
+        }
+
+        $mhr = config('permission.table_names.model_has_roles');
+        $rolesTable = config('permission.table_names.roles');
+        $teamKey = config('permission.column_names.team_foreign_key');
+
+        // `model_has_roles` / `roles` live in the one shared database.
+        // The explicit central connection is vestigial and resolves to
+        // the default connection.
+        $central = (string) config('workspaces.database.central_connection');
+        $rows = DB::connection($central)->table($mhr)
+            ->join($rolesTable, "{$rolesTable}.id", '=', "{$mhr}.role_id")
+            ->where("{$mhr}.model_type", (new User)->getMorphClass())
+            ->whereIn("{$mhr}.model_id", $userIds)
+            ->get([
+                "{$mhr}.model_id as user_id",
+                "{$mhr}.{$teamKey} as team_id",
+                "{$rolesTable}.name as name",
+            ]);
+
+        foreach ($rows as $row) {
+            $rolesByUserAndTeam[$row->user_id][$row->team_id][] = $row->name;
+        }
+
+        return $rolesByUserAndTeam;
+    }
+
+    /**
+     * Append the three computed attributes (avatar_thumb_url,
+     * storage_quota_override, workspace_roles) that every admin-list row
+     * carries. Mutates and returns the model so it serializes in the same
+     * shape from index() and liveRow() alike. Assumes `setting` and
+     * `workspaces` are already eager-loaded.
+     *
+     * @param  array<int, array<int, array<int, string>>>  $rolesByUserAndTeam
+     */
+    private function shapeUserRow(User $user, array $rolesByUserAndTeam): User
+    {
+        $user->setAttribute('avatar_thumb_url', $user->avatarUrl('thumb'));
+        // `setting` is eager-loaded — reach through it directly so each row
+        // doesn't hit firstOrCreate (N+1 across a 15-row page).
+        $resolved = $user->setting
+            ? array_merge(UserSetting::$defaults, $user->setting->settings ?? [])
+            : UserSetting::$defaults;
+        // Expose the raw override so the admin list can distinguish
+        // explicit caps (N>0) from explicit unlimited (-1) and
+        // inheriting (null). Resolution to the effective cap for
+        // display happens on the Vue side.
+        $user->setAttribute('storage_quota_override', $resolved['storage_quota_override'] ?? null);
+
+        // Compact per-workspace role mapping for the hover tooltip.
+        $workspaceRoles = [];
+        foreach ($user->workspaces as $c) {
+            /** @var Workspace $c */
+            $workspaceRoles[] = [
+                'id' => $c->id,
+                'name' => $c->name,
+                'slug' => $c->slug,
+                'roles' => array_values(array_unique($rolesByUserAndTeam[$user->id][$c->id] ?? [])),
+            ];
+        }
+        $user->setAttribute('workspace_roles', $workspaceRoles);
+
+        return $user;
     }
 }

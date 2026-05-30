@@ -164,12 +164,16 @@ Route::middleware(['auth', 'verified', 'super.admin'])
         Route::patch('users/{user}/quota', [UserController::class, 'setQuota'])->name('users.setQuota');
         Route::patch('users/{user}/role', [UserController::class, 'setRole'])->name('users.setRole');
         Route::patch('users/{user}/platform-permission', [UserController::class, 'setPlatformPermission'])->name('users.platformPermission');
+        // Single-row JSON for surgical live updates (see docs/realtime-and-broadcasting.md).
+        Route::get('users/{user}/live-row', [UserController::class, 'liveRow'])->name('users.live-row');
 
         Route::resource('roles', RoleController::class)->except(['show']);
+        Route::get('roles/{role}/live-row', [RoleController::class, 'liveRow'])->name('roles.live-row');
 
         Route::get('permissions', [PermissionController::class, 'index'])->name('permissions.index');
         Route::post('permissions', [PermissionController::class, 'store'])->name('permissions.store');
         Route::delete('permissions/{permission}', [PermissionController::class, 'destroy'])->name('permissions.destroy');
+        Route::get('permissions/{permission}/live-row', [PermissionController::class, 'liveRow'])->name('permissions.live-row');
 
         Route::get('monitoring', [MonitoringController::class, 'index'])->name('monitoring.index');
         Route::get('activity', [MonitoringController::class, 'activityRedirect'])->name('activity.index');
@@ -197,6 +201,7 @@ Route::middleware(['auth', 'verified', 'super.admin'])
         Route::get('modules', [ModuleController::class, 'index'])->name('modules.index');
         Route::patch('modules/{module}', [ModuleController::class, 'update'])->name('modules.update');
         Route::post('modules/{module}/purge', [ModuleController::class, 'purge'])->name('modules.purge');
+        Route::get('modules/{module}/live-row', [ModuleController::class, 'liveRow'])->name('modules.live-row');
 
         Route::get('storage', [StorageDashboardController::class, 'index'])->name('storage.index');
 
@@ -208,6 +213,7 @@ Route::middleware(['auth', 'verified', 'super.admin'])
 
         // Platform admin — workspace management.
         Route::resource('workspaces', WorkspaceController::class)->except(['show']);
+        Route::get('workspaces/{workspace}/live-row', [WorkspaceController::class, 'liveRow'])->name('workspaces.live-row');
         Route::post('workspaces/{workspace}/members', [WorkspaceController::class, 'attachMember'])->name('workspaces.members.attach');
         Route::delete('workspaces/{workspace}/members/{user}', [WorkspaceController::class, 'detachMember'])->name('workspaces.members.detach');
 

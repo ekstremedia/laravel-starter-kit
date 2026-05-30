@@ -6,11 +6,19 @@ import Toggle from '@/Components/Command/Toggle.vue';
 import PageTitle from '@/Components/Command/PageTitle.vue';
 import Icon from '@/Components/Command/Icon.vue';
 import { useWorkspace } from '@/composables/useWorkspace';
+import { useLiveReload } from '@/composables/useLiveReload';
 
 defineOptions({ layout: CommandLayout });
 
 const { t } = useI18n();
-const { workspaceUrl } = useWorkspace();
+const { workspace, workspaceUrl } = useWorkspace();
+
+// Live: when another workspace admin toggles a module feature, refresh this
+// page's list AND the shared `modules` map (drives the rail / page gating).
+useLiveReload(
+    () => (workspace.value ? `workspace.${workspace.value.id}.resources` : null),
+    { resource: 'module_settings', only: ['module_settings', 'modules'] },
+);
 
 interface FeatureRow {
     key: string;

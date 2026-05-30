@@ -3,6 +3,16 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0b0d10">
+
+    {{-- Installability / home-screen icons. Harmless when the PWA is off; the
+         manifest is only linked when enabled (otherwise it 404s). --}}
+    <link rel="icon" href="/icons/favicon.ico" sizes="any">
+    <link rel="icon" type="image/svg+xml" href="/icons/source.svg">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180x180.png">
+    @if (config('pwa.enabled'))
+        <link rel="manifest" href="/build/manifest.webmanifest">
+    @endif
 
     <title inertia>{{ config('app.name', 'Laravel Starter Kit') }}</title>
 

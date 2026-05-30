@@ -13,8 +13,8 @@ Schedule::command('backup:clean')->daily()->at('01:30');
 Schedule::command('backup:run')->daily()->at('02:00');
 Schedule::command('backup:monitor')->daily()->at('06:00');
 
-// Pulse trim + activity log cleanup
-Schedule::command('pulse:trim')->hourly();
+// Activity log cleanup. (Pulse trims its own data automatically during ingest
+// per config('pulse.storage.trim.keep') — there is no `pulse:trim` command.)
 Schedule::command('activitylog:clean')->daily();
 
 // Notification digests

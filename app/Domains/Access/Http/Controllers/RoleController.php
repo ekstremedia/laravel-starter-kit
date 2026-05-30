@@ -3,6 +3,8 @@
 namespace App\Domains\Access\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Support\Concerns\BroadcastsResourceChanges;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -12,6 +14,8 @@ use Spatie\Permission\Models\Role;
 
 class RoleController extends Controller
 {
+    use BroadcastsResourceChanges;
+
     public function index(): Response
     {
         return Inertia::render('Admin/Roles/Index', [
@@ -19,13 +23,28 @@ class RoleController extends Controller
                 ->withCount('users')
                 ->orderBy('name')
                 ->get()
-                ->map(fn ($r) => [
-                    'id' => $r->id,
-                    'name' => $r->name,
-                    'permissions' => $r->permissions->pluck('name')->toArray(),
-                    'users_count' => $r->users_count,
-                ]),
+                ->map(fn ($r) => $this->roleRow($r)),
         ]);
+    }
+
+    public function liveRow(Role $role): JsonResponse
+    {
+        $role->loadMissing('permissions:id,name')->loadCount('users');
+
+        return response()->json($this->roleRow($role));
+    }
+
+    /**
+     * Shape a single role exactly like one row of the index() list.
+     */
+    private function roleRow(Role $role): array
+    {
+        return [
+            'id' => $role->id,
+            'name' => $role->name,
+            'permissions' => $role->permissions->pluck('name')->toArray(),
+            'users_count' => $role->users_count,
+        ];
     }
 
     public function create(): Response
@@ -52,6 +71,8 @@ class RoleController extends Controller
             ->withProperties(['permissions' => $data['permissions'] ?? []])
             ->event('created')
             ->log("Created role {$role->name}");
+
+        $this->broadcastResourceChanged('roles', 'created', $role->id);
 
         return redirect()->route('admin.roles.index')->with('success', __('flash.roles.created'));
     }
@@ -94,6 +115,8 @@ class RoleController extends Controller
             ->event('updated')
             ->log("Updated role {$role->name}");
 
+        $this->broadcastResourceChanged('roles', 'updated', $role->id);
+
         return redirect()->route('admin.roles.index')->with('success', __('flash.roles.updated'));
     }
 
@@ -107,6 +130,8 @@ class RoleController extends Controller
             ->withProperties(['name' => $name, 'permissions' => $permissions])
             ->event('deleted')
             ->log("Deleted role {$name}");
+
+        $this->broadcastResourceChanged('roles', 'deleted', $role->id);
 
         return redirect()->route('admin.roles.index')->with('success', __('flash.roles.deleted'));
     }

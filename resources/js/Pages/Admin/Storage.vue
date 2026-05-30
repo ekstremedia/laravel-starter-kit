@@ -4,6 +4,7 @@ import { Head, router } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import CommandLayout from '@/Layouts/CommandLayout.vue';
 import PageTitle from '@/Components/Command/PageTitle.vue';
+import LazyChart from '@/Components/Command/LazyChart.vue';
 import { useTweaks } from '@/composables/useTweaks';
 
 defineOptions({ layout: CommandLayout });
@@ -197,7 +198,7 @@ const inputStyle = {
             <div :style="{ fontSize: '13px', fontWeight: 600, color: 'var(--fg)', marginBottom: '10px' }">
                 {{ t('admin.storage.by_type') }}
             </div>
-            <apexchart
+            <LazyChart
                 v-if="typeChartSeries.some((v) => v > 0)"
                 type="donut"
                 height="280"
@@ -223,7 +224,7 @@ const inputStyle = {
                     @search="applyFilters"
                 />
             </div>
-            <apexchart
+            <LazyChart
                 v-if="props.top_users.length"
                 type="bar"
                 height="280"
@@ -305,7 +306,7 @@ const inputStyle = {
             <div :style="{ fontSize: '13px', fontWeight: 600, color: 'var(--fg)', marginBottom: '10px' }">
                 {{ t('admin.storage.by_collection') }}
             </div>
-            <apexchart
+            <LazyChart
                 v-if="collectionChartSeries.some((v) => v > 0)"
                 type="donut"
                 height="260"
@@ -321,7 +322,7 @@ const inputStyle = {
             <div :style="{ fontSize: '13px', fontWeight: 600, color: 'var(--fg)', marginBottom: '10px' }">
                 {{ t('admin.storage.growth_30d') }}
             </div>
-            <apexchart
+            <LazyChart
                 v-if="props.growth.length"
                 type="area"
                 height="280"

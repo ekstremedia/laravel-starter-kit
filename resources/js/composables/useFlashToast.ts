@@ -1,29 +1,45 @@
 import { watch } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import { useToast } from 'primevue/usetoast';
+import { useI18n } from 'vue-i18n';
 import type { PageProps } from '@/types';
 
+/**
+ * Surfaces server flash messages (`flash.success` / `flash.error`) as toasts.
+ *
+ * Watches the flash VALUES directly — not a freshly-built `{ success, error }`
+ * object — so a toast fires only when the message actually changes. The old
+ * object-literal getter returned a new reference on every evaluation, so it
+ * re-fired on any unrelated `page.props` update (e.g. a live partial reload
+ * triggered by a WebSocket broadcast), re-showing the still-present flash and
+ * producing duplicate toasts.
+ *
+ * `flash.status` is intentionally NOT toasted: Fortify sets it to internal keys
+ * (e.g. 'profile-information-updated', 'verification-link-sent') that aren't
+ * user-facing copy; pages render their own localized feedback (Profile.vue;
+ * ForgotPassword/VerifyEmail show it inline).
+ */
 export function useFlashToast() {
     const page = usePage<PageProps>();
     const toast = useToast();
+    const { t } = useI18n();
 
     watch(
-        () => ({
-            success: page.props.flash?.success,
-            error: page.props.flash?.error,
-        }),
-        (flash) => {
-            if (flash.success) {
-                toast.add({ severity: 'success', summary: 'Success', detail: flash.success, life: 4000 });
+        () => page.props.flash?.success,
+        (success) => {
+            if (success) {
+                toast.add({ severity: 'success', summary: t('common.success'), detail: success, life: 4000 });
             }
-            if (flash.error) {
-                toast.add({ severity: 'error', summary: 'Error', detail: flash.error, life: 6000 });
+        },
+        { immediate: true },
+    );
+
+    watch(
+        () => page.props.flash?.error,
+        (error) => {
+            if (error) {
+                toast.add({ severity: 'error', summary: t('common.error_title'), detail: error, life: 6000 });
             }
-            // NOTE: `flash.status` is intentionally NOT toasted. Fortify sets it to internal
-            // keys (e.g. 'profile-information-updated', 'password-updated', 'verification-link-sent')
-            // that are not user-facing copy; pages render their own localized feedback
-            // (Profile.vue success toast; ForgotPassword/VerifyEmail show it inline). Toasting it
-            // raw produced a duplicate "info" toast alongside the page's own success toast.
         },
         { immediate: true },
     );

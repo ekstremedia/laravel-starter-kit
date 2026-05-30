@@ -10,6 +10,8 @@ use App\Domains\Users\Models\User;
 use App\Domains\Workspaces\Models\Workspace;
 use App\Domains\Workspaces\Support\WorkspaceMembership;
 use App\Http\Controllers\Controller;
+use App\Support\Concerns\BroadcastsResourceChanges;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +29,8 @@ use Spatie\Permission\PermissionRegistrar;
  */
 class WorkspaceController extends Controller
 {
+    use BroadcastsResourceChanges;
+
     public function index(Request $request): Response
     {
         $search = $request->string('search')->toString();
@@ -49,6 +53,19 @@ class WorkspaceController extends Controller
             'workspaces' => $workspaces,
             'filters' => ['search' => $search],
         ]);
+    }
+
+    /**
+     * Return a single workspace shaped exactly like one row of index() so the
+     * client can drop it straight into the paginated list for a surgical
+     * real-time update. Authorization is handled by the super-admin route
+     * group, identical to index().
+     */
+    public function liveRow(Workspace $workspace): JsonResponse
+    {
+        $workspace->loadCount('users');
+
+        return response()->json($workspace);
     }
 
     public function create(): Response
@@ -81,6 +98,8 @@ class WorkspaceController extends Controller
             'slug' => $slug,
             'status' => 'active',
         ]);
+
+        $this->broadcastResourceChanged('workspaces', 'created', $workspace->id);
 
         return redirect()
             ->route('admin.workspaces.edit', $workspace)
@@ -194,7 +213,11 @@ class WorkspaceController extends Controller
 
         $workspace->update($data);
 
-        return back()->with('success', __('flash.workspaces.updated'));
+        $this->broadcastResourceChanged('workspaces', 'updated', $workspace->id);
+
+        // No success toast — the edit page autosaves and shows its own quiet
+        // "Saving…/Saved" status. Validation errors still surface inline.
+        return back();
     }
 
     public function destroy(Workspace $workspace): RedirectResponse
@@ -213,6 +236,8 @@ class WorkspaceController extends Controller
         // Plain row delete; DB `ON DELETE CASCADE` removes dependent rows.
         $workspace->delete();
 
+        $this->broadcastResourceChanged('workspaces', 'deleted', $workspace->id);
+
         return redirect()
             ->route('admin.workspaces.index')
             ->with('success', __('flash.workspaces.deleted', ['name' => $name]));
@@ -230,12 +255,17 @@ class WorkspaceController extends Controller
 
         WorkspaceMembership::attach($user, $workspace, $data['roles']);
 
+        // The admin workspaces list shows users_count — keep it live.
+        $this->broadcastResourceChanged('workspaces', 'updated', $workspace->id);
+
         return back()->with('success', __('flash.workspaces.member_added', ['email' => $user->email, 'name' => $workspace->name]));
     }
 
     public function detachMember(Workspace $workspace, User $user): RedirectResponse
     {
         WorkspaceMembership::detach($user, $workspace);
+
+        $this->broadcastResourceChanged('workspaces', 'updated', $workspace->id);
 
         return back()->with('success', __('flash.workspaces.member_removed', ['email' => $user->email, 'name' => $workspace->name]));
     }

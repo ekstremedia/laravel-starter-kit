@@ -10,7 +10,9 @@ use App\Domains\Modules\Services\ModuleRegistry;
 use App\Domains\Operations\Models\Activity;
 use App\Domains\Workspaces\Models\Workspace;
 use App\Http\Controllers\Controller;
+use App\Support\Concerns\BroadcastsResourceChanges;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +33,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  */
 class EquipmentCategoryController extends Controller
 {
+    use BroadcastsResourceChanges;
+
     /** Page size for the index datatable. */
     private const PER_PAGE = 20;
 
@@ -63,6 +67,21 @@ class EquipmentCategoryController extends Controller
         ]);
     }
 
+    /**
+     * One row in the exact index list-shape, for surgical live updates — the
+     * client fetches just the changed row instead of reloading the whole page.
+     */
+    public function liveRow(Request $request, EquipmentCategory $equipmentCategory): JsonResponse
+    {
+        $workspace = $this->currentTenant($request);
+        $this->assertBelongs($equipmentCategory, $workspace);
+        abort_unless($workspace->canViewFiles($request->user(), $workspace), 403);
+
+        $equipmentCategory->loadCount('equipment');
+
+        return response()->json($equipmentCategory);
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $workspace = $this->currentTenant($request);
@@ -70,6 +89,8 @@ class EquipmentCategoryController extends Controller
 
         $data = $this->validateCategory($request);
         $category = EquipmentCategory::create([...$data, 'workspace_id' => $workspace->id]);
+
+        $this->broadcastResourceChanged('equipment_categories', 'created', $category->id, $workspace->id);
 
         return redirect()
             ->route('workspace.equipment-categories.show', ['workspace' => $workspace->slug, 'equipmentCategory' => $category->id])
@@ -120,6 +141,8 @@ class EquipmentCategoryController extends Controller
 
         $equipmentCategory->update($this->validateCategory($request));
 
+        $this->broadcastResourceChanged('equipment_categories', 'updated', $equipmentCategory->id, $workspace->id);
+
         return back()->with('success', __('equipment_category.updated'));
     }
 
@@ -130,6 +153,8 @@ class EquipmentCategoryController extends Controller
         abort_unless($workspace->canManageEquipment($request->user(), $workspace), 403);
 
         $equipmentCategory->delete();
+
+        $this->broadcastResourceChanged('equipment_categories', 'deleted', $equipmentCategory->id, $workspace->id);
 
         return redirect()
             ->route('workspace.equipment-categories.index', ['workspace' => $workspace->slug])
@@ -148,6 +173,10 @@ class EquipmentCategoryController extends Controller
             $category->delete();
             $count++;
         });
+
+        if ($count > 0) {
+            $this->broadcastResourceChanged('equipment_categories', 'deleted', null, $workspace->id);
+        }
 
         return back()->with('success', trans_choice('equipment_category.bulk_deleted', $count, ['count' => $count]));
     }
@@ -211,6 +240,8 @@ class EquipmentCategoryController extends Controller
         $category = EquipmentCategory::onlyTrashed()->where('workspace_id', $workspace->id)->findOrFail($id);
         $category->restore();
 
+        $this->broadcastResourceChanged('equipment_categories', 'updated', $category->id, $workspace->id);
+
         return back()->with('success', __('equipment_category.restored'));
     }
 
@@ -221,6 +252,8 @@ class EquipmentCategoryController extends Controller
 
         $category = EquipmentCategory::onlyTrashed()->where('workspace_id', $workspace->id)->findOrFail($id);
         $category->forceDelete();
+
+        $this->broadcastResourceChanged('equipment_categories', 'deleted', $id, $workspace->id);
 
         return back()->with('success', __('equipment_category.purged'));
     }

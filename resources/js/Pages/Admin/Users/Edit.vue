@@ -112,6 +112,7 @@ function confirmRemove() {
                         :style="{ display: 'block', fontSize: '10px', color: 'var(--fg-mute)', marginBottom: '6px', letterSpacing: '0.06em', fontWeight: 500 }"
                     >{{ t('admin.workspaces.title') }}</label>
                     <MultiSelect
+                        appendTo="body"
                         v-model="selectedWorkspaceIds"
                         :options="availableWorkspaces()"
                         optionLabel="name"
@@ -129,6 +130,7 @@ function confirmRemove() {
                         :style="{ display: 'block', fontSize: '10px', color: 'var(--fg-mute)', marginBottom: '6px', letterSpacing: '0.06em', fontWeight: 500 }"
                     >{{ t('admin.users.roles') }}</label>
                     <MultiSelect
+                        appendTo="body"
                         v-model="selectedRoles"
                         :options="assignable_roles"
                         display="chip"

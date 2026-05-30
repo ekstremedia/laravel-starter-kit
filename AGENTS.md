@@ -5,9 +5,9 @@ An opinionated, batteries-included Laravel starter. Generic foundation — resha
 ## Stack
 
 - **Backend:** Laravel 13 · PHP 8.4 · PostgreSQL 17 · Redis 7
-- **Frontend:** Vue 3 + TypeScript · Inertia.js v3 · Tailwind v4 · PrimeVue v4 (escape hatch only — see Command design system)
+- **Frontend:** Vue 3 + TypeScript · Inertia.js v3 (SSR-ready, opt-in) · Pinia · Tailwind v4 · PrimeVue v4 (escape hatch only — see Command design system) · vite-plugin-pwa (opt-in)
 - **Auth:** Fortify (headless) + Sanctum · Spatie Permission (teams) · Socialite
-- **Async/real-time:** Redis queues + Horizon · Reverb (WebSockets) + Laravel Echo
+- **Async/real-time:** Redis queues + Horizon · Reverb (WebSockets) + Laravel Echo · generic live-update broadcasts (see Real-time)
 - **Media/files:** spatie/laravel-medialibrary · Gotenberg (doc→image) · ffmpeg
 - **Ops:** Pulse · Sentry (opt) · spatie backup/activitylog · opcodesio log-viewer · lab404 impersonate
 - **Tests/QA:** Pest 4 · Larastan 5 · Pint · Vitest 4 · Husky pre-commit · GitHub Actions
@@ -39,6 +39,10 @@ After editing PHP run `vendor/bin/pint --dirty`. CI runs `pint --test` over **al
 ## Architecture
 
 Inertia SPA: Laravel owns routing/auth/controllers; Vue renders `resources/js/Pages/*`. Use `Inertia::render()`, not Blade views.
+
+**Performance posture (frontend):** pages are per-page code-split (lazy `import.meta.glob` in `app.ts` — no `eager`); heavy libs load lazily (ApexCharts via `Components/Command/LazyChart.vue`, leaflet/markdown-it via dynamic `import()`). Vite splits stable vendor chunks (`vendor-vue/inertia/primevue/i18n`). Adopt Inertia v3 features when they help: `<Link prefetch>` on nav, `Inertia::defer()` for non-first-paint shared props (e.g. `available_workspaces`), `<WhenVisible>` for below-the-fold data. History encryption is on by default. **State:** Pinia (`resources/js/stores/*`) for genuinely-shared/new state (e.g. `notifications`); the existing module-singleton composables (`useTweaks`, `useSettings`, …) stay as-is — don't migrate them.
+
+**Performance posture (backend):** PostgreSQL + Redis. `AppSetting::current()` is Redis-cached (busted on save) — it's read every request, so don't un-cache it. Text search uses `ILIKE` + **pg_trgm GIN indexes** (see the `add_performance_indexes` migration) — keep search on the trigram-indexed columns (equipment name/serial, users name/email, file/workspace/category name). Cache (`CACHE_STORE`), sessions, queue and the Spatie permission cache all run on **Redis**. Pg-specific index migrations must be **driver-guarded** (`DB::connection()->getDriverName() === 'pgsql'`) since tests run on SQLite, and use `$withinTransaction = false` + `CONCURRENTLY` for online builds. Production (`APP_ENV=production`) caches config/routes/views/events in the entrypoint and tunes OPcache; dev clears them. nginx gzips text responses and serves `/build/assets` immutably.
 
 ### Domain modules — `app/Domains/*`
 
@@ -115,6 +119,17 @@ Global infra stays at the `App\` root: base `App\Http\Controllers\Controller`, g
 
 **Settings** — app settings at `/admin/settings` use a section registry (one array + a matching block in `Admin/AppSettings.vue`); add sections there. User prefs live in `user_settings.settings` (JSONB) — extend `UserSetting::$defaults` + the `UserSettingsShape` PHPDoc (no migration).
 
+**Real-time / live updates** — the app should *feel live*: when one user mutates a list, everyone viewing it should see it without a manual refresh. The reusable pattern (full guide: **`docs/realtime-and-broadcasting.md`**):
+- Backend: dispatch the generic `App\Support\Events\ResourceChanged` after a create/update/delete via the `App\Support\Concerns\BroadcastsResourceChanges` trait (`$this->broadcastResourceChanged($resource, $action, $id, $workspaceId)`). Workspace entities pass the workspace id (→ `workspace.{id}.resources` channel); central super-admin CRUD omits it (→ `admin.resources`). Payload is a lightweight `{resource, action, id}` ping only — no row data (avoids leaking to subscribers). **Dispatch explicitly in the controller** (not a model observer — keeps it out of seeders/tests). The trait calls `dontBroadcastToCurrentUser()` so the actor doesn't echo (their own window already reflects the change via its mutation response). **Broadcast from EVERY mutation that changes a list-visible field — not just store/update/destroy**, but also secondary actions (role/ban/verify/cover/membership/feature-toggle); a missed one means that change won't propagate. Wired across Users (+ role/ban/quota/workspace actions), Roles/Permissions/Workspaces (+ member attach/detach), Modules, Equipment (+ setCover), EquipmentCategories, Members (+ setRole), and the workspace module-settings page.
+- Frontend (preferred for lists): `useLiveList({ channel, resource, source, fetchOne, refreshOnly, bulkReload })` is **surgical** — on a ping it fetches **only the changed row** from a per-resource `live-row` JSON endpoint (which reuses the index's row-shaper) and patches it in place; counts refresh via a tiny partial reload; bulk pings fall back to one reload. The client never re-fetches the whole list. Render from the returned `rows` ref (for a paginated table, feed it `{ ...prop, data: rows.value }`). `useLiveReload(() => channel, { resource, only })` is the simpler whole-prop-reload alternative for tiny/stats-only surfaces.
+- **Systemic fallback:** `useLivePageFallback()` (called once in `CommandLayout`) subscribes every page to its workspace/admin resources channel and does a debounced full `router.reload()` on any ping — but **only when the page has no surgical handler of its own** (`useLiveList`/`useLiveReload` register via `registerLiveHandler()`, suppressing it). Net effect: any page reflects changes with zero per-page wiring, while big lists keep their surgical single-row behaviour. So a new page is live by default; opt into `useLiveList` only when you want surgical updates.
+- **Always degrades gracefully** — a no-op when Echo/Reverb is down, so nothing breaks; it's a supplement, not a dependency. The existing live surfaces (chat, files via `CompanyFilesChanged`/`FileItemUpdated`, admin health) follow the same "signal → re-fetch" shape. The app is always treated as live — there is no connection indicator in the topbar.
+- **New interactive list/index pages should opt into this pattern.** Requires `BROADCAST_CONNECTION=reverb` + a running Horizon worker (both default).
+
+**SSR (opt-in, off by default)** — full Inertia SSR is wired but disabled: `resources/js/ssr.ts` mirrors `app.ts` (never imports `./bootstrap`). Enable with `INERTIA_SSR_ENABLED=true` + `npm run build:ssr` + `supervisorctl start inertia-ssr` (the supervisor program is `autostart=false`). **Browser-only code must be SSR-guarded** (`typeof window/localStorage === 'undefined'`, or keep it in `onMounted`) — see `useSettings`/`useUserChannel` for the idiom.
+
+**PWA (opt-in, off by default)** — `VITE_PWA_ENABLED=true` + rebuild emits a manifest + conservative service worker (precache built assets, `public/offline.html` fallback; **never caches HTML/JSON/`/storage` media/POST** — safe for an auth app). Manual guarded SW registration in `app.ts`; `useInstallPrompt` for the install button; icons regenerate from `resources/icons/source.svg` via `npm run pwa:icons`.
+
 ## Command design system
 
 UI is built on **Command** — token-driven Vue primitives in `resources/js/Components/Command/`, styled by CSS vars in `resources/css/tokens.css`. Compose primitives; use Tailwind only for layout (grid/flex/spacing).
@@ -141,4 +156,8 @@ Project skills auto-activate by domain — use them: `fortify-development`, `lar
 - New workspace column → migration + cast on `Workspace` + factory (`Workspace` is a plain Eloquent model).
 - New workspace-scoped entity → `use BelongsToWorkspace` (auto-scope + auto-stamp); migration with a `workspace_id` FK; morph-map alias if morphed. See **`docs/adding-a-workspace-entity.md`**.
 - New file-owning entity → mirror `app/Domains/Assets` (`BelongsToWorkspace` + `FileOwner` + `HasFiles`, morph alias, `allowed_owner_types`, route + `<EntityFiles>`).
+- New interactive list/CRUD page → **dispatch `ResourceChanged` from every controller mutation** (the systemic `useLivePageFallback` then makes the page live with no per-page wiring); add `useLiveList` only when you want surgical single-row updates on a big list. See **`docs/realtime-and-broadcasting.md`**.
+- New Vue page/form → reach for **Inertia v3** helpers (`useForm`/`<Link prefetch>`/deferred props) over hand-rolled fetch; keep browser-only code SSR-guarded.
+- New/changed component → **verify it at mobile/tablet/desktop widths with the Chrome DevTools MCP** (`resize_page` + screenshots) and confirm behaviour/URLs/no console errors with the **Laravel Boost MCP** (`browser-logs`, `last-error`).
+- New package → note it in the Stack list (+ README) and keep it lazy-loaded if heavy.
 - Keep behavior generic (no domain-specific nouns/seed data); prefer env-driven config; run `make test-all` before finishing.

@@ -1,5 +1,5 @@
-import { mount } from '@vue/test-utils';
-import { describe, it, expect } from 'vitest';
+import { mount, type VueWrapper } from '@vue/test-utils';
+import { describe, it, expect, afterEach } from 'vitest';
 import MenuDropdown from '@/Components/Command/MenuDropdown.vue';
 
 const options = [
@@ -7,42 +7,58 @@ const options = [
     { value: 2, label: 'Machine', color: '#f59e0b' },
 ];
 
+// The menu panel is teleported to <body> (so it overlays dialogs without being
+// clipped), so assertions look there rather than inside the component wrapper.
+function menuEl(): HTMLElement | null {
+    return document.body.querySelector('[role="menu"]');
+}
+function menuItems(): HTMLElement[] {
+    return [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+}
+
+let wrapper: VueWrapper | null = null;
+afterEach(() => {
+    wrapper?.unmount();
+    wrapper = null;
+    document.body.innerHTML = '';
+});
+
 describe('Components/Command/MenuDropdown', () => {
     it('shows the placeholder when nothing is selected', () => {
-        const w = mount(MenuDropdown, { props: { modelValue: '', options, placeholder: 'All categories' } });
-        expect(w.text()).toContain('All categories');
+        wrapper = mount(MenuDropdown, { props: { modelValue: '', options, placeholder: 'All categories' } });
+        expect(wrapper.text()).toContain('All categories');
         // The menu is closed until the trigger is clicked.
-        expect(w.find('[role="menu"]').exists()).toBe(false);
+        expect(menuEl()).toBeNull();
     });
 
     it('opens the menu and lists the options', async () => {
-        const w = mount(MenuDropdown, { props: { modelValue: '', options, placeholder: 'All' } });
-        await w.find('button[aria-haspopup="menu"]').trigger('click');
+        wrapper = mount(MenuDropdown, { props: { modelValue: '', options, placeholder: 'All' }, attachTo: document.body });
+        await wrapper.find('button[aria-haspopup="menu"]').trigger('click');
 
-        const menu = w.find('[role="menu"]');
-        expect(menu.exists()).toBe(true);
-        expect(menu.text()).toContain('Vehicle');
-        expect(menu.text()).toContain('Machine');
+        const menu = menuEl();
+        expect(menu).not.toBeNull();
+        expect(menu?.textContent).toContain('Vehicle');
+        expect(menu?.textContent).toContain('Machine');
     });
 
     it('emits the chosen value and closes', async () => {
-        const w = mount(MenuDropdown, { props: { modelValue: '', options, placeholder: 'All' } });
-        await w.find('button[aria-haspopup="menu"]').trigger('click');
+        wrapper = mount(MenuDropdown, { props: { modelValue: '', options, placeholder: 'All' }, attachTo: document.body });
+        await wrapper.find('button[aria-haspopup="menu"]').trigger('click');
 
-        const items = w.findAll('[role="menuitem"]');
-        await items[1].trigger('click'); // Machine
-        expect(w.emitted('update:modelValue')?.[0]).toEqual([2]);
-        expect(w.find('[role="menu"]').exists()).toBe(false);
+        menuItems()[1].click(); // Machine
+        await wrapper.vm.$nextTick();
+        expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([2]);
+        expect(menuEl()).toBeNull();
     });
 
     it('offers an empty row that clears the selection', async () => {
-        const w = mount(MenuDropdown, { props: { modelValue: 1, options, placeholder: 'All', includeEmpty: true } });
+        wrapper = mount(MenuDropdown, { props: { modelValue: 1, options, placeholder: 'All', includeEmpty: true }, attachTo: document.body });
         // The selected option label shows in the trigger.
-        expect(w.text()).toContain('Vehicle');
+        expect(wrapper.text()).toContain('Vehicle');
 
-        await w.find('button[aria-haspopup="menu"]').trigger('click');
-        // First menuitem is the empty/clear row.
-        await w.findAll('[role="menuitem"]')[0].trigger('click');
-        expect(w.emitted('update:modelValue')?.[0]).toEqual(['']);
+        await wrapper.find('button[aria-haspopup="menu"]').trigger('click');
+        menuItems()[0].click(); // empty/clear row
+        await wrapper.vm.$nextTick();
+        expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['']);
     });
 });

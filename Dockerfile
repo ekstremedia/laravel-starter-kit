@@ -46,6 +46,21 @@ RUN { \
         echo 'memory_limit=768M'; \
     } > /usr/local/etc/php/conf.d/uploads.ini
 
+# OPcache — caches compiled PHP bytecode in shared memory so Laravel's ~10k
+# files aren't re-parsed per request/worker. Tuned for a Laravel app and kept
+# dev-safe: validate_timestamps=1 picks up code edits. For maximum production
+# throughput set opcache.validate_timestamps=0 (requires a restart to deploy
+# code) and enable JIT.
+RUN { \
+        echo 'opcache.enable=1'; \
+        echo 'opcache.enable_cli=0'; \
+        echo 'opcache.memory_consumption=192'; \
+        echo 'opcache.interned_strings_buffer=16'; \
+        echo 'opcache.max_accelerated_files=20000'; \
+        echo 'opcache.validate_timestamps=1'; \
+        echo 'opcache.revalidate_freq=0'; \
+    } > /usr/local/etc/php/conf.d/opcache.ini
+
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 

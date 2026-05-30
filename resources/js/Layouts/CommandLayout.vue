@@ -15,6 +15,8 @@ import { useTweaks } from '@/composables/useTweaks';
 import { useCommandKeyboard } from '@/composables/useCommandKeyboard';
 import { useUserChannel } from '@/composables/useUserChannel';
 import { useUnreadCounts } from '@/composables/useUnreadCounts';
+import { useLivePageFallback } from '@/composables/useLivePage';
+import { useNotificationsStore } from '@/stores/notifications';
 import type { PageProps } from '@/types';
 import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
@@ -28,6 +30,9 @@ import Icon from '@/Components/Command/Icon.vue';
 // Initialise tweaks (idempotent — applies CSS vars + keeps .dark in sync).
 useTweaks();
 useFlashToast();
+// App-level live-update safety net: any page without its own useLiveList/
+// useLiveReload still refreshes on a ResourceChanged for its channel.
+useLivePageFallback();
 
 const { t } = useI18n();
 const page = usePage<PageProps>();
@@ -48,12 +53,16 @@ function leaveImpersonation() {
 
 // Server-pushed notifications keep the topbar bell badge in sync.
 const { incrementMessages, incrementNotifications } = useUnreadCounts();
+const notificationsStore = useNotificationsStore();
 useUserChannel((n) => {
     const isChat = typeof n.type === 'string' && n.type.endsWith('NewChatMessageNotification');
     // Chat messages now land in the bell too, so always bump the notifications
     // badge; keep the messages count in sync for chat.
     incrementNotifications(1);
     if (isChat) incrementMessages(1);
+    // Mirror the item into the Pinia feed so dropdowns/toasts can show what
+    // just arrived without a re-fetch.
+    notificationsStore.push({ id: n.id, type: n.type, title: n.title, message: n.message, icon: n.icon });
 });
 
 const paletteOpen = ref(false);
@@ -80,9 +89,10 @@ useCommandKeyboard({
         :style="{
             display: 'flex',
             flexDirection: 'column',
-            minHeight: '100vh',
+            height: '100vh',
             width: '100%',
             position: 'relative',
+            overflow: 'hidden',
         }"
     >
         <Toast position="top-right" />
@@ -148,7 +158,7 @@ useCommandKeyboard({
         <div :style="{ display: 'flex', flex: 1, minHeight: 0 }">
             <Rail :mobile-open="mobileNavOpen" @close="mobileNavOpen = false" />
 
-        <div :style="{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }">
+        <div :style="{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }">
             <Topbar
                 :on-open-palette="() => (paletteOpen = true)"
                 :on-toggle-nav="() => (mobileNavOpen = !mobileNavOpen)"

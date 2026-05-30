@@ -2,9 +2,9 @@
 import { Head, router } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import VueApexCharts from 'vue3-apexcharts';
 import type { ApexOptions } from 'apexcharts';
 import CommandLayout from '@/Layouts/CommandLayout.vue';
+import LazyChart from '@/Components/Command/LazyChart.vue';
 import Counter from '@/Components/Command/Counter.vue';
 import Dot from '@/Components/Command/Dot.vue';
 import PageTitle from '@/Components/Command/PageTitle.vue';
@@ -99,18 +99,6 @@ function formatTime(iso: string | null): string {
     if (!iso) return '—';
     return new Date(iso).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
-
-const lastUpdated = ref(t('admin.overview.seconds_ago', { n: 0 }));
-function tickLastUpdated() {
-    const sec = Math.max(0, Math.floor((Date.now() - new Date(metrics.value.generated_at).getTime()) / 1000));
-    lastUpdated.value = sec < 60 ? t('admin.overview.seconds_ago', { n: sec }) : t('admin.overview.minutes_ago', { n: Math.floor(sec / 60) });
-}
-let tickHandle: ReturnType<typeof setInterval> | null = null;
-onMounted(() => {
-    tickLastUpdated();
-    tickHandle = setInterval(tickLastUpdated, 5_000);
-});
-onBeforeUnmount(() => { if (tickHandle) clearInterval(tickHandle); });
 
 interface Kpi {
     label: string;
@@ -241,7 +229,7 @@ function handleRefresh() {
 
     <!-- Header -->
     <div :style="{ marginBottom: 'var(--pad-page)' }">
-        <PageTitle :title="t('admin.overview.dashboard')" :subtitle="t('admin.overview.updated_realtime', { when: lastUpdated })">
+        <PageTitle :title="t('admin.overview.dashboard')">
             <template #actions>
                 <button
                     type="button"
@@ -335,7 +323,7 @@ function handleRefresh() {
                 </div>
             </div>
             <Skeleton v-if="loading" :width="'100%'" :height="180" :radius="4" />
-            <VueApexCharts
+            <LazyChart
                 v-else
                 type="area"
                 height="180"
@@ -353,7 +341,7 @@ function handleRefresh() {
                 >events:{{ metrics.activity.total }}</div>
             </div>
             <Skeleton v-if="loading" :width="'100%'" :height="180" :radius="4" />
-            <VueApexCharts
+            <LazyChart
                 v-else
                 type="bar"
                 height="180"
@@ -379,7 +367,7 @@ function handleRefresh() {
                 <span
                     class="cmd-mono"
                     :style="{ fontSize: '10px', color: 'var(--fg-mute)' }"
-                >realtime · tail</span>
+                >tail</span>
             </div>
             <div class="cmd-mono" :style="{ fontSize: '11px' }">
                 <div

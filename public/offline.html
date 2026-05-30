@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0b0d10">
+    <title>Offline</title>
+    <style>
+        :root { color-scheme: dark; }
+        html, body { height: 100%; margin: 0; }
+        body {
+            display: flex; align-items: center; justify-content: center;
+            background: #0b0d10; color: #d5d9e5;
+            font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+            text-align: center; padding: 24px;
+        }
+        .card { max-width: 360px; }
+        .mark {
+            width: 56px; height: 56px; border-radius: 14px; margin: 0 auto 20px;
+            background: #11141a; display: inline-flex; align-items: center; justify-content: center;
+        }
+        h1 { font-size: 17px; font-weight: 600; margin: 0 0 8px; color: #fff; }
+        p { font-size: 13.5px; line-height: 1.5; color: #8a8f98; margin: 0 0 20px; }
+        button {
+            font: inherit; font-size: 13px; font-weight: 500; cursor: pointer;
+            background: #4c6fff; color: #fff; border: 0; border-radius: 7px; padding: 8px 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="mark" aria-hidden="true">
+            <svg width="30" height="30" viewBox="0 0 512 512" fill="none" stroke="#4c6fff" stroke-width="36" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="172,188 236,256 172,324"></polyline>
+                <line x1="266" y1="332" x2="352" y2="332"></line>
+            </svg>
+        </div>
+        <h1>You're offline</h1>
+        <p>This page needs a connection. Check your network and try again — anything you've already loaded still works.</p>
+        <button onclick="location.reload()">Retry</button>
+    </div>
+</body>
+</html>

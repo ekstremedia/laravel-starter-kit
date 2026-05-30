@@ -172,7 +172,7 @@ type Entry = SidebarEntry;
             </Transition>
         </Link>
 
-        <template v-for="entry in (visible as Entry[])" :key="isItem(entry) ? entry.id : entry.key">
+        <template v-for="entry in (visible as Entry[])" :key="isItem(entry) ? `item-${entry.id}` : `sep-${entry.key}`">
             <template v-if="!isItem(entry)">
                 <Transition name="cmd-rail-text">
                     <div
@@ -189,6 +189,7 @@ type Entry = SidebarEntry;
             <Link
                 v-else
                 :href="entry.href"
+                prefetch
                 @mouseenter="hoverId = entry.id"
                 @mouseleave="hoverId = null"
                 :style="{

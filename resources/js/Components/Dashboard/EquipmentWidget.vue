@@ -7,6 +7,7 @@ import { computed, onMounted, ref } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import Icon from '@/Components/Command/Icon.vue';
+import LazyChart from '@/Components/Command/LazyChart.vue';
 import CategoryChip from '@/Components/Equipment/CategoryChip.vue';
 import { useWorkspace } from '@/composables/useWorkspace';
 
@@ -83,7 +84,7 @@ const chartOptions = computed(() => ({
             </div>
         </div>
 
-        <apexchart v-if="series.length" type="donut" height="170" :options="chartOptions" :series="series" />
+        <LazyChart v-if="series.length" type="donut" height="170" :options="chartOptions" :series="series" />
         <p v-else :style="{ fontSize: '12px', color: 'var(--fg-mute)', padding: '8px 0' }">{{ t('equipment.empty') }}</p>
 
         <div v-if="data.recent.length" :style="{ marginTop: '12px', borderTop: '1px solid var(--border)', paddingTop: '8px' }">

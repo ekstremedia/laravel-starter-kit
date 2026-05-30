@@ -28,3 +28,24 @@ Broadcast::channel('workspace.{workspaceId}.files', function ($user, $workspaceI
 
     return $user->workspaces()->where('workspaces.id', (int) $workspaceId)->exists();
 });
+
+// Central super-admin "a resource changed" feed (users, roles, permissions,
+// workspaces, modules). Carries only resource+action+id pings; the client does
+// an Inertia partial reload. Super-admins only — same gate as admin.health.
+Broadcast::channel('admin.resources', function ($user) {
+    return $user !== null && $user->isSuperAdmin();
+});
+
+// Per-workspace "a resource changed" feed (Equipment, categories, members, …).
+// Same authorization as the files channel: members + super admins. Payload is
+// just a change ping, so no row data leaks to other connected members.
+Broadcast::channel('workspace.{workspaceId}.resources', function ($user, $workspaceId) {
+    if ($user === null) {
+        return false;
+    }
+    if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
+        return true;
+    }
+
+    return $user->workspaces()->where('workspaces.id', (int) $workspaceId)->exists();
+});

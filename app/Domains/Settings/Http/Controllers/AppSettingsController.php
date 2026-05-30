@@ -6,6 +6,7 @@ use App\Domains\Files\Support\UploadLimits;
 use App\Domains\Settings\Models\AppSetting;
 use App\Domains\Workspaces\Support\WorkspaceMembership;
 use App\Http\Controllers\Controller;
+use App\Support\Concerns\BroadcastsResourceChanges;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -14,6 +15,8 @@ use Inertia\Response;
 
 class AppSettingsController extends Controller
 {
+    use BroadcastsResourceChanges;
+
     public function show(): Response
     {
         return Inertia::render('Admin/AppSettings', [
@@ -82,6 +85,10 @@ class AppSettingsController extends Controller
             ->withProperties(['changed' => $changes])
             ->event('updated')
             ->log('Updated app settings');
+
+        // Central super-admin change — other admins viewing /admin/settings
+        // refresh via the live-page fallback on the admin.resources channel.
+        $this->broadcastResourceChanged('app_settings', 'updated', $settings->id);
 
         // No success toast — the form already reflects the saved state. Errors
         // still surface (validation inline / error flash).

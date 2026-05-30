@@ -23,6 +23,7 @@ export function useUserChannel(onNotification: (payload: NotificationPayload) =>
 
     function join(userId: number) {
         leave();
+        if (typeof window === 'undefined') return; // SSR: no Echo
         const echo = window.Echo;
         if (!echo) return;
         currentUserId = userId;
@@ -33,7 +34,9 @@ export function useUserChannel(onNotification: (payload: NotificationPayload) =>
 
     function leave() {
         if (currentUserId !== null) {
-            window.Echo?.leave(`App.Models.User.${currentUserId}`);
+            if (typeof window !== 'undefined') {
+                window.Echo?.leave(`App.Models.User.${currentUserId}`);
+            }
             currentUserId = null;
         }
     }

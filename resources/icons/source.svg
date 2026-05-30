@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Placeholder app mark — replace this file and re-run `npm run pwa:icons`
+       to brand the PWA. Full-bleed background keeps maskable crops clean; the
+       glyph sits inside the central safe zone. -->
+  <rect width="512" height="512" rx="104" fill="#0b0d10"/>
+  <g fill="none" stroke="#4c6fff" stroke-width="36" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="172,188 236,256 172,324"/>
+    <line x1="266" y1="332" x2="352" y2="332"/>
+  </g>
+</svg>

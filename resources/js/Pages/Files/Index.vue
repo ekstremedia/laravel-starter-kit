@@ -37,9 +37,12 @@ const { t } = useI18n();
 const { workspaceUrl } = useWorkspace();
 const page = usePage<PageProps>();
 
-const viewMode = ref<'grid' | 'list'>((localStorage.getItem('files.viewMode') as 'grid' | 'list') || 'grid');
+const viewMode = ref<'grid' | 'list'>(
+    (typeof localStorage !== 'undefined' && (localStorage.getItem('files.viewMode') as 'grid' | 'list')) || 'grid',
+);
 function setViewMode(mode: 'grid' | 'list') {
     viewMode.value = mode;
+    if (typeof localStorage === 'undefined') return;
     localStorage.setItem('files.viewMode', mode);
 }
 

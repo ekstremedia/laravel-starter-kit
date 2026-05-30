@@ -8,6 +8,7 @@ use App\Domains\Notifications\Jobs\RecompileEmailTemplatesJob;
 use App\Domains\Notifications\Models\MailLayout;
 use App\Domains\Notifications\Services\MjmlCompiler;
 use App\Http\Controllers\Controller;
+use App\Support\Concerns\BroadcastsResourceChanges;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,6 +21,8 @@ use Illuminate\Support\Facades\View;
  */
 class MailLayoutController extends Controller
 {
+    use BroadcastsResourceChanges;
+
     public function update(Request $request): RedirectResponse
     {
         $layout = MailLayout::current();
@@ -32,6 +35,8 @@ class MailLayoutController extends Controller
             ->performedOn($layout)
             ->event('layout_updated')
             ->log('Updated email layout');
+
+        $this->broadcastResourceChanged('mail', 'updated', $layout->id);
 
         return back();
     }
