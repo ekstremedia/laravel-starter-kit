@@ -42,6 +42,7 @@ const viewMode = ref<'grid' | 'list'>(
 );
 function setViewMode(mode: 'grid' | 'list') {
     viewMode.value = mode;
+    if (typeof localStorage === 'undefined') return;
     localStorage.setItem('files.viewMode', mode);
 }
 

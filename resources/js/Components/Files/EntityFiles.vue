@@ -113,6 +113,7 @@ const extraUploadData = computed(() => ({
 
 function setViewMode(mode: 'grid' | 'list') {
     viewMode.value = mode;
+    if (typeof localStorage === 'undefined') return;
     localStorage.setItem('entityFiles.viewMode', mode);
 }
 

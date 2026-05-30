@@ -109,7 +109,7 @@ describe('useLiveList', () => {
     it('falls back to a single reload for a bulk (no-id) change', async () => {
         vi.useFakeTimers();
         const source = ref<Row[]>([{ id: 1, name: 'A' }]);
-        const { } = mountList(source, vi.fn());
+        mountList(source, vi.fn());
 
         echoCtl.emit('.ResourceChanged', { resource: 'users', action: 'deleted' });
         vi.advanceTimersByTime(20);

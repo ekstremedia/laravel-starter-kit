@@ -1,6 +1,7 @@
 import { watch } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import { useToast } from 'primevue/usetoast';
+import { useI18n } from 'vue-i18n';
 import type { PageProps } from '@/types';
 
 /**
@@ -21,12 +22,13 @@ import type { PageProps } from '@/types';
 export function useFlashToast() {
     const page = usePage<PageProps>();
     const toast = useToast();
+    const { t } = useI18n();
 
     watch(
         () => page.props.flash?.success,
         (success) => {
             if (success) {
-                toast.add({ severity: 'success', summary: 'Success', detail: success, life: 4000 });
+                toast.add({ severity: 'success', summary: t('common.success'), detail: success, life: 4000 });
             }
         },
         { immediate: true },
@@ -36,7 +38,7 @@ export function useFlashToast() {
         () => page.props.flash?.error,
         (error) => {
             if (error) {
-                toast.add({ severity: 'error', summary: 'Error', detail: error, life: 6000 });
+                toast.add({ severity: 'error', summary: t('common.error_title'), detail: error, life: 6000 });
             }
         },
         { immediate: true },

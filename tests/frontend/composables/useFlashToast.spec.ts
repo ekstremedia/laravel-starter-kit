@@ -7,6 +7,7 @@ const pageRef = vi.hoisted(() => ({ current: null as unknown }));
 
 vi.mock('@inertiajs/vue3', () => ({ usePage: () => pageRef.current }));
 vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: toastAdd }) }));
+vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }));
 
 import { useFlashToast } from '@/composables/useFlashToast';
 
