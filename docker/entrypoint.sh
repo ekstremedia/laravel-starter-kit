@@ -30,9 +30,19 @@ fi
 # points at the right target.
 php artisan storage:link --force || true
 
-# Clear and cache config
-php artisan config:clear
-php artisan route:clear
-php artisan view:clear
+# Config/route/view caching. In production, pre-build the caches so each boot
+# (rolling deploys, autoscaling) and request skips re-parsing config/routes/
+# views. In local/dev we CLEAR instead, so .env and route edits take effect
+# without a rebuild.
+if [ "$APP_ENV" = "production" ]; then
+    php artisan config:cache
+    php artisan route:cache
+    php artisan view:cache
+    php artisan event:cache
+else
+    php artisan config:clear
+    php artisan route:clear
+    php artisan view:clear
+fi
 
 exec "$@"
