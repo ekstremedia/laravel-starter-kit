@@ -3,6 +3,7 @@
 namespace App\Domains\Access\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Support\Concerns\BroadcastsResourceChanges;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -12,6 +13,8 @@ use Spatie\Permission\Models\Role;
 
 class RoleController extends Controller
 {
+    use BroadcastsResourceChanges;
+
     public function index(): Response
     {
         return Inertia::render('Admin/Roles/Index', [
@@ -52,6 +55,8 @@ class RoleController extends Controller
             ->withProperties(['permissions' => $data['permissions'] ?? []])
             ->event('created')
             ->log("Created role {$role->name}");
+
+        $this->broadcastResourceChanged('roles', 'created', $role->id);
 
         return redirect()->route('admin.roles.index')->with('success', __('flash.roles.created'));
     }
@@ -94,6 +99,8 @@ class RoleController extends Controller
             ->event('updated')
             ->log("Updated role {$role->name}");
 
+        $this->broadcastResourceChanged('roles', 'updated', $role->id);
+
         return redirect()->route('admin.roles.index')->with('success', __('flash.roles.updated'));
     }
 
@@ -107,6 +114,8 @@ class RoleController extends Controller
             ->withProperties(['name' => $name, 'permissions' => $permissions])
             ->event('deleted')
             ->log("Deleted role {$name}");
+
+        $this->broadcastResourceChanged('roles', 'deleted', $role->id);
 
         return redirect()->route('admin.roles.index')->with('success', __('flash.roles.deleted'));
     }

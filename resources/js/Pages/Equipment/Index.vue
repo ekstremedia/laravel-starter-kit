@@ -19,12 +19,20 @@ import TextPreviewDialog from '@/Components/Files/TextPreviewDialog.vue';
 import { useWorkspace } from '@/composables/useWorkspace';
 import { useModuleFeatures } from '@/composables/useModuleFeatures';
 import { useFileMedia, type MediaFileRow } from '@/composables/useFileMedia';
+import { useLiveReload } from '@/composables/useLiveReload';
 
 defineOptions({ layout: CommandLayout });
 
 const { t } = useI18n();
-const { workspaceUrl } = useWorkspace();
+const { workspace, workspaceUrl } = useWorkspace();
 const confirm = useConfirm();
+
+// Live: refresh the list + stats when equipment changes elsewhere in this
+// workspace. Channel re-binds on workspace switch; no-op without Echo.
+useLiveReload(
+    () => (workspace.value ? `workspace.${workspace.value.id}.resources` : null),
+    { resource: 'equipment', only: ['equipment', 'stats'] },
+);
 
 // Files are composable per module/workspace — hide the document column + the
 // file-only actions (download, ZIP export) when files are disabled.

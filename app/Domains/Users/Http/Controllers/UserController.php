@@ -14,6 +14,7 @@ use App\Domains\Workspaces\Support\WorkspaceMembership;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
+use App\Support\Concerns\BroadcastsResourceChanges;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,6 +32,8 @@ use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
+    use BroadcastsResourceChanges;
+
     public function index(Request $request): Response
     {
         $search = $request->string('search')->toString();
@@ -340,6 +343,8 @@ class UserController extends Controller
             ->performedOn($user)
             ->event('created')
             ->log("Created user {$user->email}");
+
+        $this->broadcastResourceChanged('users', 'created', $user->id);
 
         return redirect()->route('admin.users.index')->with('success', __('flash.users.created'));
     }
@@ -663,6 +668,8 @@ class UserController extends Controller
                 ->log("Admin updated user {$user->email}");
         }
 
+        $this->broadcastResourceChanged('users', 'updated', $user->id);
+
         return redirect()->route('admin.users.index')->with('success', __('flash.users.updated'));
     }
 
@@ -817,6 +824,8 @@ class UserController extends Controller
             ])
             ->event('deleted')
             ->log("Deleted user {$email}");
+
+        $this->broadcastResourceChanged('users', 'deleted', $user->id);
 
         return redirect()->route('admin.users.index')->with('success', __('flash.users.deleted'));
     }

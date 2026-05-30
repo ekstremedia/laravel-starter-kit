@@ -7,11 +7,12 @@
  */
 import { Head, router } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import CommandLayout from '@/Layouts/CommandLayout.vue';
 import Icon from '@/Components/Command/Icon.vue';
 import { useWorkspace } from '@/composables/useWorkspace';
 import { useUnreadCounts } from '@/composables/useUnreadCounts';
+import { useNotificationsStore } from '@/stores/notifications';
 
 defineOptions({ layout: CommandLayout });
 
@@ -34,6 +35,22 @@ const { setNotifications, decrementNotifications } = useUnreadCounts();
 
 const items = ref<NotificationItem[]>([...props.notifications]);
 const hoverId = ref<string | null>(null);
+
+// Live: the layout's single user-channel subscription feeds this Pinia store,
+// so we watch it here (rather than opening a second Echo subscription, which
+// would fight the layout's on the same channel). When something new lands,
+// re-pull the list and re-sync the local copy.
+const notificationsStore = useNotificationsStore();
+watch(
+    () => notificationsStore.latest?.id,
+    (id, prev) => {
+        if (!id || id === prev) return;
+        router.reload({
+            only: ['notifications', 'unread_count'],
+            onSuccess: () => { items.value = [...props.notifications]; },
+        });
+    },
+);
 
 // Derive the unread count from local state so the "mark all read" control
 // reacts to in-page mutations (mark/clear) — the unread_count prop is only

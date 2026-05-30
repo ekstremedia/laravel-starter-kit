@@ -17,6 +17,7 @@ import Icon from '@/Components/Command/Icon.vue';
 import MultiSelect from 'primevue/multiselect';
 import { useWorkspace } from '@/composables/useWorkspace';
 import { useCommandToasts } from '@/composables/useCommandToasts';
+import { useLiveReload } from '@/composables/useLiveReload';
 
 defineOptions({ layout: CommandLayout });
 
@@ -44,10 +45,16 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-const { workspaceUrl } = useWorkspace();
+const { workspace, workspaceUrl } = useWorkspace();
 const { push } = useCommandToasts();
 const { t } = useI18n();
 const confirmer = useConfirm();
+
+// Live: refresh members + invitations when another admin adds/removes someone.
+useLiveReload(
+    () => (workspace.value ? `workspace.${workspace.value.id}.resources` : null),
+    { resource: 'members', only: ['members', 'invitations'] },
+);
 
 const inviteForm = useForm<{ email: string; roles: string[] }>({ email: '', roles: ['User'] });
 // Email invitation (works for people without an account yet — they get a link).

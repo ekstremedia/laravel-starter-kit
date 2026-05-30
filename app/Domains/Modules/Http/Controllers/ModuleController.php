@@ -7,6 +7,7 @@ namespace App\Domains\Modules\Http\Controllers;
 use App\Domains\Modules\Models\Module;
 use App\Domains\Modules\Services\ModuleRegistry;
 use App\Http\Controllers\Controller;
+use App\Support\Concerns\BroadcastsResourceChanges;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -19,6 +20,8 @@ use Inertia\Response;
  */
 class ModuleController extends Controller
 {
+    use BroadcastsResourceChanges;
+
     public function __construct(private readonly ModuleRegistry $registry) {}
 
     public function index(): Response
@@ -59,6 +62,8 @@ class ModuleController extends Controller
             ->withProperties(['enabled' => $module->enabled, 'features' => $module->features])
             ->event($module->enabled ? 'enabled' : 'disabled')
             ->log($module->enabled ? 'Enabled module' : 'Disabled module');
+
+        $this->broadcastResourceChanged('modules', 'updated', $module->id);
 
         // The toggle itself is the feedback — no success toast for a routine flip.
         return back();

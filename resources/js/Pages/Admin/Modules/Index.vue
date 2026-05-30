@@ -9,8 +9,12 @@ import CmdDataTable, { type Column } from '@/Components/Command/DataTable.vue';
 import Toggle from '@/Components/Command/Toggle.vue';
 import PageTitle from '@/Components/Command/PageTitle.vue';
 import { humanBytes } from '@/utils/bytes';
+import { useLiveReload } from '@/composables/useLiveReload';
 
 defineOptions({ layout: CommandLayout });
+
+// Live: refresh when a module is toggled/updated elsewhere.
+useLiveReload(() => 'admin.resources', { resource: 'modules', only: ['modules'] });
 
 const { t } = useI18n();
 const confirm = useConfirm();

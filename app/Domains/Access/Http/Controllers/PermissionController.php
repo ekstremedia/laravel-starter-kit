@@ -3,6 +3,7 @@
 namespace App\Domains\Access\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Support\Concerns\BroadcastsResourceChanges;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -11,6 +12,8 @@ use Spatie\Permission\Models\Permission;
 
 class PermissionController extends Controller
 {
+    use BroadcastsResourceChanges;
+
     public function index(): Response
     {
         return Inertia::render('Admin/Permissions/Index', [
@@ -36,11 +39,14 @@ class PermissionController extends Controller
             ->event('created')
             ->log("Created permission {$permission->name}");
 
+        $this->broadcastResourceChanged('permissions', 'created', $permission->id, null);
+
         return back()->with('success', __('flash.permissions.created'));
     }
 
     public function destroy(Permission $permission): RedirectResponse
     {
+        $id = $permission->id;
         $name = $permission->name;
         $permission->delete();
 
@@ -48,6 +54,8 @@ class PermissionController extends Controller
             ->withProperties(['name' => $name])
             ->event('deleted')
             ->log("Deleted permission {$name}");
+
+        $this->broadcastResourceChanged('permissions', 'deleted', $id, null);
 
         return back()->with('success', __('flash.permissions.deleted'));
     }

@@ -8,8 +8,12 @@ import CmdDataTable, { type Column } from '@/Components/Command/DataTable.vue';
 import Icon from '@/Components/Command/Icon.vue';
 import PageTitle from '@/Components/Command/PageTitle.vue';
 import { useCommandToasts } from '@/composables/useCommandToasts';
+import { useLiveReload } from '@/composables/useLiveReload';
 
 defineOptions({ layout: CommandLayout });
+
+// Live: refresh when any admin creates/deletes a permission elsewhere.
+useLiveReload(() => 'admin.resources', { resource: 'permissions', only: ['permissions'] });
 
 const { t } = useI18n();
 const { push } = useCommandToasts();

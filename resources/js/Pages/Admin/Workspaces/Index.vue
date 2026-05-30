@@ -9,8 +9,12 @@ import Icon from '@/Components/Command/Icon.vue';
 import Dot from '@/Components/Command/Dot.vue';
 import PageTitle from '@/Components/Command/PageTitle.vue';
 import CmdButton from '@/Components/Command/Button.vue';
+import { useLiveReload } from '@/composables/useLiveReload';
 
 defineOptions({ layout: CommandLayout });
+
+// Live: refresh when a workspace is created/edited/deleted elsewhere.
+useLiveReload(() => 'admin.resources', { resource: 'workspaces', only: ['workspaces'] });
 
 const { t } = useI18n();
 const confirmer = useConfirm();

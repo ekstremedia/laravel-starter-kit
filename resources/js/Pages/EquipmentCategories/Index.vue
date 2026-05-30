@@ -14,12 +14,20 @@ import PageTitle from '@/Components/Command/PageTitle.vue';
 import CategoryChip from '@/Components/Equipment/CategoryChip.vue';
 import ColorPicker from '@/Components/Equipment/ColorPicker.vue';
 import { useWorkspace } from '@/composables/useWorkspace';
+import { useLiveReload } from '@/composables/useLiveReload';
 
 defineOptions({ layout: CommandLayout });
 
 const { t } = useI18n();
-const { workspaceUrl } = useWorkspace();
+const { workspace, workspaceUrl } = useWorkspace();
 const confirm = useConfirm();
+
+// Live: refresh the list + stats when categories change elsewhere in this
+// workspace. No-op without Echo.
+useLiveReload(
+    () => (workspace.value ? `workspace.${workspace.value.id}.resources` : null),
+    { resource: 'equipment_categories', only: ['categories', 'stats'] },
+);
 
 interface CategoryRow {
     id: number;

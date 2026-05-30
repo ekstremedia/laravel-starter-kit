@@ -10,6 +10,7 @@ use App\Domains\Users\Models\User;
 use App\Domains\Workspaces\Models\Workspace;
 use App\Domains\Workspaces\Support\WorkspaceMembership;
 use App\Http\Controllers\Controller;
+use App\Support\Concerns\BroadcastsResourceChanges;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +28,8 @@ use Spatie\Permission\PermissionRegistrar;
  */
 class WorkspaceController extends Controller
 {
+    use BroadcastsResourceChanges;
+
     public function index(Request $request): Response
     {
         $search = $request->string('search')->toString();
@@ -81,6 +84,8 @@ class WorkspaceController extends Controller
             'slug' => $slug,
             'status' => 'active',
         ]);
+
+        $this->broadcastResourceChanged('workspaces', 'created', $workspace->id);
 
         return redirect()
             ->route('admin.workspaces.edit', $workspace)
@@ -194,6 +199,8 @@ class WorkspaceController extends Controller
 
         $workspace->update($data);
 
+        $this->broadcastResourceChanged('workspaces', 'updated', $workspace->id);
+
         return back()->with('success', __('flash.workspaces.updated'));
     }
 
@@ -212,6 +219,8 @@ class WorkspaceController extends Controller
 
         // Plain row delete; DB `ON DELETE CASCADE` removes dependent rows.
         $workspace->delete();
+
+        $this->broadcastResourceChanged('workspaces', 'deleted', $workspace->id);
 
         return redirect()
             ->route('admin.workspaces.index')

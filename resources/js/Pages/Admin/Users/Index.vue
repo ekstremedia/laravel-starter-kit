@@ -11,8 +11,13 @@ import CommandDialog from '@/Components/Command/Dialog.vue';
 import Field from '@/Components/Command/Field.vue';
 import CmdButton from '@/Components/Command/Button.vue';
 import { useCommandToasts } from '@/composables/useCommandToasts';
+import { useLiveReload } from '@/composables/useLiveReload';
 
 defineOptions({ layout: CommandLayout });
+
+// Live: refresh the table + stats when users are created/edited/deleted
+// elsewhere. preserveState keeps the local search/sort/selection intact.
+useLiveReload(() => 'admin.resources', { resource: 'users', only: ['users', 'userStats'] });
 
 interface WorkspaceRoleCell { id: number; name: string; slug: string; roles: string[] }
 interface UserRow {

@@ -9,6 +9,7 @@ use App\Domains\Workspaces\Models\Workspace;
 use App\Domains\Workspaces\Models\WorkspaceInvitation;
 use App\Domains\Workspaces\Support\WorkspaceMembership;
 use App\Http\Controllers\Controller;
+use App\Support\Concerns\BroadcastsResourceChanges;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -28,6 +29,8 @@ use Spatie\Permission\PermissionRegistrar;
  */
 class WorkspaceMembersController extends Controller
 {
+    use BroadcastsResourceChanges;
+
     public function index(Request $request): Response
     {
         $workspace = $this->workspace($request);
@@ -110,6 +113,8 @@ class WorkspaceMembersController extends Controller
 
         WorkspaceMembership::attach($user, $workspace, $data['roles']);
 
+        $this->broadcastResourceChanged('members', 'created', $user->id, $workspace->id);
+
         return back()->with('success', __('flash.workspaces.member_added', ['email' => $user->email, 'name' => $workspace->name]));
     }
 
@@ -159,6 +164,8 @@ class WorkspaceMembersController extends Controller
         }
 
         WorkspaceMembership::detach($user, $workspace);
+
+        $this->broadcastResourceChanged('members', 'deleted', $user->id, $workspace->id);
 
         return back()->with('success', __('flash.workspaces.member_removed', ['email' => $user->email, 'name' => $workspace->name]));
     }
