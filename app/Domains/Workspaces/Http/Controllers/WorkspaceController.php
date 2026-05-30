@@ -11,6 +11,7 @@ use App\Domains\Workspaces\Models\Workspace;
 use App\Domains\Workspaces\Support\WorkspaceMembership;
 use App\Http\Controllers\Controller;
 use App\Support\Concerns\BroadcastsResourceChanges;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -52,6 +53,19 @@ class WorkspaceController extends Controller
             'workspaces' => $workspaces,
             'filters' => ['search' => $search],
         ]);
+    }
+
+    /**
+     * Return a single workspace shaped exactly like one row of index() so the
+     * client can drop it straight into the paginated list for a surgical
+     * real-time update. Authorization is handled by the super-admin route
+     * group, identical to index().
+     */
+    public function liveRow(Workspace $workspace): JsonResponse
+    {
+        $workspace->loadCount('users');
+
+        return response()->json($workspace);
     }
 
     public function create(): Response

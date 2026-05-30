@@ -11,6 +11,7 @@ use App\Domains\Workspaces\Models\Workspace;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Collection;
 use Throwable;
 
 /**
@@ -165,33 +166,49 @@ class ModuleRegistry
         return Module::query()
             ->orderBy('name')
             ->get()
-            ->map(function (Module $module) use ($storage): array {
-                $bytes = (int) ($storage[$module->morph_alias]['bytes'] ?? 0);
-                $fileCount = (int) ($storage[$module->morph_alias]['file_count'] ?? 0);
-
-                // Per-feature {supported, enabled} so the admin UI can render a
-                // toggle only where the code ships the capability.
-                $features = [];
-                foreach (self::FEATURE_KEYS as $feature) {
-                    $features[$feature] = [
-                        'supported' => $this->supports($module, $feature),
-                        'enabled' => $this->platformFeature($module, $feature),
-                    ];
-                }
-
-                return [
-                    'id' => $module->id,
-                    'key' => $module->key,
-                    'name' => $module->name,
-                    'enabled' => $module->enabled,
-                    'morph_alias' => $module->morph_alias,
-                    'features' => $features,
-                    ...$this->recordCounts($module),
-                    'storage_used_bytes' => $bytes,
-                    'file_count' => $fileCount,
-                ];
-            })
+            ->map(fn (Module $module): array => $this->row($module, $storage))
             ->all();
+    }
+
+    /**
+     * Shape a single module into the /admin/modules list-row: identity, the
+     * platform enabled flag, per-feature {supported, enabled}, record/trashed
+     * counts and storage stats. Used by both all() (the index list) and the
+     * single-row live-update endpoint.
+     *
+     * @param  Collection<int|string, array{type: string, file_count: int, bytes: int}>|null  $storage
+     *                                                                                                  Pre-fetched system storage breakdown keyed by morph alias. Passed in
+     *                                                                                                  by all() to avoid re-querying per row; resolved here when omitted.
+     * @return array<string, mixed>
+     */
+    public function row(Module $module, $storage = null): array
+    {
+        $storage ??= collect($this->usage->systemBreakdownByOwnerType())->keyBy('type');
+
+        $bytes = (int) ($storage[$module->morph_alias]['bytes'] ?? 0);
+        $fileCount = (int) ($storage[$module->morph_alias]['file_count'] ?? 0);
+
+        // Per-feature {supported, enabled} so the admin UI can render a
+        // toggle only where the code ships the capability.
+        $features = [];
+        foreach (self::FEATURE_KEYS as $feature) {
+            $features[$feature] = [
+                'supported' => $this->supports($module, $feature),
+                'enabled' => $this->platformFeature($module, $feature),
+            ];
+        }
+
+        return [
+            'id' => $module->id,
+            'key' => $module->key,
+            'name' => $module->name,
+            'enabled' => $module->enabled,
+            'morph_alias' => $module->morph_alias,
+            'features' => $features,
+            ...$this->recordCounts($module),
+            'storage_used_bytes' => $bytes,
+            'file_count' => $fileCount,
+        ];
     }
 
     /**

@@ -4,6 +4,7 @@ namespace App\Domains\Access\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Support\Concerns\BroadcastsResourceChanges;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -22,13 +23,28 @@ class RoleController extends Controller
                 ->withCount('users')
                 ->orderBy('name')
                 ->get()
-                ->map(fn ($r) => [
-                    'id' => $r->id,
-                    'name' => $r->name,
-                    'permissions' => $r->permissions->pluck('name')->toArray(),
-                    'users_count' => $r->users_count,
-                ]),
+                ->map(fn ($r) => $this->roleRow($r)),
         ]);
+    }
+
+    public function liveRow(Role $role): JsonResponse
+    {
+        $role->loadMissing('permissions:id,name')->loadCount('users');
+
+        return response()->json($this->roleRow($role));
+    }
+
+    /**
+     * Shape a single role exactly like one row of the index() list.
+     */
+    private function roleRow(Role $role): array
+    {
+        return [
+            'id' => $role->id,
+            'name' => $role->name,
+            'permissions' => $role->permissions->pluck('name')->toArray(),
+            'users_count' => $role->users_count,
+        ];
     }
 
     public function create(): Response

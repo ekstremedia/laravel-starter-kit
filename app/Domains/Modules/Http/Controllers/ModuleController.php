@@ -8,6 +8,7 @@ use App\Domains\Modules\Models\Module;
 use App\Domains\Modules\Services\ModuleRegistry;
 use App\Http\Controllers\Controller;
 use App\Support\Concerns\BroadcastsResourceChanges;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -29,6 +30,17 @@ class ModuleController extends Controller
         return Inertia::render('Admin/Modules/Index', [
             'modules' => $this->registry->all(),
         ]);
+    }
+
+    /**
+     * A single module in the same shape as one index() row, for surgical
+     * live updates — the client refetches only the row that changed. Auth is
+     * the route group's super.admin middleware (modules are platform-global,
+     * not workspace-scoped), matching index().
+     */
+    public function liveRow(Module $module): JsonResponse
+    {
+        return response()->json($this->registry->row($module));
     }
 
     public function update(Request $request, Module $module): RedirectResponse

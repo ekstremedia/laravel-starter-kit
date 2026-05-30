@@ -8,12 +8,10 @@ import CmdDataTable, { type Column } from '@/Components/Command/DataTable.vue';
 import Icon from '@/Components/Command/Icon.vue';
 import PageTitle from '@/Components/Command/PageTitle.vue';
 import { useCommandToasts } from '@/composables/useCommandToasts';
-import { useLiveReload } from '@/composables/useLiveReload';
+import { useLiveList } from '@/composables/useLiveList';
+import { fetchJson } from '@/utils/fetchJson';
 
 defineOptions({ layout: CommandLayout });
-
-// Live: refresh when any admin creates/edits/deletes a role elsewhere.
-useLiveReload(() => 'admin.resources', { resource: 'roles', only: ['roles'] });
 
 const { t } = useI18n();
 const { push } = useCommandToasts();
@@ -26,7 +24,17 @@ interface Role {
     users_count: number;
 }
 
-defineProps<{ roles: Role[] }>();
+const props = defineProps<{ roles: Role[] }>();
+
+// Live, surgical: a single changed role fetches only its own row and patches in
+// place; bulk falls back to one reload. No-op when Echo is unavailable.
+const liveRoles = useLiveList<Role>({
+    channel: () => 'admin.resources',
+    resource: 'roles',
+    source: () => props.roles,
+    fetchOne: (id) => fetchJson<Role>(`/admin/roles/${id}/live-row`),
+    bulkReload: ['roles'],
+});
 
 const search = ref('');
 const sortKey = ref<string>('name');
@@ -85,7 +93,7 @@ function destroy(r: Role) {
     </PageTitle>
 
     <CmdDataTable
-        :rows="roles"
+        :rows="liveRoles"
         :columns="columns"
         v-model:search="search"
         v-model:sort-key="sortKey"

@@ -10,6 +10,7 @@ use App\Domains\Workspaces\Models\WorkspaceInvitation;
 use App\Domains\Workspaces\Support\WorkspaceMembership;
 use App\Http\Controllers\Controller;
 use App\Support\Concerns\BroadcastsResourceChanges;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -46,14 +47,7 @@ class WorkspaceMembersController extends Controller
             ->with(['roles' => fn ($q) => $q->where("{$mhrTable}.{$teamKey}", $workspace->id)])
             ->orderBy('users.email')
             ->get(['users.id', 'users.first_name', 'users.last_name', 'users.email'])
-            ->map(fn (User $u) => [
-                'id' => $u->id,
-                'first_name' => $u->first_name,
-                'last_name' => $u->last_name,
-                'full_name' => $u->fullName(),
-                'email' => $u->email,
-                'roles' => $u->roles->pluck('name')->all(),
-            ])
+            ->map(fn (User $u) => $this->memberRow($u))
             ->values();
 
         // Pending invitations (auto-scoped to this workspace by BelongsToWorkspace).
@@ -75,6 +69,30 @@ class WorkspaceMembersController extends Controller
             'invitations' => $invitations,
             'assignable_roles' => WorkspaceMembership::assignableRoles(),
         ]);
+    }
+
+    /**
+     * Return a single member row in the exact shape of one `index()` row, for
+     * surgical real-time updates (the client refetches only the changed member).
+     * The route is behind the same `workspace.admin` middleware as `index()`;
+     * here we additionally assert the bound user is actually a member of the
+     * active workspace (404 otherwise) and load their team-scoped roles the same
+     * way `index()` does.
+     */
+    public function liveRow(Request $request, User $user): JsonResponse
+    {
+        $workspace = $this->workspace($request);
+
+        abort_unless($user->belongsToWorkspace($workspace), 404);
+
+        // Mirror index()'s team-scoped role eager-load so `roles` only reflects
+        // this workspace's assignments, not the user's roles on other workspaces.
+        $teamKey = config('permission.column_names.team_foreign_key');
+        $mhrTable = config('permission.table_names.model_has_roles');
+
+        $user->load(['roles' => fn ($q) => $q->where("{$mhrTable}.{$teamKey}", $workspace->id)]);
+
+        return response()->json($this->memberRow($user));
     }
 
     public function store(Request $request): RedirectResponse
@@ -168,6 +186,25 @@ class WorkspaceMembersController extends Controller
         $this->broadcastResourceChanged('members', 'deleted', $user->id, $workspace->id);
 
         return back()->with('success', __('flash.workspaces.member_removed', ['email' => $user->email, 'name' => $workspace->name]));
+    }
+
+    /**
+     * Shape a single member into the array each `index()` list row uses. Assumes
+     * the user's `roles` relation is already loaded scoped to the active
+     * workspace (both call sites eager-load it that way).
+     *
+     * @return array{id: int, first_name: string|null, last_name: string|null, full_name: string, email: string, roles: list<string>}
+     */
+    private function memberRow(User $u): array
+    {
+        return [
+            'id' => $u->id,
+            'first_name' => $u->first_name,
+            'last_name' => $u->last_name,
+            'full_name' => $u->fullName(),
+            'email' => $u->email,
+            'roles' => $u->roles->pluck('name')->all(),
+        ];
     }
 
     /**

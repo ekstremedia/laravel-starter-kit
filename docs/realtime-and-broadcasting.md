@@ -46,31 +46,51 @@ class WidgetController extends Controller
 
 For a new workspace channel, copy the existing authorizer in `routes/channels.php` (member-or-super-admin); central channels gate on `isSuperAdmin()`.
 
-### Frontend — `useLiveReload`
+### Frontend — `useLiveList` (surgical, preferred for lists)
 
-On the index/list page, subscribe and let Inertia re-fetch just the affected props:
+A change ping should update **only the changed row**, not re-fetch the whole list. `useLiveList` does exactly that: it keeps a local reactive copy of the list and, on a ping, fetches **just that one row** from a lightweight endpoint and patches it in place. Two ingredients:
 
-```ts
-import { useLiveReload } from '@/composables/useLiveReload';
-import { useWorkspace } from '@/composables/useWorkspace';
+**1. A single-row endpoint** — a tiny authorized JSON action returning one row in the *exact* index list-shape (reuse the index's row-shaper so they never drift):
 
-// Central admin page:
-useLiveReload(() => 'admin.resources', { resource: 'users', only: ['users', 'userStats'] });
-
-// Workspace page:
-const { workspace } = useWorkspace();
-useLiveReload(
-    () => (workspace.value ? `workspace.${workspace.value.id}.resources` : null),
-    { resource: 'widgets', only: ['widgets', 'stats'] },
-);
+```php
+// Route: GET /admin/widgets/{widget}/live-row  (same auth as index)
+public function liveRow(Widget $widget): JsonResponse
+{
+    $widget->loadCount('parts');         // mirror index()'s withCount/with/appends
+    return response()->json($this->widgetRow($widget)); // $widgetRow is shared with index()
+}
 ```
 
-What it does:
-- Subscribes to the channel's `.ResourceChanged` event (guarded — a **no-op** when `window.Echo` is absent, so SSR and Reverb-down both just skip it).
-- On a matching ping, runs a **debounced** `router.reload({ only })` (coalesces bursts like bulk deletes). The reload preserves scroll **and** local component state, so the user's search/sort/selection survive.
-- Re-binds when the channel target changes (workspace switch) or the auth user changes (login/impersonation), and cleans up on unmount.
-- `only` keys must match the controller's `Inertia::render(...)` prop names.
-- Optional `poll: <ms>` adds a slow polling fallback **only** when Echo is unavailable (off by default — don't add background traffic unless a page needs it).
+**2. `useLiveList` on the page** — render from the returned `rows` ref instead of the prop:
+
+```ts
+import { useLiveList } from '@/composables/useLiveList';
+import { fetchJson } from '@/utils/fetchJson';
+
+const rows = useLiveList<WidgetRow>({
+    channel: () => 'admin.resources',          // or `workspace.${id}.resources`
+    resource: 'widgets',
+    source: () => props.widgets.data,          // re-synced on every navigation
+    fetchOne: (id) => fetchJson<WidgetRow>(`/admin/widgets/${id}/live-row`),
+    refreshOnly: ['widgetStats'],              // cheap counts refresh (partial reload)
+    bulkReload: ['widgets', 'widgetStats'],    // bulk (no-id) ping → one reload
+});
+// For a paginated table, feed the table { ...props.widgets, data: rows.value }.
+```
+
+Behaviour (see `useLiveList.ts`):
+- `updated` → fetch the row, **replace it in place** (position preserved; only that row re-renders).
+- `created` → fetch + upsert (prepend; replace if already present, which dedupes the actor's own echo).
+- `deleted` → remove by id (no fetch).
+- A **bulk** ping (no `id`) falls back to a single reload of `bulkReload` (per-row would be N fetches).
+- Counts refresh via a debounced partial reload of `refreshOnly` (a tiny payload — never the list).
+- Guarded: a **no-op** when `window.Echo` is absent (SSR / Reverb down). Re-binds on workspace/auth change. Re-syncs `rows` from `source` on every navigation, so sort/search/paginate stay authoritative.
+
+The single-row endpoint must reuse the index's row-shaper and authorize identically (404 when the record is out of scope / not visible — `useLiveList` then drops the stale row).
+
+### Frontend — `useLiveReload` (simpler, whole-prop reload)
+
+`useLiveReload(channel, { resource, only })` is the lighter alternative: on a ping it just does a debounced `router.reload({ only })`. Fine for a tiny fixed list or a stats-only surface, but for any list that can grow, prefer `useLiveList` so clients don't receive the whole page on every change.
 
 The topbar `LiveIndicator` (driven by the Pinia `realtime` store) reflects the live connection state.
 

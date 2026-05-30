@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useConfirm } from 'primevue/useconfirm';
 import CommandLayout from '@/Layouts/CommandLayout.vue';
@@ -9,12 +9,10 @@ import Icon from '@/Components/Command/Icon.vue';
 import Dot from '@/Components/Command/Dot.vue';
 import PageTitle from '@/Components/Command/PageTitle.vue';
 import CmdButton from '@/Components/Command/Button.vue';
-import { useLiveReload } from '@/composables/useLiveReload';
+import { useLiveList } from '@/composables/useLiveList';
+import { fetchJson } from '@/utils/fetchJson';
 
 defineOptions({ layout: CommandLayout });
-
-// Live: refresh when a workspace is created/edited/deleted elsewhere.
-useLiveReload(() => 'admin.resources', { resource: 'workspaces', only: ['workspaces'] });
 
 const { t } = useI18n();
 const confirmer = useConfirm();
@@ -38,6 +36,16 @@ interface Paginated<T> {
 }
 
 const props = defineProps<{ workspaces: Paginated<WorkspaceRow> }>();
+
+// Live, surgical: a single changed workspace fetches only its own row.
+const liveRows = useLiveList<WorkspaceRow>({
+    channel: () => 'admin.resources',
+    resource: 'workspaces',
+    source: () => props.workspaces.data,
+    fetchOne: (id) => fetchJson<WorkspaceRow>(`/admin/workspaces/${id}/live-row`),
+    bulkReload: ['workspaces'],
+});
+const liveWorkspaces = computed(() => ({ ...props.workspaces, data: liveRows.value }));
 
 const search = ref('');
 const sortKey = ref<string>('name');
@@ -86,7 +94,7 @@ function destroy(c: WorkspaceRow) {
     </PageTitle>
 
     <CmdDataTable
-        :rows="workspaces"
+        :rows="liveWorkspaces"
         :columns="columns"
         v-model:search="search"
         v-model:sort-key="sortKey"

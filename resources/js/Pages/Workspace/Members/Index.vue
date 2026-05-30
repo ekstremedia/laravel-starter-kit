@@ -17,7 +17,8 @@ import Icon from '@/Components/Command/Icon.vue';
 import MultiSelect from 'primevue/multiselect';
 import { useWorkspace } from '@/composables/useWorkspace';
 import { useCommandToasts } from '@/composables/useCommandToasts';
-import { useLiveReload } from '@/composables/useLiveReload';
+import { useLiveList } from '@/composables/useLiveList';
+import { fetchJson } from '@/utils/fetchJson';
 
 defineOptions({ layout: CommandLayout });
 
@@ -50,11 +51,16 @@ const { push } = useCommandToasts();
 const { t } = useI18n();
 const confirmer = useConfirm();
 
-// Live: refresh members + invitations when another admin adds/removes someone.
-useLiveReload(
-    () => (workspace.value ? `workspace.${workspace.value.id}.resources` : null),
-    { resource: 'members', only: ['members', 'invitations'] },
-);
+// Live, surgical: a single changed member fetches only its own row; pending
+// invitations refresh cheaply (a new member may consume one). No-op without Echo.
+const liveMembers = useLiveList<Member>({
+    channel: () => (workspace.value ? `workspace.${workspace.value.id}.resources` : null),
+    resource: 'members',
+    source: () => props.members,
+    fetchOne: (id) => fetchJson<Member>(workspaceUrl(`/members/${id}/live-row`)),
+    refreshOnly: ['invitations'],
+    bulkReload: ['members', 'invitations'],
+});
 
 const inviteForm = useForm<{ email: string; roles: string[] }>({ email: '', roles: ['User'] });
 // Email invitation (works for people without an account yet — they get a link).
@@ -67,7 +73,7 @@ const pendingId = ref<number | null>(null);
 // leave the MultiSelect showing stale roles and tripping the unchanged-check.
 const editableRoles = ref<Record<number, string[]>>({});
 watch(
-    () => props.members,
+    liveMembers,
     (members) => {
         const next: Record<number, string[]> = {};
         for (const m of members) {
@@ -195,7 +201,7 @@ function remove(member: Member) {
                 <span>{{ t('workspace.members.header_roles') }}</span>
                 <span></span>
             </div>
-            <div v-for="m in props.members" :key="m.id" class="table__row" :class="{ 'table__row--busy': pendingId === m.id }">
+            <div v-for="m in liveMembers" :key="m.id" class="table__row" :class="{ 'table__row--busy': pendingId === m.id }">
                 <span>{{ m.full_name }}</span>
                 <span class="muted">{{ m.email }}</span>
                 <span>

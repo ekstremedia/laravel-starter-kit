@@ -11,13 +11,10 @@ import CommandDialog from '@/Components/Command/Dialog.vue';
 import Field from '@/Components/Command/Field.vue';
 import CmdButton from '@/Components/Command/Button.vue';
 import { useCommandToasts } from '@/composables/useCommandToasts';
-import { useLiveReload } from '@/composables/useLiveReload';
+import { useLiveList } from '@/composables/useLiveList';
+import { fetchJson } from '@/utils/fetchJson';
 
 defineOptions({ layout: CommandLayout });
-
-// Live: refresh the table + stats when users are created/edited/deleted
-// elsewhere. preserveState keeps the local search/sort/selection intact.
-useLiveReload(() => 'admin.resources', { resource: 'users', only: ['users', 'userStats'] });
 
 interface WorkspaceRoleCell { id: number; name: string; slug: string; roles: string[] }
 interface UserRow {
@@ -71,7 +68,17 @@ const hoverWorkspaceKey = ref<string | null>(null);
 // was purely cosmetic and added a 700ms stutter on every reload.
 const loading = ref(false);
 
-const rows = computed(() => props.users?.data ?? []);
+// Live, surgical updates: a single changed user fetches only its own row and is
+// patched in place (preserving the local search/sort/selection); bulk ops and
+// the stats counter refresh cheaply. Graceful no-op when Echo is unavailable.
+const rows = useLiveList<UserRow>({
+    channel: () => 'admin.resources',
+    resource: 'users',
+    source: () => props.users?.data ?? [],
+    fetchOne: (id) => fetchJson<UserRow>(`/admin/users/${id}/live-row`),
+    refreshOnly: ['userStats'],
+    bulkReload: ['users', 'userStats'],
+});
 const selectedCount = computed(() => selected.value.size);
 
 // Bulk email — compose a subject + message and send it to the selected users.

@@ -8,12 +8,10 @@ import CmdDataTable, { type Column } from '@/Components/Command/DataTable.vue';
 import Icon from '@/Components/Command/Icon.vue';
 import PageTitle from '@/Components/Command/PageTitle.vue';
 import { useCommandToasts } from '@/composables/useCommandToasts';
-import { useLiveReload } from '@/composables/useLiveReload';
+import { useLiveList } from '@/composables/useLiveList';
+import { fetchJson } from '@/utils/fetchJson';
 
 defineOptions({ layout: CommandLayout });
-
-// Live: refresh when any admin creates/deletes a permission elsewhere.
-useLiveReload(() => 'admin.resources', { resource: 'permissions', only: ['permissions'] });
 
 const { t } = useI18n();
 const { push } = useCommandToasts();
@@ -26,7 +24,16 @@ interface Permission {
     roles_count: number;
 }
 
-defineProps<{ permissions: Permission[] }>();
+const props = defineProps<{ permissions: Permission[] }>();
+
+// Live, surgical: a single changed permission fetches only its own row.
+const livePermissions = useLiveList<Permission>({
+    channel: () => 'admin.resources',
+    resource: 'permissions',
+    source: () => props.permissions,
+    fetchOne: (id) => fetchJson<Permission>(`/admin/permissions/${id}/live-row`),
+    bulkReload: ['permissions'],
+});
 
 const form = useForm({ name: '' });
 const search = ref('');
@@ -132,7 +139,7 @@ function destroy(p: Permission) {
     </form>
 
     <CmdDataTable
-        :rows="permissions"
+        :rows="livePermissions"
         :columns="columns"
         v-model:search="search"
         v-model:sort-key="sortKey"

@@ -9,12 +9,10 @@ import CmdDataTable, { type Column } from '@/Components/Command/DataTable.vue';
 import Toggle from '@/Components/Command/Toggle.vue';
 import PageTitle from '@/Components/Command/PageTitle.vue';
 import { humanBytes } from '@/utils/bytes';
-import { useLiveReload } from '@/composables/useLiveReload';
+import { useLiveList } from '@/composables/useLiveList';
+import { fetchJson } from '@/utils/fetchJson';
 
 defineOptions({ layout: CommandLayout });
-
-// Live: refresh when a module is toggled/updated elsewhere.
-useLiveReload(() => 'admin.resources', { resource: 'modules', only: ['modules'] });
 
 const { t } = useI18n();
 const confirm = useConfirm();
@@ -33,7 +31,16 @@ interface ModuleRow {
     file_count: number;
 }
 
-defineProps<{ modules: ModuleRow[] }>();
+const props = defineProps<{ modules: ModuleRow[] }>();
+
+// Live, surgical: a toggled/updated module fetches only its own row.
+const liveModules = useLiveList<ModuleRow>({
+    channel: () => 'admin.resources',
+    resource: 'modules',
+    source: () => props.modules,
+    fetchOne: (id) => fetchJson<ModuleRow>(`/admin/modules/${id}/live-row`),
+    bulkReload: ['modules'],
+});
 
 const search = ref('');
 
@@ -90,7 +97,7 @@ function confirmPurge(row: ModuleRow) {
 
         <PageTitle :title="t('admin.modules.title')" :subtitle="t('admin.modules.subtitle')" />
 
-        <CmdDataTable :rows="modules" v-model:search="search" :columns="columns" :searchable="false" :empty-text="t('admin.modules.empty')">
+        <CmdDataTable :rows="liveModules" v-model:search="search" :columns="columns" :searchable="false" :empty-text="t('admin.modules.empty')">
             <template #cell:enabled="{ row }">
                 <div :style="{ display: 'flex', alignItems: 'center', gap: '8px' }">
                     <Toggle :model-value="row.enabled" :label="row.name" @update:model-value="(v) => toggle(row, v)" />

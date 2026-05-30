@@ -15,6 +15,7 @@ use App\Domains\Workspaces\Models\Workspace;
 use App\Http\Controllers\Controller;
 use App\Support\Concerns\BroadcastsResourceChanges;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -94,6 +95,26 @@ class EquipmentController extends Controller
             'categories' => $this->categories($workspace),
             'stats' => $this->workspaceStats($workspace),
         ]);
+    }
+
+    /**
+     * One row in the exact index list-shape, for surgical live updates — the
+     * client fetches just the changed row instead of reloading the whole page.
+     */
+    public function liveRow(Request $request, Equipment $equipment): JsonResponse
+    {
+        $workspace = $this->currentTenant($request);
+        $this->assertBelongs($equipment, $workspace);
+        abort_unless($workspace->canViewFiles($request->user(), $workspace), 403);
+
+        $equipment->loadCount('files');
+        $equipment->loadMissing('category:id,name,color');
+
+        $previews = $this->previewsFor([$equipment->id], $workspace);
+        $equipment->setAttribute('files_preview', $previews[$equipment->id] ?? []);
+        $equipment->setAttribute('cover', $this->coversFor([$equipment], $previews)[$equipment->id] ?? null);
+
+        return response()->json($equipment);
     }
 
     public function store(Request $request): RedirectResponse

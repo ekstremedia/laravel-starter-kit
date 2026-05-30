@@ -19,20 +19,14 @@ import TextPreviewDialog from '@/Components/Files/TextPreviewDialog.vue';
 import { useWorkspace } from '@/composables/useWorkspace';
 import { useModuleFeatures } from '@/composables/useModuleFeatures';
 import { useFileMedia, type MediaFileRow } from '@/composables/useFileMedia';
-import { useLiveReload } from '@/composables/useLiveReload';
+import { useLiveList } from '@/composables/useLiveList';
+import { fetchJson } from '@/utils/fetchJson';
 
 defineOptions({ layout: CommandLayout });
 
 const { t } = useI18n();
 const { workspace, workspaceUrl } = useWorkspace();
 const confirm = useConfirm();
-
-// Live: refresh the list + stats when equipment changes elsewhere in this
-// workspace. Channel re-binds on workspace switch; no-op without Echo.
-useLiveReload(
-    () => (workspace.value ? `workspace.${workspace.value.id}.resources` : null),
-    { resource: 'equipment', only: ['equipment', 'stats'] },
-);
 
 // Files are composable per module/workspace — hide the document column + the
 // file-only actions (download, ZIP export) when files are disabled.
@@ -76,6 +70,20 @@ const props = defineProps<{
     categories: CategoryOption[];
     stats: { total: number; with_files: number; by_category: { label: string; count: number; color: string | null }[] };
 }>();
+
+// Live, surgical updates: a single changed item fetches only its own row and is
+// patched in place; bulk ops reload the page slice; stats refresh cheaply.
+// Graceful no-op when Echo is unavailable.
+const liveRows = useLiveList<EquipmentRow>({
+    channel: () => (workspace.value ? `workspace.${workspace.value.id}.resources` : null),
+    resource: 'equipment',
+    source: () => props.equipment.data,
+    fetchOne: (id) => fetchJson<EquipmentRow>(workspaceUrl(`/equipment/${id}/live-row`)),
+    refreshOnly: ['stats'],
+    bulkReload: ['equipment', 'stats'],
+});
+// Feed the table a paginated object whose rows are the live-patched ones.
+const liveEquipment = computed(() => ({ ...props.equipment, data: liveRows.value }));
 
 // Inline-style fragments reused across the template.
 const menuItemStyle = { display: 'block', width: '100%', textAlign: 'left' as const, background: 'transparent', border: 'none', padding: '8px 12px', fontSize: '12px', color: 'var(--fg)', cursor: 'pointer', fontFamily: 'inherit' };
@@ -178,7 +186,7 @@ const allMatching = ref(false);
 const selectedIds = computed(() => [...selected.value].map(Number));
 
 const total = computed(() => props.equipment.total);
-const pageIds = computed(() => props.equipment.data.map((r) => r.id));
+const pageIds = computed(() => liveRows.value.map((r) => r.id));
 const allOnPageSelected = computed(() => pageIds.value.length > 0 && pageIds.value.every((id) => selected.value.has(id)));
 const selectedCount = computed(() => (allMatching.value ? total.value : selected.value.size));
 // Offer "select all N" once the whole page is ticked but more rows exist beyond it.
@@ -439,7 +447,7 @@ function iconFor(file: MediaFileRow): string {
         </div>
 
         <CmdDataTable
-            :rows="equipment"
+            :rows="liveEquipment"
             :columns="columns"
             v-model:search="search"
             v-model:sort-key="sortKey"
