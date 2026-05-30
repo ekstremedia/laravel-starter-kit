@@ -88,8 +88,8 @@ class GenerateDocumentPreview implements ShouldQueue
             return;
         }
 
-        // Attach as a separate media collection so it doesn't clobber the
-        // original. `doc_preview` mirrors the nesthus `document_preview` pattern.
+        // Attach as a separate `doc_preview` media collection so it doesn't
+        // clobber the original.
         $item->clearMediaCollection('doc_preview');
         $item->addMedia($pngPath)
             ->usingName($item->name.' preview')

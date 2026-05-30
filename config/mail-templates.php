@@ -109,7 +109,7 @@ return [
                 'action_url' => '{{ app_url }}/app',
             ],
             'no' => [
-                'name' => 'Lagt til kunde',
+                'name' => 'Lagt til arbeidsområde',
                 'subject' => 'Du har blitt lagt til i {{ workspace_name }}',
                 'heading' => 'Hei {{ user_name }},',
                 'body' => "Du har blitt lagt til som medlem av {{ workspace_name }}.\n\nDu kan nå få tilgang til dette arbeidsområdet fra dashbordet ditt.",
@@ -131,7 +131,7 @@ return [
                 'action_url' => null,
             ],
             'no' => [
-                'name' => 'Fjernet fra kunde',
+                'name' => 'Fjernet fra arbeidsområde',
                 'subject' => 'Du har blitt fjernet fra {{ workspace_name }}',
                 'heading' => 'Hei {{ user_name }},',
                 'body' => "Du har blitt fjernet fra {{ workspace_name }}.\n\nHvis du mener dette er en feil, vennligst kontakt administratoren din.",

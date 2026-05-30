@@ -58,6 +58,18 @@ return Application::configure(basePath: dirname(__DIR__))
     // domain so commands move with their domain.
     ->withCommands([__DIR__.'/../app/Domains'])
     ->withMiddleware(function (Middleware $middleware): void {
+        // Trust the reverse proxy / load balancer in front of the app. The
+        // bundled nginx serves plain HTTP and TLS is terminated upstream, so
+        // without this Laravel ignores X-Forwarded-Proto and $request->isSecure()
+        // stays false behind an HTTPS proxy — which would silently drop HSTS
+        // (see SecurityHeaders) and the automatic Secure flag on session cookies.
+        // Narrow `at:` to your proxy's IP/CIDR in production if it isn't on a
+        // trusted private network.
+        $middleware->trustProxies(at: '*', headers: Request::HEADER_X_FORWARDED_FOR
+            | Request::HEADER_X_FORWARDED_HOST
+            | Request::HEADER_X_FORWARDED_PORT
+            | Request::HEADER_X_FORWARDED_PROTO);
+
         // Runs before route matching so 404s / redirects also get the headers
         // and correlation id.
         $middleware->prepend([

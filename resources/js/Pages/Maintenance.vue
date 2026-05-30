@@ -8,7 +8,7 @@ defineProps<{ message: string }>();
 </script>
 
 <template>
-    <Head title="Maintenance" />
+    <Head :title="t('maintenance.head_title')" />
     <div class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-dark-950 text-gray-900 dark:text-gray-100 p-6">
         <div class="max-w-md text-center">
             <i class="pi pi-cog text-5xl text-indigo-500 mb-4 animate-spin" style="animation-duration: 4s"></i>

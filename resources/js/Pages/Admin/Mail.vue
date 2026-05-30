@@ -415,7 +415,7 @@ const slugChipStyle = {
 
 <template>
     <div :style="{ padding: '24px 32px', maxWidth: '1100px', margin: '0 auto' }">
-        <Head title="Mail · Admin" />
+        <Head :title="t('admin.mail.head_title')" />
 
         <!-- Preview dialog -->
         <CommandDialog

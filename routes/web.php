@@ -45,7 +45,9 @@ Route::get('/terms', fn () => Inertia::render('Legal', ['kind' => 'terms']))->na
 // Public, unauthenticated share links. Full shares carry optional password
 // gating; signed links are Laravel-signed URLs with no DB row.
 Route::get('/share/{token}', [PublicShareController::class, 'view'])->name('public.share.view');
-Route::post('/share/{token}/unlock', [PublicShareController::class, 'unlock'])->name('public.share.unlock');
+Route::post('/share/{token}/unlock', [PublicShareController::class, 'unlock'])
+    ->middleware('throttle:10,1')
+    ->name('public.share.unlock');
 Route::get('/share/{token}/files/{fileId}/download', [PublicShareController::class, 'download'])
     ->whereNumber('fileId')
     ->name('public.share.download');

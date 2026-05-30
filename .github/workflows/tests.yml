@@ -15,30 +15,8 @@ jobs:
     name: Backend (Pest)
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_DB: starter_test
-          POSTGRES_USER: starter
-          POSTGRES_PASSWORD: secret
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U starter"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd="redis-cli ping"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
+    # The Pest suite runs on SQLite in-memory (forced by phpunit.xml, matching
+    # `make test`) for speed and zero service setup — no Postgres/Redis needed.
 
     steps:
       - uses: actions/checkout@v4
@@ -89,15 +67,6 @@ jobs:
         run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress
 
       - name: Run Pest tests
-        env:
-          DB_CONNECTION: pgsql
-          DB_HOST: 127.0.0.1
-          DB_PORT: 5432
-          DB_DATABASE: starter_test
-          DB_USERNAME: starter
-          DB_PASSWORD: secret
-          REDIS_HOST: 127.0.0.1
-          REDIS_PORT: 6379
         run: php artisan test --parallel --compact
 
   frontend:

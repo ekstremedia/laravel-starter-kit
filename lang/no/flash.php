@@ -32,9 +32,9 @@ return [
     ],
 
     'workspaces' => [
-        'created' => 'Kunden «:name» ble opprettet.',
-        'updated' => 'Kunden er oppdatert.',
-        'deleted' => 'Kunden «:name» ble slettet.',
+        'created' => 'Arbeidsområdet «:name» ble opprettet.',
+        'updated' => 'Arbeidsområdet er oppdatert.',
+        'deleted' => 'Arbeidsområdet «:name» ble slettet.',
         'member_added' => 'La til :email i :name.',
         'already_member' => ':email er allerede medlem av :name — endre rollen fra medlemslisten i stedet.',
         'member_removed' => 'Fjernet :email fra :name.',

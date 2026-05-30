@@ -526,6 +526,7 @@ export default {
     },
     maintenance: {
         title: 'We\'ll be right back',
+        head_title: 'Maintenance',
     },
     units: {
         mb: 'MB',
@@ -923,6 +924,7 @@ export default {
         },
         mail: {
             title: 'Mail',
+            head_title: 'Mail · Admin',
             smtp_tab: 'SMTP Configuration',
             layout_tab: 'Layout & Branding',
             templates_tab: 'Email Templates',

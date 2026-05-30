@@ -83,7 +83,7 @@ A fast, optimized SPA that supplements itself with live updates. Details in **[d
 
 ## Testing
 
-Pest lives in `tests/`, Vitest in `tests/frontend/`. `make test` runs Pest on SQLite in-memory; `make test-all` runs the full suite (Pint, Larastan, vue-tsc, Vitest). CI runs both suites against Postgres + Redis.
+Pest lives in `tests/`, Vitest in `tests/frontend/`. `make test` runs Pest on SQLite in-memory; `make test-all` runs the full suite (Pint, Larastan, vue-tsc, Vitest). CI runs the same suites (backend + frontend) on every push and PR — Pest on SQLite in-memory, matching `make test`.
 
 ## Customize first
 

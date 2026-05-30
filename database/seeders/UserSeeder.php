@@ -48,7 +48,7 @@ class UserSeeder extends Seeder
             return;
         }
 
-        $faker = Faker::create('nb_NO');
+        $faker = Faker::create(config('app.faker_locale', 'en_US'));
         $password = Hash::make('password');
 
         $this->seedRole($faker, 'Editor', 3, $password, $defaultWorkspace);

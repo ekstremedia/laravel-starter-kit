@@ -526,6 +526,7 @@ export default {
     },
     maintenance: {
         title: 'Vi er straks tilbake',
+        head_title: 'Vedlikehold',
     },
     units: {
         mb: 'MB',
@@ -923,6 +924,7 @@ export default {
         },
         mail: {
             title: 'E-post',
+            head_title: 'E-post · Admin',
             smtp_tab: 'SMTP-konfigurasjon',
             layout_tab: 'Utseende og merkevare',
             templates_tab: 'E-postmaler',
