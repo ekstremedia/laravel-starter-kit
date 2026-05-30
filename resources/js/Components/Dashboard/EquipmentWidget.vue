@@ -3,7 +3,7 @@
  * Equipment module's dashboard widget: totals, a category donut, and the most
  * recent items. Receives its payload from EquipmentDashboardWidget (PHP).
  */
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import Icon from '@/Components/Command/Icon.vue';
@@ -22,16 +22,44 @@ const props = defineProps<{ data: WidgetData }>();
 const { t } = useI18n();
 const { workspaceUrl } = useWorkspace();
 
+// ApexCharts renders to SVG and can't resolve CSS variables, so read the theme
+// tokens once at mount: the accent leads the palette, the legend uses --fg-mute,
+// and the tooltip follows light/dark inferred from the panel background.
+const theme = ref({
+    palette: ['#4c6fff', '#10b981', '#f59e0b', '#8b5cf6', '#ff8a8a', '#5ee59a'],
+    legend: '#8a8f98',
+    tooltip: 'dark' as 'dark' | 'light',
+});
+function luminance(color: string): number {
+    const m = color.match(/\d+(\.\d+)?/g);
+    if (color.startsWith('#')) {
+        const h = color.slice(1);
+        const v = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+        const n = parseInt(v.slice(0, 6) || '000000', 16);
+        return (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+    }
+    if (m && m.length >= 3) return (0.299 * +m[0] + 0.587 * +m[1] + 0.114 * +m[2]) / 255;
+    return 0;
+}
+onMounted(() => {
+    const s = getComputedStyle(document.documentElement);
+    const accent = s.getPropertyValue('--accent').trim();
+    const legend = s.getPropertyValue('--fg-mute').trim();
+    const panel = s.getPropertyValue('--panel').trim();
+    if (accent) theme.value.palette = [accent, '#10b981', '#f59e0b', '#8b5cf6', '#ff8a8a', '#5ee59a'];
+    if (legend) theme.value.legend = legend;
+    if (panel) theme.value.tooltip = luminance(panel) > 0.5 ? 'light' : 'dark';
+});
+
 const series = computed(() => props.data.by_category.map((c) => c.count));
 const chartOptions = computed(() => ({
     chart: { background: 'transparent', toolbar: { show: false } },
     labels: props.data.by_category.map((c) => c.label),
-    legend: { position: 'bottom', fontSize: '11px', labels: { colors: '#8a8f98' } },
-    // Theme-agnostic palette (reads on both light + dark backgrounds).
-    colors: ['#4c6fff', '#10b981', '#f59e0b', '#8b5cf6', '#ff8a8a', '#5ee59a'],
+    legend: { position: 'bottom', fontSize: '11px', labels: { colors: theme.value.legend } },
+    colors: theme.value.palette,
     dataLabels: { enabled: false },
     stroke: { width: 0 },
-    tooltip: { theme: 'dark' },
+    tooltip: { theme: theme.value.tooltip },
     plotOptions: { pie: { donut: { size: '62%' } } },
 }));
 </script>

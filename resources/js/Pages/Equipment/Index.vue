@@ -100,7 +100,16 @@ function onCategory(value: string) {
 // ── Column visibility (persisted). `name` is always shown.
 const TOGGLEABLE = ['files', 'category', 'serial', 'files_count'];
 const STORAGE_KEY = 'equipment.columns';
-const hidden = ref<Set<string>>(new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')));
+function readHiddenColumns(): string[] {
+    if (typeof window === 'undefined') return [];
+    try {
+        const stored = window.localStorage.getItem(STORAGE_KEY);
+        return stored ? JSON.parse(stored) : [];
+    } catch {
+        return [];
+    }
+}
+const hidden = ref<Set<string>>(new Set(readHiddenColumns()));
 const columnsOpen = ref(false);
 
 const allColumns: Column<EquipmentRow>[] = [
@@ -226,6 +235,13 @@ function doExport(format: 'csv' | 'xlsx') {
     params.set('format', format);
     window.location.href = workspaceUrl(`/equipment/export?${params.toString()}`);
 }
+// Download every matching item's documents as one ZIP (reuses the bulk-zip
+// endpoint in "all matching" mode, so it honours the current search/filter).
+function doExportZip() {
+    exportOpen.value = false;
+    const params = new URLSearchParams({ all: '1', ...filterParams() });
+    window.location.href = workspaceUrl(`/equipment/bulk/zip?${params.toString()}`);
+}
 
 // ── Accessible popovers: close the Export/Columns menus on Escape or an
 // outside click (no @mouseleave, which is mouse-only and traps keyboard users).
@@ -306,6 +322,7 @@ function iconFor(file: MediaFileRow): string {
                     >
                         <button type="button" role="menuitem" class="cmd-menu-item" :style="menuItemStyle" @click="doExport('csv')">{{ t('equipment.export_csv') }}</button>
                         <button type="button" role="menuitem" class="cmd-menu-item" :style="menuItemStyle" @click="doExport('xlsx')">{{ t('equipment.export_xlsx') }}</button>
+                        <button type="button" role="menuitem" class="cmd-menu-item" :style="menuItemStyle" @click="doExportZip">{{ t('equipment.export_zip') }}</button>
                     </div>
                 </div>
 

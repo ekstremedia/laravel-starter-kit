@@ -12,6 +12,7 @@ import Icon, { type IconName } from '@/Components/Command/Icon.vue';
 import Tabs from '@/Components/Command/Tabs.vue';
 import EntityFiles, { type FileRow } from '@/Components/Files/EntityFiles.vue';
 import { useWorkspace } from '@/composables/useWorkspace';
+import { relativeTime, absoluteTime } from '@/utils/time';
 
 defineOptions({ layout: CommandLayout });
 
@@ -46,16 +47,17 @@ const { t, locale } = useI18n();
 const { workspaceUrl } = useWorkspace();
 const confirm = useConfirm();
 
-// ── Tabs: Details (default) + Files. Initialised from ?tab, and forced to
-// Files when we're inside a folder so document navigation keeps its tab.
+// ── Tabs: Details (default) + Files + Activity. Initialised from ?tab, and
+// forced to Files when we're inside a folder so document navigation keeps its tab.
 const tabs = computed<{ key: string; label: string; icon?: IconName }[]>(() => [
     { key: 'details', label: t('equipment.tab_details'), icon: 'box' },
     { key: 'files', label: t('equipment.tab_files'), icon: 'disk' },
+    { key: 'activity', label: t('equipment.tab_activity'), icon: 'log' },
 ]);
 function initialTab(): string {
     if (typeof window !== 'undefined') {
         const tab = new URLSearchParams(window.location.search).get('tab');
-        if (tab === 'files' || tab === 'details') return tab;
+        if (tab && ['details', 'files', 'activity'].includes(tab)) return tab;
     }
     return props.current_folder ? 'files' : 'details';
 }
@@ -126,8 +128,23 @@ function activityLabel(a: ActivityRow): string {
     return t('equipment.activity_updated');
 }
 
-function activityTime(iso: string | null): string {
-    return iso ? new Date(iso).toLocaleString(locale.value) : '';
+// Human timeline helpers: initials + a deterministic avatar colour from the
+// name, and relative time with the full timestamp on hover.
+function initials(name: string | null): string {
+    if (!name) return '';
+    const parts = name.trim().split(/\s+/);
+    return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase();
+}
+function avatarColor(name: string | null): string {
+    let h = 0;
+    for (const ch of name ?? 'system') h = (h * 31 + ch.charCodeAt(0)) % 360;
+    return `hsl(${h}, 42%, 46%)`;
+}
+function relTime(iso: string | null): string {
+    return relativeTime(iso, locale.value);
+}
+function absTime(iso: string | null): string {
+    return absoluteTime(iso, locale.value);
 }
 </script>
 
@@ -190,31 +207,35 @@ function activityTime(iso: string | null): string {
                     <p :style="{ margin: 0, fontSize: '13px', color: 'var(--fg-dim)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }">{{ equipment.notes }}</p>
                 </div>
             </div>
+        </div>
 
-            <!-- Activity timeline -->
-            <h2 :style="{ margin: '24px 0 12px', fontSize: '14px', fontWeight: 600, color: 'var(--fg)', display: 'flex', alignItems: 'center', gap: '7px' }">
-                <i class="pi pi-history" :style="{ fontSize: '13px', color: 'var(--accent)' }" />
-                {{ t('equipment.activity') }}
-            </h2>
-            <div class="cmd-card" :style="{ padding: '6px 4px' }">
-                <p v-if="!activities.length" :style="{ margin: 0, padding: '16px', fontSize: '12px', color: 'var(--fg-mute)', textAlign: 'center' }">
-                    {{ t('equipment.activity_empty') }}
-                </p>
-                <div
-                    v-for="a in activities"
-                    :key="a.id"
-                    :style="{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 14px', borderBottom: '1px solid var(--border)' }"
-                >
-                    <span :style="{ flexShrink: 0, width: '24px', height: '24px', borderRadius: '50%', background: 'var(--panel2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fg-mute)' }">
-                        <Icon :name="a.event === 'created' ? 'plus' : a.event === 'deleted' ? 'trash' : 'edit'" :size="11" />
-                    </span>
-                    <div :style="{ flex: 1, minWidth: 0 }">
-                        <span :style="{ fontSize: '12.5px', color: 'var(--fg)' }">
-                            <strong v-if="a.causer">{{ a.causer.name }}</strong>
-                            {{ ' ' }}{{ activityLabel(a) }}
+        <!-- Activity tab -->
+        <div v-show="activeTab === 'activity'">
+            <div v-if="!activities.length" class="cmd-card" :style="{ padding: '44px 16px', textAlign: 'center' }">
+                <i class="pi pi-history" :style="{ fontSize: '24px', color: 'var(--fg-mute)' }" />
+                <p :style="{ margin: '12px 0 0', fontSize: '13px', color: 'var(--fg-mute)' }">{{ t('equipment.activity_empty') }}</p>
+            </div>
+            <div v-else class="cmd-card" :style="{ padding: '20px 22px' }">
+                <div v-for="(a, idx) in activities" :key="a.id" :style="{ display: 'flex', gap: '13px' }">
+                    <div :style="{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }">
+                        <span
+                            :style="{ width: '30px', height: '30px', borderRadius: '50%', background: a.causer ? avatarColor(a.causer.name) : 'var(--panel2)', color: 'var(--accent-fg)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 600 }"
+                        >
+                            <template v-if="a.causer">{{ initials(a.causer.name) }}</template>
+                            <Icon v-else name="cog" :size="13" :style="{ color: 'var(--fg-mute)' }" />
                         </span>
+                        <span v-if="idx < activities.length - 1" :style="{ flex: 1, width: '2px', background: 'var(--border)', minHeight: '12px', marginTop: '4px' }" />
                     </div>
-                    <span class="cmd-mono" :style="{ fontSize: '10.5px', color: 'var(--fg-mute)', flexShrink: 0 }">{{ activityTime(a.created_at) }}</span>
+                    <div :style="{ flex: 1, minWidth: 0, paddingBottom: idx < activities.length - 1 ? '16px' : '0' }">
+                        <div :style="{ fontSize: '13px', color: 'var(--fg)', lineHeight: 1.45 }">
+                            <strong v-if="a.causer">{{ a.causer.name }}</strong>
+                            <strong v-else>{{ t('equipment.activity_system') }}</strong>
+                            {{ ' ' }}{{ activityLabel(a) }}
+                        </div>
+                        <div :style="{ fontSize: '11.5px', color: 'var(--fg-mute)', marginTop: '3px' }" :title="absTime(a.created_at)">
+                            {{ relTime(a.created_at) }}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

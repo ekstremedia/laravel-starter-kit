@@ -1,5 +1,11 @@
 import { mount } from '@vue/test-utils';
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
+
+// The column-toggle test writes to localStorage; reset shared browser state so
+// specs are order-independent.
+beforeEach(() => {
+    localStorage.clear();
+});
 
 vi.mock('@/composables/useWorkspace', () => ({
     useWorkspace: () => ({ workspaceUrl: (p: string) => `/w/acme${p}` }),

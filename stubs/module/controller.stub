@@ -162,9 +162,10 @@ class {{ class }}Controller extends Controller
         abort_if($items->isEmpty(), 404);
 
         $multi = $items->count() > 1;
+        $ownerType = (new {{ class }})->getMorphClass();
         $rootsByOwner = FileItem::query()
             ->where('workspace_id', $workspace->id)
-            ->where('owner_type', '{{ key }}')
+            ->where('owner_type', $ownerType)
             ->whereIn('owner_id', $items->pluck('id'))
             ->whereNull('parent_id')
             ->with(['media'])
@@ -313,9 +314,11 @@ class {{ class }}Controller extends Controller
             return [];
         }
 
+        $ownerType = (new {{ class }})->getMorphClass();
+
         return FileItem::query()
             ->where('workspace_id', $workspace->id)
-            ->where('owner_type', '{{ key }}')
+            ->where('owner_type', $ownerType)
             ->whereIn('owner_id', $ids)
             ->where('type', 'file')
             ->with(['media'])

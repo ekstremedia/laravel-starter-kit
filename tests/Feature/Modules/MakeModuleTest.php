@@ -23,7 +23,9 @@ it('scaffolds a module with its tokens replaced', function () {
     expect(Artisan::call('make:module', ['name' => 'Gadget']))->toBe(0);
 
     $model = app_path('Domains/Gadget/Models/Gadget.php');
-    expect(File::exists($model))->toBeTrue();
+    $widget = app_path('Domains/Gadget/Dashboard/GadgetDashboardWidget.php');
+    expect(File::exists($model))->toBeTrue()
+        ->and(File::exists($widget))->toBeTrue();
 
     $contents = File::get($model);
     expect($contents)->toContain('class Gadget extends Model implements FileOwner')
@@ -31,6 +33,11 @@ it('scaffolds a module with its tokens replaced', function () {
         ->and($contents)->toContain("->useLogName('gadget')")
         ->and($contents)->not->toContain('{{ class }}')
         ->and($contents)->not->toContain('{{ key }}');
+
+    $widgetContents = File::get($widget);
+    expect($widgetContents)->toContain('class GadgetDashboardWidget implements DashboardWidget')
+        ->and($widgetContents)->not->toContain('{{ class }}')
+        ->and($widgetContents)->not->toContain('{{ key }}');
 
     expect(File::exists(config_path('gadget.php')))->toBeTrue()
         ->and(File::exists(app_path('Domains/Gadget/Http/Controllers/GadgetController.php')))->toBeTrue()

@@ -206,9 +206,10 @@ class EquipmentController extends Controller
 
         // Batch-load every selected item's root file items in one query (no N+1
         // across the selection), then group by owner.
+        $ownerType = (new Equipment)->getMorphClass();
         $rootsByOwner = FileItem::query()
             ->where('workspace_id', $workspace->id)
-            ->where('owner_type', 'equipment')
+            ->where('owner_type', $ownerType)
             ->whereIn('owner_id', $items->pluck('id'))
             ->whereNull('parent_id')
             ->with(['media'])
@@ -400,7 +401,7 @@ class EquipmentController extends Controller
 
         return FileItem::query()
             ->where('workspace_id', $workspace->id)
-            ->where('owner_type', 'equipment')
+            ->where('owner_type', (new Equipment)->getMorphClass())
             ->whereIn('owner_id', $ids)
             ->where('type', 'file')
             ->with(['media'])

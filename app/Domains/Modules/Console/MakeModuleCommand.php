@@ -6,6 +6,7 @@ namespace App\Domains\Modules\Console;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
 /**
@@ -82,22 +83,40 @@ class MakeModuleCommand extends Command
                 continue;
             }
 
-            @mkdir(dirname($target), 0755, true);
-            file_put_contents($target, strtr((string) file_get_contents($stubPath), $replacements));
+            if (! $this->writeFile($target, strtr((string) file_get_contents($stubPath), $replacements))) {
+                return self::FAILURE;
+            }
             $this->info('Created: '.str_replace(base_path().'/', '', $target));
         }
 
         // Norwegian lang file (same stub, dev translates).
         $noLang = lang_path("no/{$key}.php");
         if (! is_file($noLang)) {
-            @mkdir(dirname($noLang), 0755, true);
-            file_put_contents($noLang, strtr((string) file_get_contents("{$stubDir}/lang.stub"), $replacements));
+            if (! $this->writeFile($noLang, strtr((string) file_get_contents("{$stubDir}/lang.stub"), $replacements))) {
+                return self::FAILURE;
+            }
             $this->info('Created: '.str_replace(base_path().'/', '', $noLang));
         }
 
         $this->printChecklist($studly, $key, $route, $pluralStudly, $label);
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Ensure the directory exists and write the file, surfacing any failure so
+     * the command stops instead of leaving a half-generated module.
+     */
+    private function writeFile(string $target, string $contents): bool
+    {
+        File::ensureDirectoryExists(dirname($target));
+        if (File::put($target, $contents) === false) {
+            $this->error("Failed to write: {$target}");
+
+            return false;
+        }
+
+        return true;
     }
 
     private function printChecklist(string $studly, string $key, string $route, string $pluralStudly, string $label): void

@@ -167,6 +167,69 @@ it('exports the list as CSV honoring search', function () {
     expect($res->headers->get('content-disposition'))->toContain('equipment.csv');
 });
 
+it('exports the list as a valid XLSX spreadsheet', function () {
+    Equipment::factory()->create(['workspace_id' => $this->workspace->id, 'name' => 'Spreadsheet Loader']);
+
+    $res = $this->actingAs($this->admin)
+        ->get(workspaceUrl($this->workspace, '/equipment/export?format=xlsx'));
+
+    $res->assertOk();
+    expect($res->headers->get('content-disposition'))->toContain('equipment.xlsx');
+
+    // The downloaded file is a real OOXML workbook (PK zip with a worksheet).
+    $file = $res->baseResponse->getFile()->getPathname();
+    $zip = new ZipArchive;
+    expect($zip->open($file))->toBeTrue();
+    expect($zip->locateName('xl/workbook.xml'))->not->toBeFalse();
+    $zip->close();
+});
+
+it('zips selected items\' documents into a valid archive', function () {
+    $equipment = Equipment::factory()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->actingAs($this->admin)
+        ->post(workspaceUrl($this->workspace, '/entity-files'), [
+            'owner_type' => 'equipment',
+            'owner_id' => $equipment->id,
+            'files' => [
+                UploadedFile::fake()->create('manual.pdf', 12),
+                UploadedFile::fake()->create('spec.txt', 4),
+            ],
+        ])->assertRedirect();
+
+    $res = $this->actingAs($this->admin)
+        ->get(workspaceUrl($this->workspace, "/equipment/bulk/zip?ids={$equipment->id}"));
+
+    $res->assertOk();
+    expect($res->headers->get('content-disposition'))->toContain('equipment.zip');
+
+    // The downloaded archive is a valid zip that actually contains the documents.
+    $zip = new ZipArchive;
+    expect($zip->open($res->baseResponse->getFile()->getPathname()))->toBeTrue()
+        ->and($zip->numFiles)->toBe(2);
+    $zip->close();
+});
+
+it('downloads all matching documents as a ZIP from the export action', function () {
+    $equipment = Equipment::factory()->create(['workspace_id' => $this->workspace->id, 'category' => 'Drone']);
+    $this->actingAs($this->admin)
+        ->post(workspaceUrl($this->workspace, '/entity-files'), [
+            'owner_type' => 'equipment',
+            'owner_id' => $equipment->id,
+            'files' => [UploadedFile::fake()->create('flight.log', 3), UploadedFile::fake()->create('notes.txt', 2)],
+        ])->assertRedirect();
+
+    // The Export → ZIP option hits bulk/zip with all=1 + the active filter.
+    $res = $this->actingAs($this->admin)
+        ->get(workspaceUrl($this->workspace, '/equipment/bulk/zip?all=1&category=Drone'));
+
+    $res->assertOk();
+    $zip = new ZipArchive;
+    expect($zip->open($res->baseResponse->getFile()->getPathname()))->toBeTrue()
+        ->and($zip->numFiles)->toBeGreaterThan(0);
+    $zip->close();
+});
+
 it('lists, restores and force-deletes trashed items', function () {
     $equipment = Equipment::factory()->create(['workspace_id' => $this->workspace->id]);
     $equipment->delete();

@@ -202,7 +202,7 @@ const thumbBtnStyle = { ...coverBoxStyle, cursor: 'pointer', padding: 0 };
 
         <ImageLightbox v-if="lightboxItems.length" v-model="lightboxIndex" :items="lightboxItems">
             <template #header-actions="{ item }">
-                <button type="button" :aria-label="t('files.details.title')" class="rounded-lg bg-white/10 p-2 text-white transition-colors hover:bg-white/20" @click.stop="openDetailsById(item.id)"><i class="pi pi-info-circle" :style="{ fontSize: '18px' }" /></button>
+                <button type="button" :aria-label="t('files.details.title')" class="cmd-lightbox-action" @click.stop="openDetailsById(item.id)"><i class="pi pi-info-circle" :style="{ fontSize: '18px' }" /></button>
             </template>
         </ImageLightbox>
         <FileDetailsDialog :item="detailsItem" @close="detailsItem = null" />
@@ -211,7 +211,7 @@ const thumbBtnStyle = { ...coverBoxStyle, cursor: 'pointer', padding: 0 };
 </template>
 
 <style scoped>
-.cmd-bulk-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 40; display: flex; align-items: center; gap: 16px; padding: 8px 10px 8px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-palette, 0 10px 40px rgba(0, 0, 0, 0.35)); }
+.cmd-bulk-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 40; display: flex; align-items: center; gap: 16px; padding: 8px 10px 8px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-palette); }
 .cmd-bulk-count { font-size: 12.5px; font-weight: 600; color: var(--fg); white-space: nowrap; }
 .cmd-bulk-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 11px; font-size: 12px; font-family: inherit; color: var(--fg); cursor: pointer; }
 .cmd-bulk-btn:hover { background: var(--panel); border-color: var(--accent-border); }
@@ -219,4 +219,6 @@ const thumbBtnStyle = { ...coverBoxStyle, cursor: 'pointer', padding: 0 };
 .cmd-bulk-ghost { padding: 6px; }
 .cmd-bulk-link { background: transparent; border: none; color: var(--accent); font-size: 12px; font-family: inherit; cursor: pointer; padding: 0; white-space: nowrap; }
 .cmd-bulk-link:hover { text-decoration: underline; }
+.cmd-lightbox-action { display: inline-flex; align-items: center; justify-content: center; padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel); color: var(--fg); transition: background-color 0.15s ease; }
+.cmd-lightbox-action:hover { background: var(--panel2); }
 </style>

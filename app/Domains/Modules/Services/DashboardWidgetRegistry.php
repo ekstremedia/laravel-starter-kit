@@ -37,7 +37,7 @@ class DashboardWidgetRegistry
      * an `enabled` flag from the user's prefs, and `data` only for enabled ones.
      *
      * @param  array<int, string>  $hidden  widget keys the user has hidden
-     * @return array<int, array<string, mixed>>
+     * @return array<int, array{key: string, title_key: string, icon: string, component: string, enabled: bool, data: array<string, mixed>|null}>
      */
     public function forUser(Workspace $workspace, User $user, array $hidden): array
     {

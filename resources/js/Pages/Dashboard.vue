@@ -48,11 +48,23 @@ const { workspaceUrl } = useWorkspace();
 // Module dashboard widgets. The string `component` name maps to a real Vue
 // component here; add a module's widget by importing it + a map entry.
 const widgetComponents: Record<string, Component> = { EquipmentWidget };
-const enabledWidgets = computed(() => props.widgets.filter((w) => w.enabled && widgetComponents[w.component]));
+// Only render widgets that are enabled, mapped, AND carry a payload (the backend
+// nulls `data` for disabled widgets) — guards against dereferencing null.
+const enabledWidgets = computed(() => props.widgets.filter((w) => w.enabled && w.data !== null && widgetComponents[w.component]));
 
-// "Customize" — toggle which widgets show. Persists hidden keys to user settings.
+// "Customize" — toggle which widgets show. Edits are staged so Cancel discards
+// them; Save persists the hidden keys to user settings.
 const customizeOpen = ref(false);
-const hidden = ref<Set<string>>(new Set(props.widgets.filter((w) => !w.enabled).map((w) => w.key)));
+const savedHidden = () => new Set(props.widgets.filter((w) => !w.enabled).map((w) => w.key));
+const hidden = ref<Set<string>>(savedHidden());
+function openCustomize() {
+    hidden.value = savedHidden(); // start from the persisted state each time
+    customizeOpen.value = true;
+}
+function cancelCustomize() {
+    hidden.value = savedHidden(); // discard unsaved toggles
+    customizeOpen.value = false;
+}
 function isHidden(key: string): boolean {
     return hidden.value.has(key);
 }
@@ -94,7 +106,7 @@ function formatBytes(bytes: number): string {
                     v-if="widgets.length"
                     type="button"
                     :style="{ flexShrink: 0, background: 'var(--panel2)', color: 'var(--fg)', border: '1px solid var(--border)', padding: '6px 11px', borderRadius: '5px', fontSize: '11.5px', display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontFamily: 'inherit', marginTop: '6px' }"
-                    @click="customizeOpen = true"
+                    @click="openCustomize"
                 >
                     <Icon name="cog" :size="12" />
                     {{ t('dashboard.customize') }}
@@ -227,7 +239,7 @@ function formatBytes(bytes: number): string {
                 <p v-if="!widgets.length" :style="{ fontSize: '12px', color: 'var(--fg-mute)', textAlign: 'center', padding: '8px' }">{{ t('dashboard.no_widgets') }}</p>
             </div>
             <template #footer>
-                <CmdButton variant="ghost" size="sm" @click="customizeOpen = false">{{ t('common.cancel') }}</CmdButton>
+                <CmdButton variant="ghost" size="sm" @click="cancelCustomize">{{ t('common.cancel') }}</CmdButton>
                 <CmdButton variant="primary" size="sm" @click="saveWidgets">
                     <template #icon><Icon name="disk" :size="12" /></template>
                     {{ t('common.save') }}

@@ -22,12 +22,19 @@ function select(key: string) {
 function onKeydown(e: KeyboardEvent) {
     const i = props.tabs.findIndex((t) => t.key === props.modelValue);
     if (i < 0) return;
+    let next: number | null = null;
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
         e.preventDefault();
-        select(props.tabs[(i + 1) % props.tabs.length].key);
+        next = (i + 1) % props.tabs.length;
     } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
         e.preventDefault();
-        select(props.tabs[(i - 1 + props.tabs.length) % props.tabs.length].key);
+        next = (i - 1 + props.tabs.length) % props.tabs.length;
+    }
+    if (next !== null) {
+        select(props.tabs[next].key);
+        // Roving focus: move keyboard focus to the newly-selected tab.
+        const tabEls = (e.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('[role="tab"]');
+        tabEls[next]?.focus();
     }
 }
 </script>
