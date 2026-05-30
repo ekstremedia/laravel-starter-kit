@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Workspaces\Http\Controllers;
 
 use App\Domains\Files\Models\FileItem;
+use App\Domains\Modules\Services\DashboardWidgetRegistry;
 use App\Domains\Workspaces\Models\Workspace;
 use App\Domains\Workspaces\Support\WorkspaceContext;
 use App\Http\Controllers\Controller;
@@ -49,10 +50,18 @@ class DashboardController extends Controller
             ];
         }
 
+        // Per-user, customizable module widgets (default on). Only enabled
+        // widgets' data is computed; the rest are listed for the customize panel.
+        $hidden = (array) ($user->settings()->resolved()['dashboard_hidden_widgets'] ?? []);
+        $widgets = $workspace !== null
+            ? app(DashboardWidgetRegistry::class)->forUser($workspace, $user, $hidden)
+            : [];
+
         return Inertia::render('Dashboard', [
             'memberCount' => $memberCount,
             'filesStats' => $filesStats,
             'chatStats' => $chatStats,
+            'widgets' => $widgets,
         ]);
     }
 }

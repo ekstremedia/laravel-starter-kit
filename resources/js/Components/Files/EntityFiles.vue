@@ -66,13 +66,25 @@ const props = withDefaults(
         files: { data: FileRow[] };
         breadcrumbs: Breadcrumb[];
         currentFolder: { id: number; name: string } | null;
-        usage: { used_bytes: number; quota_bytes: number | null; percent: number };
+        // Optional storage-usage bar. Omit for owners with no per-entity quota
+        // (e.g. Equipment) and the bar is simply not rendered.
+        usage?: { used_bytes: number; quota_bytes: number | null; percent: number } | null;
         canManage: boolean;
+        // Opt-in "set as cover" affordance for file-owning entities that have a
+        // cover image (Equipment). When on, file thumbnails gain a cover toggle.
+        allowSetCover?: boolean;
+        coverFileItemId?: number | null;
         // Builds the Inertia URL for navigating into a folder (or root when null).
         folderUrl: (folderId: number | null) => string;
     }>(),
-    {},
+    {
+        usage: null,
+        allowSetCover: false,
+        coverFileItemId: null,
+    },
 );
+
+const emit = defineEmits<{ setCover: [fileId: number] }>();
 
 const { t } = useI18n();
 const { workspaceUrl } = useWorkspace();
@@ -198,9 +210,9 @@ function confirmDelete(item: FileRow) {
     confirm.require({
         group: confirmGroup.value,
         message: t('files.confirm_delete', { name: item.name }),
-        header: t('assets.delete'),
+        header: t('files.delete'),
         icon: 'pi pi-exclamation-triangle',
-        acceptLabel: t('assets.delete'),
+        acceptLabel: t('files.delete'),
         rejectLabel: t('common.cancel'),
         acceptProps: { severity: 'danger' },
         accept: () => router.delete(workspaceUrl(`/entity-files/${item.id}`), { preserveScroll: true }),
@@ -224,7 +236,7 @@ function confirmDelete(item: FileRow) {
                     @click="navigate(null)"
                 >
                     <i class="pi pi-folder" :style="{ fontSize: '11px' }" />
-                    <span>{{ t('assets.root') }}</span>
+                    <span>{{ t('files.documents_root') }}</span>
                 </button>
                 <template v-for="(crumb, idx) in breadcrumbs" :key="crumb.id">
                     <i class="pi pi-angle-right" :style="{ fontSize: '10px', color: 'var(--fg-mute)' }" />
@@ -240,31 +252,31 @@ function confirmDelete(item: FileRow) {
                 <div :style="{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: '5px', overflow: 'hidden' }">
                     <button
                         type="button"
-                        :title="t('assets.view_grid')"
-                        :aria-label="t('assets.view_grid')"
+                        :title="t('files.view_grid')"
+                        :aria-label="t('files.view_grid')"
                         :style="{ background: viewMode === 'grid' ? 'var(--accent-soft)' : 'transparent', color: viewMode === 'grid' ? 'var(--accent)' : 'var(--fg-mute)', border: 'none', padding: '5px 8px', cursor: 'pointer' }"
                         @click="setViewMode('grid')"
                     ><i class="pi pi-th-large" :style="{ fontSize: '11px' }" /></button>
                     <button
                         type="button"
-                        :title="t('assets.view_list')"
-                        :aria-label="t('assets.view_list')"
+                        :title="t('files.view_list')"
+                        :aria-label="t('files.view_list')"
                         :style="{ background: viewMode === 'list' ? 'var(--accent-soft)' : 'transparent', color: viewMode === 'list' ? 'var(--accent)' : 'var(--fg-mute)', border: 'none', padding: '5px 8px', cursor: 'pointer' }"
                         @click="setViewMode('list')"
                     ><i class="pi pi-list" :style="{ fontSize: '11px' }" /></button>
                 </div>
                 <CmdButton v-if="canManage" variant="ghost" size="sm" @click="createFolder">
                     <template #icon><i class="pi pi-folder-plus" :style="{ fontSize: '11px' }" /></template>
-                    {{ t('assets.new_folder') }}
+                    {{ t('files.new_folder') }}
                 </CmdButton>
                 <CmdButton v-if="canManage" variant="primary" size="sm" @click="uploadOpen = true">
                     <template #icon><i class="pi pi-upload" :style="{ fontSize: '11px' }" /></template>
-                    {{ t('assets.upload') }}
+                    {{ t('files.upload') }}
                 </CmdButton>
             </div>
         </div>
 
-        <FilesUsageBar :used-bytes="usage.used_bytes" :quota-bytes="usage.quota_bytes" />
+        <FilesUsageBar v-if="usage" :used-bytes="usage.used_bytes" :quota-bytes="usage.quota_bytes" />
 
         <!-- Empty state -->
         <div
@@ -272,7 +284,7 @@ function confirmDelete(item: FileRow) {
             :style="{ border: '1px dashed var(--border)', background: 'var(--panel)', borderRadius: '6px', padding: '56px 16px', textAlign: 'center', color: 'var(--fg-mute)' }"
         >
             <i class="pi pi-folder-open" :style="{ fontSize: '28px' }" />
-            <p :style="{ marginTop: '10px', fontSize: '12px' }">{{ t('assets.empty_documents') }}</p>
+            <p :style="{ marginTop: '10px', fontSize: '12px' }">{{ t('files.empty_documents') }}</p>
         </div>
 
         <!-- Grid -->
@@ -311,6 +323,27 @@ function confirmDelete(item: FileRow) {
                     >
                         <i class="pi pi-spin pi-spinner" :style="{ fontSize: '20px' }" />
                         <span>{{ item.is_video ? t('files.video_processing') : t('files.preview_processing') }}</span>
+                    </div>
+
+                    <!-- Cover controls (opt-in via allowSetCover) -->
+                    <div
+                        v-if="allowSetCover && item.type === 'file'"
+                        :style="{ position: 'absolute', left: '5px', top: '5px', display: 'flex', alignItems: 'center', gap: '4px' }"
+                        @click.stop
+                    >
+                        <span
+                            v-if="item.id === coverFileItemId"
+                            :style="{ background: 'var(--accent)', color: '#fff', fontSize: '9px', fontWeight: 600, padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }"
+                        >{{ t('files.cover') }}</span>
+                        <button
+                            v-else-if="canManage"
+                            type="button"
+                            class="cmd-cover-btn"
+                            :title="t('files.set_as_cover')"
+                            :aria-label="t('files.set_as_cover')"
+                            :style="{ background: 'rgba(0,0,0,0.55)', color: '#fff', border: 'none', borderRadius: '4px', width: '22px', height: '22px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }"
+                            @click.stop="emit('setCover', item.id)"
+                        ><i class="pi pi-star" :style="{ fontSize: '11px' }" /></button>
                     </div>
                 </div>
                 <div :style="{ padding: '7px 10px 9px' }">
@@ -364,7 +397,7 @@ function confirmDelete(item: FileRow) {
                         <th
                             class="cmd-mono cmd-uc"
                             :style="{ textAlign: 'left', padding: '9px 14px', fontSize: '10.5px', color: 'var(--fg-mute)', background: 'var(--panel2)', borderBottom: '1px solid var(--border)', fontWeight: 500, letterSpacing: '0.06em' }"
-                        >{{ t('assets.name') }}</th>
+                        >{{ t('files.col_name') }}</th>
                         <th
                             class="cmd-mono cmd-uc"
                             :style="{ textAlign: 'left', padding: '9px 14px', fontSize: '10.5px', color: 'var(--fg-mute)', background: 'var(--panel2)', borderBottom: '1px solid var(--border)', fontWeight: 500, letterSpacing: '0.06em', width: '110px' }"
@@ -398,6 +431,23 @@ function confirmDelete(item: FileRow) {
                                     @keyup.enter="submitRename(item)"
                                     @blur="submitRename(item)"
                                 />
+                                <span v-if="allowSetCover && item.type === 'file'" @click.stop>
+                                    <i
+                                        v-if="item.id === coverFileItemId"
+                                        class="pi pi-star-fill"
+                                        :title="t('files.cover')"
+                                        :style="{ color: 'var(--accent)', fontSize: '10px' }"
+                                    />
+                                    <button
+                                        v-else-if="canManage"
+                                        type="button"
+                                        class="cmd-list-cover-btn"
+                                        :title="t('files.set_as_cover')"
+                                        :aria-label="t('files.set_as_cover')"
+                                        :style="{ background: 'transparent', border: 'none', color: 'var(--fg-mute)', cursor: 'pointer', padding: '2px', display: 'inline-flex' }"
+                                        @click.stop="emit('setCover', item.id)"
+                                    ><i class="pi pi-star" :style="{ fontSize: '11px' }" /></button>
+                                </span>
                             </div>
                         </td>
                         <td class="cmd-mono" :style="{ padding: '8px 14px', color: 'var(--fg-dim)', fontSize: '11.5px' }">
@@ -433,14 +483,14 @@ function confirmDelete(item: FileRow) {
 
         <CommandDialog
             v-model:visible="newFolderOpen"
-            :title="t('assets.new_folder')"
+            :title="t('files.new_folder')"
             width="380px"
         >
             <form @submit.prevent="submitNewFolder">
                 <Field
                     v-model="newFolderName"
-                    :label="t('assets.folder_name')"
-                    :placeholder="t('assets.new_folder')"
+                    :label="t('files.folder_name')"
+                    :placeholder="t('files.new_folder')"
                     autofocus
                     @keyup.enter="submitNewFolder"
                 />
@@ -451,7 +501,7 @@ function confirmDelete(item: FileRow) {
                 </CmdButton>
                 <CmdButton variant="primary" size="sm" @click="submitNewFolder">
                     <template #icon><Icon name="disk" :size="12" /></template>
-                    {{ t('assets.new_folder') }}
+                    {{ t('files.new_folder') }}
                 </CmdButton>
             </template>
         </CommandDialog>
@@ -493,7 +543,23 @@ function confirmDelete(item: FileRow) {
 .cmd-file-card:focus-within .cmd-file-actions {
     opacity: 1;
 }
+.cmd-cover-btn {
+    opacity: 0;
+    transition: opacity 0.12s;
+}
+.cmd-file-card:hover .cmd-cover-btn,
+.cmd-file-card:focus-within .cmd-cover-btn {
+    opacity: 1;
+}
 .cmd-file-row:hover {
     background: var(--row-hover) !important;
+}
+.cmd-list-cover-btn {
+    opacity: 0;
+    transition: opacity 0.12s;
+}
+.cmd-file-row:hover .cmd-list-cover-btn,
+.cmd-file-row:focus-within .cmd-list-cover-btn {
+    opacity: 1;
 }
 </style>

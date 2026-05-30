@@ -22,6 +22,10 @@ parameters:
         - '#Instanceof between App\\Domains\\Users\\Models\\User and Illuminate\\Contracts\\Auth\\MustVerifyEmail will always evaluate to true#'
         - '#Spatie\\Activitylog\\Support\\ActivityLogger::performedOn\(\) expects Illuminate\\Database\\Eloquent\\Model, Spatie\\Permission\\Contracts\\Role given#'
         - '#Spatie\\Activitylog\\Support\\ActivityLogger::performedOn\(\) expects Illuminate\\Database\\Eloquent\\Model, Spatie\\Permission\\Contracts\\Permission given#'
+        # HasFileQuota is intentionally kept as opt-in infra for file-owning
+        # modules that want per-row storage caps; the demo Equipment module no
+        # longer uses it, so phpstan sees the trait as unused.
+        - '#Trait App\\Domains\\Files\\Models\\Concerns\\HasFileQuota is used zero times and is not analysed#'
 
     excludePaths:
         - app/Domains/Operations/Providers/HorizonServiceProvider.php

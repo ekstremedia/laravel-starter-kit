@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Domains\Files\Support\UploadLimits;
+use App\Domains\Modules\Services\ModuleRegistry;
 use App\Domains\Settings\Models\AppSetting;
 use App\Domains\Users\Models\User;
 use App\Domains\Users\Models\UserSetting;
@@ -110,10 +111,11 @@ class HandleInertiaRequests extends Middleware
             'chat' => [
                 'enabled' => (bool) config('chat.enabled'),
             ],
-            // Named `assetsEnabled` (not `assets`) to avoid colliding with the
-            // Assets/Index page's own `assets` paginator prop, which would
-            // otherwise shadow this shared flag on that page.
-            'assetsEnabled' => (bool) config('assets.enabled'),
+            // Per-module {enabled, files, log} resolved for the current workspace
+            // (workspace override → platform toggle → capability). Gates module
+            // routes / sidebar entries (.enabled) and the Files/Log surfaces on
+            // the module pages. Null-safe before the tables exist.
+            'modules' => fn () => app(ModuleRegistry::class)->featuresFor($this->currentTenantOrNull()),
             // Which OAuth providers to render "Sign in with …" buttons for.
             // Empty array when the whole feature is gated off, so the Vue
             // template's v-if collapses cleanly.
@@ -136,6 +138,17 @@ class HandleInertiaRequests extends Middleware
             // `workspaces` paginator prop on /admin/workspaces and similar pages.
             'available_workspaces' => fn () => $this->availableWorkspaces($request),
         ];
+    }
+
+    /**
+     * The active workspace tenant, or null on central (non-workspace) routes.
+     * Used to resolve per-workspace module-feature overrides for the share.
+     */
+    private function currentTenantOrNull(): ?Workspace
+    {
+        $tenancy = app(WorkspaceContext::class);
+
+        return $tenancy->check() ? $tenancy->current() : null;
     }
 
     /**

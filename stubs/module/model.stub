@@ -1,0 +1,145 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\{{ class }}\Models;
+
+// @files
+use App\Domains\Files\Contracts\FileOwner;
+use App\Domains\Files\Models\Concerns\HasFiles;
+use App\Domains\Files\Models\FileItem;
+use App\Domains\Users\Models\User;
+// @endfiles
+use App\Domains\Workspaces\Models\Concerns\BelongsToWorkspace;
+use App\Domains\Workspaces\Models\Workspace;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
+// @log
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
+// @endlog
+
+/**
+ * @property int $id
+ * @property int $workspace_id
+ * @property string $name
+// @files
+ * @property int|null $cover_file_item_id
+// @endfiles
+ * @property-read Workspace $workspace
+// @files
+ * @property-read FileItem|null $cover
+// @endfiles
+ */
+// @files
+class {{ class }} extends Model implements FileOwner
+// @nofiles
+class {{ class }} extends Model
+// @endfiles
+{
+    use BelongsToWorkspace;
+    use HasFactory;
+// @files
+    use HasFiles;
+// @endfiles
+// @log
+    use LogsActivity;
+// @endlog
+    use SoftDeletes;
+
+    protected $table = '{{ table }}';
+
+    protected $fillable = [
+        'workspace_id',
+        'name',
+// @files
+        'cover_file_item_id',
+// @endfiles
+    ];
+
+    protected $casts = [
+        'workspace_id' => 'integer',
+// @files
+        'cover_file_item_id' => 'integer',
+// @endfiles
+    ];
+
+// @files
+    protected static function booted(): void
+    {
+        static::deleting(function ({{ class }} $model): void {
+            if ($model->isForceDeleting()) {
+                $model->files()->withTrashed()->get()->each->forceDelete();
+
+                return;
+            }
+
+            $model->files()->get()->each->delete();
+        });
+
+        static::restoring(function ({{ class }} $model): void {
+            $deletedAt = $model->deleted_at;
+            if ($deletedAt === null) {
+                return;
+            }
+
+            $model->files()
+                ->onlyTrashed()
+                ->where('deleted_at', '>=', $deletedAt->copy()->subSeconds(10))
+                ->get()
+                ->each
+                ->restore();
+        });
+    }
+
+// @endfiles
+    public function getConnectionName(): ?string
+    {
+        return config('workspaces.database.central_connection');
+    }
+
+// @log
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+// @files
+            ->logOnly(['name', 'cover_file_item_id'])
+// @nofiles
+            ->logOnly(['name'])
+// @endfiles
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges()
+            ->useLogName('{{ key }}');
+    }
+
+// @endlog
+    /**
+     * @return BelongsTo<Workspace, $this>
+     */
+    public function workspace(): BelongsTo
+    {
+        return $this->belongsTo(Workspace::class, 'workspace_id');
+    }
+// @files
+
+    /**
+     * @return BelongsTo<FileItem, $this>
+     */
+    public function cover(): BelongsTo
+    {
+        return $this->belongsTo(FileItem::class, 'cover_file_item_id');
+    }
+
+    public function canManageFiles(User $user, ?Workspace $workspace = null): bool
+    {
+        return $this->workspace->canManageFiles($user, $workspace ?? $this->workspace);
+    }
+
+    public function canViewFiles(User $user, ?Workspace $workspace = null): bool
+    {
+        return $this->workspace->canViewFiles($user, $workspace ?? $this->workspace);
+    }
+// @endfiles
+}

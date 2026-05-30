@@ -61,24 +61,33 @@ watch(open, (v) => { if (v) fetchNotifications(); });
 
 defineExpose({ refresh: fetchNotifications });
 
-function markOneRead(n: NotificationItem) {
-    if (n.read_at) return;
+function markOneRead(n: NotificationItem, onDone?: () => void) {
+    if (n.read_at) {
+        onDone?.();
+        return;
+    }
     router.post(workspaceUrl(`/notifications/${n.id}/read`), {}, {
         preserveScroll: true,
         onSuccess: () => {
             n.read_at = new Date().toISOString();
             decrementNotifications(1);
         },
+        // Navigate (if any) only once the read request settles — otherwise the
+        // immediate router.visit below would cancel this in-flight POST and the
+        // notification would stay unread server-side.
+        onFinish: () => onDone?.(),
     });
 }
 
 // Clicking a notification marks it read and, if it carries an action_url
-// (e.g. a chat message → its conversation), navigates there.
+// (e.g. a chat message → its conversation), navigates there afterwards.
 function onNotificationClick(n: NotificationItem) {
-    markOneRead(n);
-    if (n.data.action_url) {
+    const url = n.data.action_url;
+    if (url) {
         open.value = false;
-        router.visit(n.data.action_url);
+        markOneRead(n, () => router.visit(url));
+    } else {
+        markOneRead(n);
     }
 }
 

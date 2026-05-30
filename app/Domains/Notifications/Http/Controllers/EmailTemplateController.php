@@ -23,7 +23,7 @@ class EmailTemplateController extends Controller
         $template->update($data);
         $template->compile();
 
-        return back()->with('success', __('flash.email_templates.updated', ['name' => $template->name]));
+        return back();
     }
 
     public function preview(Request $request, EmailTemplate $template): JsonResponse

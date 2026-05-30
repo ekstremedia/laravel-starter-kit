@@ -83,6 +83,8 @@ class AppSettingsController extends Controller
             ->event('updated')
             ->log('Updated app settings');
 
-        return back()->with('success', __('flash.app_settings.saved'));
+        // No success toast — the form already reflects the saved state. Errors
+        // still surface (validation inline / error flash).
+        return back();
     }
 }

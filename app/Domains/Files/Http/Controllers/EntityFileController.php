@@ -31,7 +31,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * via OwnerResolver and authorized through FileItemPolicy + the owner's own
  * canManageFiles rules — so this controller never needs to know about a
  * specific entity. Listing is provided by the entity's own controller (e.g.
- * AssetController@show) which renders the embedded <EntityFiles> browser.
+ * EquipmentController@show) which renders the embedded <EntityFiles> browser.
  *
  * Distinct from FileItemController (personal files), which additionally gates
  * on per-user `files_enabled` + personal quota — concepts that don't apply to

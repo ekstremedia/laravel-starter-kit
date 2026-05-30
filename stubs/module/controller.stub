@@ -1,0 +1,511 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\{{ class }}\Http\Controllers;
+
+use App\Domains\{{ class }}\Models\{{ class }};
+// @files
+use App\Domains\Files\Http\Resources\FileItemResource;
+use App\Domains\Files\Models\FileItem;
+use App\Domains\Files\Support\FileTreeZipper;
+// @endfiles
+// @log
+use App\Domains\Operations\Models\Activity;
+// @endlog
+use App\Domains\Workspaces\Models\Workspace;
+use App\Http\Controllers\Controller;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
+use Inertia\Response;
+use Spatie\SimpleExcel\SimpleExcelWriter;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+
+/**
+ * CRUD for the {{ label }} module. Scaffolded with one `name` field — add your
+ * own columns, validation, and table columns. Mirrors the Equipment reference
+ * module (datatable, mass actions, trash, export).
+ */
+class {{ class }}Controller extends Controller
+{
+    private const PER_PAGE = 20;
+
+// @files
+    private const PREVIEW_FILES = 4;
+
+// @endfiles
+    public function index(Request $request): Response
+    {
+        $workspace = $this->currentTenant($request);
+        abort_unless($workspace->canViewFiles($request->user(), $workspace), 403);
+
+// @files
+        $allowed = ['name', 'files_count', 'created_at'];
+// @nofiles
+        $allowed = ['name', 'created_at'];
+// @endfiles
+        $sort = in_array($request->string('sort')->toString(), $allowed, true) ? $request->string('sort')->toString() : 'name';
+        $dir = $request->string('direction')->toString() === 'desc' ? 'desc' : 'asc';
+
+// @files
+        $query = $this->baseQuery($request, $workspace)->withCount('files')->orderBy($sort, $dir);
+// @nofiles
+        $query = $this->baseQuery($request, $workspace)->orderBy($sort, $dir);
+// @endfiles
+        if ($sort !== 'name') {
+            $query->orderBy('name');
+        }
+
+        $items = $query->paginate(self::PER_PAGE)->withQueryString();
+
+// @files
+        $ids = collect($items->items())->pluck('id')->all();
+        $previews = $this->previewsFor($ids, $workspace);
+        $covers = $this->coversFor($items->items(), $previews);
+
+        $items->getCollection()->transform(function ({{ class }} $model) use ($previews, $covers): {{ class }} {
+            $model->setAttribute('files_preview', $previews[$model->id] ?? []);
+            $model->setAttribute('cover', $covers[$model->id] ?? null);
+
+            return $model;
+        });
+
+// @endfiles
+        return Inertia::render('{{ pluralStudly }}/Index', [
+            'rows' => $items,
+            'can_manage' => $workspace->canManageFiles($request->user(), $workspace),
+            'search' => $request->string('q')->toString() ?: null,
+            'stats' => [
+                'total' => $this->baseQuery($request, $workspace)->count(),
+// @files
+                'with_files' => (clone $this->baseQuery($request, $workspace))->whereHas('files')->count(),
+// @endfiles
+            ],
+        ]);
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $workspace = $this->currentTenant($request);
+        abort_unless($workspace->canManageFiles($request->user(), $workspace), 403);
+
+        $model = {{ class }}::create([...$this->validateModel($request), 'workspace_id' => $workspace->id]);
+
+        return redirect()
+            ->route('workspace.{{ route }}.show', ['workspace' => $workspace->slug, '{{ key }}' => $model->id])
+            ->with('success', __('{{ key }}.created', ['name' => $model->name]));
+    }
+
+// @files
+    public function show(Request $request, {{ class }} $model, ?FileItem $folder = null): Response
+    {
+        $workspace = $this->currentTenant($request);
+        $this->assertBelongs($model, $workspace);
+        abort_unless($workspace->canViewFiles($request->user(), $workspace), 403);
+
+        if ($folder !== null && ($folder->owner_id !== $model->id || $folder->owner_type !== $model->getMorphClass() || ! $folder->isFolder())) {
+            abort(404);
+        }
+
+        $items = FileItem::query()
+            ->where('workspace_id', $workspace->id)
+            ->forOwner($model)
+            ->where('parent_id', $folder?->id)
+            ->with(['media'])
+            ->orderByRaw("case when type = 'folder' then 0 else 1 end")
+            ->orderBy('name')
+            ->get();
+
+        return Inertia::render('{{ pluralStudly }}/Show', [
+            'model' => [
+                'id' => $model->id,
+                'name' => $model->name,
+                'cover_file_item_id' => $model->cover_file_item_id,
+            ],
+            'owner' => ['type' => $model->getMorphClass(), 'id' => $model->id],
+            'files' => FileItemResource::collection($items),
+            'breadcrumbs' => $this->breadcrumbs($folder),
+            'current_folder' => $folder?->only(['id', 'name']),
+// @log
+            'activities' => $this->activities($model),
+// @endlog
+            'can_manage' => $workspace->canManageFiles($request->user(), $workspace),
+        ]);
+    }
+// @nofiles
+    public function show(Request $request, {{ class }} $model): Response
+    {
+        $workspace = $this->currentTenant($request);
+        $this->assertBelongs($model, $workspace);
+        abort_unless($workspace->canViewFiles($request->user(), $workspace), 403);
+
+        return Inertia::render('{{ pluralStudly }}/Show', [
+            'model' => [
+                'id' => $model->id,
+                'name' => $model->name,
+            ],
+// @log
+            'activities' => $this->activities($model),
+// @endlog
+            'can_manage' => $workspace->canManageFiles($request->user(), $workspace),
+        ]);
+    }
+// @endfiles
+
+    public function update(Request $request, {{ class }} $model): RedirectResponse
+    {
+        $workspace = $this->currentTenant($request);
+        $this->assertBelongs($model, $workspace);
+        abort_unless($workspace->canManageFiles($request->user(), $workspace), 403);
+
+        $model->update($this->validateModel($request));
+
+        return back()->with('success', __('{{ key }}.updated'));
+    }
+
+    public function destroy(Request $request, {{ class }} $model): RedirectResponse
+    {
+        $workspace = $this->currentTenant($request);
+        $this->assertBelongs($model, $workspace);
+        abort_unless($workspace->canManageFiles($request->user(), $workspace), 403);
+
+        $model->delete();
+
+        return redirect()
+            ->route('workspace.{{ route }}.index', ['workspace' => $workspace->slug])
+            ->with('success', __('{{ key }}.deleted'));
+    }
+
+    public function bulkDestroy(Request $request): RedirectResponse
+    {
+        $workspace = $this->currentTenant($request);
+        abort_unless($workspace->canManageFiles($request->user(), $workspace), 403);
+
+        $count = 0;
+        $this->targetQuery($request, $workspace)->lazyById()->each(function ({{ class }} $model) use (&$count): void {
+            $model->delete();
+            $count++;
+        });
+
+        return back()->with('success', trans_choice('{{ key }}.bulk_deleted', $count, ['count' => $count]));
+    }
+
+// @files
+    public function bulkZip(Request $request, FileTreeZipper $zipper): BinaryFileResponse
+    {
+        $workspace = $this->currentTenant($request);
+        abort_unless($workspace->canViewFiles($request->user(), $workspace), 403);
+
+        $items = $this->targetQuery($request, $workspace)->orderBy('name')->get();
+        abort_if($items->isEmpty(), 404);
+
+        $multi = $items->count() > 1;
+        $ownerType = (new {{ class }})->getMorphClass();
+        $rootsByOwner = FileItem::query()
+            ->where('workspace_id', $workspace->id)
+            ->where('owner_type', $ownerType)
+            ->whereIn('owner_id', $items->pluck('id'))
+            ->whereNull('parent_id')
+            ->with(['media'])
+            ->orderByRaw("case when type = 'folder' then 0 else 1 end")
+            ->orderBy('name')
+            ->get()
+            ->groupBy('owner_id');
+
+        $groups = [];
+        foreach ($items as $model) {
+            $roots = $rootsByOwner->get($model->id) ?? collect();
+            if ($roots->isNotEmpty()) {
+                $groups[] = ['label' => $multi ? str_replace(['/', '\\'], '-', $model->name) : '', 'items' => $roots];
+            }
+        }
+        abort_if($groups === [], 404);
+
+        $flat = collect($groups)->flatMap(fn (array $g) => $g['items']);
+        if ($flat->count() === 1 && ! $flat->first()->isFolder()) {
+            $media = $flat->first()->getFirstMedia('file');
+            if ($media && is_file($media->getPath())) {
+                return response()->download($media->getPath(), $flat->first()->name);
+            }
+        }
+
+        return response()->download($zipper->zipGroups($groups, '{{ key }}'), '{{ route }}.zip')->deleteFileAfterSend(true);
+    }
+
+    public function setCover(Request $request, {{ class }} $model): RedirectResponse
+    {
+        $workspace = $this->currentTenant($request);
+        $this->assertBelongs($model, $workspace);
+        abort_unless($workspace->canManageFiles($request->user(), $workspace), 403);
+
+        $data = $request->validate(['file_item_id' => ['nullable', 'integer']]);
+
+        $coverId = null;
+        if (($data['file_item_id'] ?? null) !== null) {
+            $file = FileItem::query()
+                ->where('workspace_id', $workspace->id)
+                ->forOwner($model)
+                ->where('type', 'file')
+                ->whereKey($data['file_item_id'])
+                ->first();
+            abort_if($file === null, 422);
+            $coverId = $file->id;
+        }
+
+        $model->update(['cover_file_item_id' => $coverId]);
+
+        return back()->with('success', __('{{ key }}.cover_set'));
+    }
+
+// @endfiles
+    public function export(Request $request): BinaryFileResponse
+    {
+        $workspace = $this->currentTenant($request);
+        abort_unless($workspace->canViewFiles($request->user(), $workspace), 403);
+
+        $format = $request->string('format')->toString() === 'xlsx' ? 'xlsx' : 'csv';
+        $path = sys_get_temp_dir().'/{{ route }}-'.uniqid('', true).'.'.$format;
+        $writer = SimpleExcelWriter::create($path);
+
+// @files
+        $this->baseQuery($request, $workspace)->withCount('files')->orderBy('name')->cursor()
+            ->each(function ({{ class }} $model) use ($writer): void {
+                $writer->addRow([
+                    'Name' => $model->name,
+                    'Files' => $model->files_count,
+                    'Created' => $model->created_at?->toDateTimeString(),
+                ]);
+            });
+// @nofiles
+        $this->baseQuery($request, $workspace)->orderBy('name')->cursor()
+            ->each(function ({{ class }} $model) use ($writer): void {
+                $writer->addRow([
+                    'Name' => $model->name,
+                    'Created' => $model->created_at?->toDateTimeString(),
+                ]);
+            });
+// @endfiles
+        $writer->close();
+
+        return response()->download($path, '{{ route }}.'.$format)->deleteFileAfterSend(true);
+    }
+
+    public function trash(Request $request): Response
+    {
+        $workspace = $this->currentTenant($request);
+        abort_unless($workspace->canManageFiles($request->user(), $workspace), 403);
+
+        $items = {{ class }}::onlyTrashed()
+            ->where('workspace_id', $workspace->id)
+            ->orderByDesc('deleted_at')
+            ->paginate(self::PER_PAGE)
+            ->withQueryString();
+
+        return Inertia::render('{{ pluralStudly }}/Trash', ['rows' => $items, 'can_manage' => true]);
+    }
+
+    public function restore(Request $request, int $id): RedirectResponse
+    {
+        $workspace = $this->currentTenant($request);
+        abort_unless($workspace->canManageFiles($request->user(), $workspace), 403);
+
+        {{ class }}::onlyTrashed()->where('workspace_id', $workspace->id)->findOrFail($id)->restore();
+
+        return back()->with('success', __('{{ key }}.restored'));
+    }
+
+    public function forceDelete(Request $request, int $id): RedirectResponse
+    {
+        $workspace = $this->currentTenant($request);
+        abort_unless($workspace->canManageFiles($request->user(), $workspace), 403);
+
+        {{ class }}::onlyTrashed()->where('workspace_id', $workspace->id)->findOrFail($id)->forceDelete();
+
+        return back()->with('success', __('{{ key }}.deleted'));
+    }
+
+    /**
+     * @return Builder<{{ class }}>
+     */
+    private function targetQuery(Request $request, Workspace $workspace): Builder
+    {
+        if ($request->boolean('all')) {
+            return $this->baseQuery($request, $workspace);
+        }
+
+        return {{ class }}::query()
+            ->where('workspace_id', $workspace->id)
+            ->whereIn('id', $this->parseIds($request->input('ids')));
+    }
+
+    /**
+     * @return Builder<{{ class }}>
+     */
+    private function baseQuery(Request $request, Workspace $workspace): Builder
+    {
+        $op = DB::connection()->getDriverName() === 'pgsql' ? 'ilike' : 'like';
+
+        return {{ class }}::query()
+            ->where('workspace_id', $workspace->id)
+            ->when($request->string('q')->toString(), function (Builder $query, string $search) use ($op): void {
+                $like = '%'.addcslashes($search, '%_\\').'%';
+                $query->where('name', $op, $like);
+            });
+    }
+
+// @files
+    /**
+     * @param  array<int, int>  $ids
+     * @return array<int, array<int, array<string, mixed>>>
+     */
+    private function previewsFor(array $ids, Workspace $workspace): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $ownerType = (new {{ class }})->getMorphClass();
+
+        return FileItem::query()
+            ->where('workspace_id', $workspace->id)
+            ->where('owner_type', $ownerType)
+            ->whereIn('owner_id', $ids)
+            ->where('type', 'file')
+            ->with(['media'])
+            ->orderBy('created_at')
+            ->get()
+            ->groupBy('owner_id')
+            ->map(fn ($group) => FileItemResource::collection($group->take(self::PREVIEW_FILES))->resolve())
+            ->all();
+    }
+
+    /**
+     * @param  array<int, {{ class }}>  $rows
+     * @param  array<int, array<int, array<string, mixed>>>  $previews
+     * @return array<int, array<string, mixed>|null>
+     */
+    private function coversFor(array $rows, array $previews): array
+    {
+        $covers = [];
+        foreach ($rows as $model) {
+            $files = $previews[$model->id] ?? [];
+            $chosen = null;
+            if ($model->cover_file_item_id !== null) {
+                $chosen = collect($files)->firstWhere('id', $model->cover_file_item_id);
+            }
+            $chosen ??= collect($files)->first(fn (array $f) => ! empty($f['thumbnail_url']));
+            $covers[$model->id] = $chosen;
+        }
+
+        return $covers;
+    }
+
+// @endfiles
+// @log
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function activities({{ class }} $model): array
+    {
+        return Activity::query()
+            ->where('log_name', '{{ key }}')
+            ->where('subject_type', $model->getMorphClass())
+            ->where('subject_id', $model->id)
+            ->with('causer:id,email,first_name,last_name')
+            ->latest()
+            ->limit(50)
+            ->get()
+            ->map(fn (Activity $a) => [
+                'id' => $a->id,
+                'event' => $a->event,
+                'created_at' => $a->created_at?->toIso8601String(),
+                'causer' => $a->causer ? [
+                    'id' => $a->causer->getKey(),
+                    'name' => trim(($a->causer->first_name ?? '').' '.($a->causer->last_name ?? '')) ?: ($a->causer->email ?? null),
+                ] : null,
+            ])
+            ->all();
+    }
+
+// @endlog
+    /**
+     * @return array<int, int>
+     */
+    private function parseIds(mixed $raw): array
+    {
+        if (is_string($raw)) {
+            $raw = explode(',', $raw);
+        }
+
+        return collect(is_array($raw) ? $raw : [])
+            ->map(fn ($v) => (int) $v)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array{name: string}
+     */
+    private function validateModel(Request $request): array
+    {
+        /** @var array{name: string} $data */
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            // Add your own field rules here.
+        ]);
+
+        return $data;
+    }
+
+    private function assertBelongs({{ class }} $model, Workspace $workspace): void
+    {
+        abort_unless($model->workspace_id === $workspace->id, 404);
+    }
+
+    private function currentTenant(Request $request): Workspace
+    {
+        $workspace = $request->attributes->get('workspace');
+        if ($workspace instanceof Workspace) {
+            return $workspace;
+        }
+
+        $slug = config('workspaces.default_workspace_slug');
+        $fallback = $slug ? Workspace::query()->where('slug', $slug)->first() : null;
+        abort_if($fallback === null, 404);
+
+        return $fallback;
+    }
+// @files
+
+    /**
+     * @return array<int, array{id: int, name: string}>
+     */
+    private function breadcrumbs(?FileItem $folder): array
+    {
+        if ($folder === null) {
+            return [];
+        }
+
+        $folders = FileItem::query()
+            ->where('owner_type', $folder->owner_type)
+            ->where('owner_id', $folder->owner_id)
+            ->where('type', 'folder')
+            ->get(['id', 'name', 'parent_id'])
+            ->keyBy('id');
+
+        $crumbs = [];
+        $current = $folder;
+        while ($current !== null) {
+            array_unshift($crumbs, ['id' => $current->id, 'name' => $current->name]);
+            $current = $current->parent_id !== null ? ($folders[$current->parent_id] ?? null) : null;
+        }
+
+        return $crumbs;
+    }
+// @endfiles
+}

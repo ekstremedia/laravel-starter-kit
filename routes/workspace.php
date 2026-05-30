@@ -2,7 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Domains\Assets\Http\Controllers\AssetController;
+use App\Domains\Equipment\Http\Controllers\EquipmentController;
+use App\Domains\EquipmentCategory\Http\Controllers\EquipmentCategoryController;
 use App\Domains\Files\Http\Controllers\CompanyFileController;
 use App\Domains\Files\Http\Controllers\CompanyFileTrashController;
 use App\Domains\Files\Http\Controllers\EntityFileController;
@@ -14,6 +15,7 @@ use App\Domains\Users\Http\Controllers\AvatarController;
 use App\Domains\Workspaces\Http\Controllers\DashboardController;
 use App\Domains\Workspaces\Http\Controllers\WorkspaceInvitationController;
 use App\Domains\Workspaces\Http\Controllers\WorkspaceMembersController;
+use App\Domains\Workspaces\Http\Controllers\WorkspaceModuleController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -150,17 +152,50 @@ Route::patch('/entity-files/{file}', [EntityFileController::class, 'update'])->w
 Route::delete('/entity-files/{file}', [EntityFileController::class, 'destroy'])->whereNumber('file')->name('entity-files.destroy');
 Route::get('/entity-files/{file}/download', [EntityFileController::class, 'download'])->whereNumber('file')->name('entity-files.download');
 
-// Demo entity: Assets + their document area. Gated by config('assets.enabled')
-// — remove the app/Domains/Assets module + this block to drop the demo.
-if (config('assets.enabled')) {
-    Route::get('/assets', [AssetController::class, 'index'])->name('assets.index');
-    Route::post('/assets', [AssetController::class, 'store'])->name('assets.store');
-    Route::get('/assets/{asset}', [AssetController::class, 'show'])->whereNumber('asset')->name('assets.show');
-    Route::get('/assets/{asset}/folders/{folder}', [AssetController::class, 'show'])
-        ->whereNumber('asset')->whereNumber('folder')->name('assets.folder');
-    Route::put('/assets/{asset}', [AssetController::class, 'update'])->whereNumber('asset')->name('assets.update');
-    Route::delete('/assets/{asset}', [AssetController::class, 'destroy'])->whereNumber('asset')->name('assets.destroy');
-}
+// Equipment module — the reference file-owning entity + its document area.
+// Gated per-request by the `module:equipment` middleware (reads the `modules`
+// registry), so toggling it in /admin/modules takes effect immediately and
+// survives `route:cache`. Remove the app/Domains/Equipment module + this block
+// to drop it.
+//
+// Literal segments (export, bulk/*, trash) are registered BEFORE the numeric
+// {equipment} catch-all so e.g. /equipment/export isn't swallowed as an id.
+Route::middleware('module:equipment')->group(function (): void {
+    Route::get('/equipment', [EquipmentController::class, 'index'])->name('equipment.index');
+    Route::post('/equipment', [EquipmentController::class, 'store'])->name('equipment.store');
+    Route::get('/equipment/export', [EquipmentController::class, 'export'])->name('equipment.export');
+    Route::get('/equipment/bulk/zip', [EquipmentController::class, 'bulkZip'])->name('equipment.bulk.zip');
+    Route::post('/equipment/bulk/delete', [EquipmentController::class, 'bulkDestroy'])->name('equipment.bulk.delete');
+    Route::post('/equipment/bulk/update', [EquipmentController::class, 'bulkUpdate'])->name('equipment.bulk.update');
+    Route::get('/equipment/trash', [EquipmentController::class, 'trash'])->name('equipment.trash');
+    Route::post('/equipment/trash/{id}/restore', [EquipmentController::class, 'restore'])->whereNumber('id')->name('equipment.trash.restore');
+    Route::delete('/equipment/trash/{id}', [EquipmentController::class, 'forceDelete'])->whereNumber('id')->name('equipment.trash.forceDelete');
+
+    Route::get('/equipment/{equipment}', [EquipmentController::class, 'show'])->whereNumber('equipment')->name('equipment.show');
+    Route::get('/equipment/{equipment}/folders/{folder}', [EquipmentController::class, 'show'])
+        ->whereNumber('equipment')->whereNumber('folder')->name('equipment.folder');
+    Route::put('/equipment/{equipment}', [EquipmentController::class, 'update'])->whereNumber('equipment')->name('equipment.update');
+    Route::patch('/equipment/{equipment}/cover', [EquipmentController::class, 'setCover'])->whereNumber('equipment')->name('equipment.cover');
+    Route::delete('/equipment/{equipment}', [EquipmentController::class, 'destroy'])->whereNumber('equipment')->name('equipment.destroy');
+});
+
+// EquipmentCategory module — the reference *lean* module (no files, with Log)
+// and the owner of the demo Equipment relation. Same per-request gating shape
+// as Equipment (module:equipment_category). Literal segments (export, bulk/*,
+// trash) before the numeric {equipmentCategory} catch-all.
+Route::middleware('module:equipment_category')->group(function (): void {
+    Route::get('/equipment-categories', [EquipmentCategoryController::class, 'index'])->name('equipment-categories.index');
+    Route::post('/equipment-categories', [EquipmentCategoryController::class, 'store'])->name('equipment-categories.store');
+    Route::get('/equipment-categories/export', [EquipmentCategoryController::class, 'export'])->name('equipment-categories.export');
+    Route::post('/equipment-categories/bulk/delete', [EquipmentCategoryController::class, 'bulkDestroy'])->name('equipment-categories.bulk.delete');
+    Route::get('/equipment-categories/trash', [EquipmentCategoryController::class, 'trash'])->name('equipment-categories.trash');
+    Route::post('/equipment-categories/trash/{id}/restore', [EquipmentCategoryController::class, 'restore'])->whereNumber('id')->name('equipment-categories.trash.restore');
+    Route::delete('/equipment-categories/trash/{id}', [EquipmentCategoryController::class, 'forceDelete'])->whereNumber('id')->name('equipment-categories.trash.forceDelete');
+
+    Route::get('/equipment-categories/{equipmentCategory}', [EquipmentCategoryController::class, 'show'])->whereNumber('equipmentCategory')->name('equipment-categories.show');
+    Route::put('/equipment-categories/{equipmentCategory}', [EquipmentCategoryController::class, 'update'])->whereNumber('equipmentCategory')->name('equipment-categories.update');
+    Route::delete('/equipment-categories/{equipmentCategory}', [EquipmentCategoryController::class, 'destroy'])->whereNumber('equipmentCategory')->name('equipment-categories.destroy');
+});
 
 // Workspace-Admin — manage the members of the active workspace. `role:Admin`
 // resolves against the team id set by ResolveWorkspace, so it means
@@ -175,4 +210,13 @@ Route::middleware('workspace.admin')->prefix('members')->name('members.')->group
     Route::post('/invitations', [WorkspaceInvitationController::class, 'store'])->name('invitations.store');
     Route::delete('/invitations/{invitation}', [WorkspaceInvitationController::class, 'destroy'])
         ->whereNumber('invitation')->name('invitations.destroy');
+});
+
+// Workspace-Admin — per-workspace module-feature overrides (files / log). The
+// platform default lives in /admin/modules (super admin); this lets a workspace
+// admin diverge from it for their own workspace only.
+Route::middleware('workspace.admin')->prefix('settings/modules')->name('settings.modules.')->group(function () {
+    Route::get('/', [WorkspaceModuleController::class, 'edit'])->name('edit');
+    Route::patch('/{module}', [WorkspaceModuleController::class, 'update'])->whereNumber('module')->name('update');
+    Route::delete('/{module}', [WorkspaceModuleController::class, 'reset'])->whereNumber('module')->name('reset');
 });

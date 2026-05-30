@@ -25,11 +25,22 @@
     --accent: #4c6fff;
     --accent-soft: rgba(76, 111, 255, 0.12);
     --accent-border: rgba(76, 111, 255, 0.33);
+    /* Foreground on a filled accent surface — white reads on every accent hue. */
+    --accent-fg: #ffffff;
 
     /* Semantic tones (constant across themes) */
     --success: #5ee59a;
     --warning: #fbbf24;
     --danger: #ff8a8a;
+    /* Soft fill + border variants for semantic tones (chips, badges). */
+    --warning-soft: rgba(251, 191, 36, 0.12);
+    --warning-border: rgba(251, 191, 36, 0.33);
+    --danger-soft: rgba(255, 138, 138, 0.13);
+    --danger-border: rgba(255, 138, 138, 0.34);
+    /* Admin role tone (violet), kept theme-agnostic for the role badge. */
+    --role-admin: #8b5cf6;
+    --role-admin-soft: rgba(139, 92, 246, 0.12);
+    --role-admin-border: rgba(139, 92, 246, 0.33);
 
     /* Image / media overlays — kept theme-agnostic because they sit on top
      * of arbitrary image content where the underlying surface color is

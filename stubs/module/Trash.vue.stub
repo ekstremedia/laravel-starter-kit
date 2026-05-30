@@ -1,0 +1,69 @@
+<script setup lang="ts">
+import { Head, Link, router } from '@inertiajs/vue3';
+import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useConfirm } from 'primevue/useconfirm';
+import ConfirmDialog from 'primevue/confirmdialog';
+import CommandLayout from '@/Layouts/CommandLayout.vue';
+import CmdDataTable, { type Column } from '@/Components/Command/DataTable.vue';
+import Icon from '@/Components/Command/Icon.vue';
+import PageTitle from '@/Components/Command/PageTitle.vue';
+import { useWorkspace } from '@/composables/useWorkspace';
+
+defineOptions({ layout: CommandLayout });
+
+const { t, locale } = useI18n();
+const { workspaceUrl } = useWorkspace();
+const confirm = useConfirm();
+
+interface TrashedRow { id: number; name: string; deleted_at: string | null }
+interface Paginated<T> { data: T[]; total: number; links: Array<{ url: string | null; label: string; active: boolean }> }
+
+defineProps<{ rows: Paginated<TrashedRow>; can_manage: boolean }>();
+
+const search = ref('');
+const actionBtnStyle = { background: 'transparent', border: 'none', color: 'var(--fg-dim)', cursor: 'pointer', padding: '4px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' };
+
+const columns: Column<TrashedRow>[] = [
+    { key: 'name', label: t('{{ key }}.name'), width: 'minmax(140px, 2fr)' },
+    { key: 'deleted_at', label: t('{{ key }}.deleted_at'), mono: true, width: '170px' },
+];
+
+function restore(row: TrashedRow) { router.post(workspaceUrl(`/{{ route }}/trash/${row.id}/restore`), {}, { preserveScroll: true }); }
+function confirmForceDelete(row: TrashedRow) {
+    confirm.require({
+        group: '{{ key }}-trash',
+        message: t('{{ key }}.confirm_force_delete', { name: row.name }),
+        header: t('{{ key }}.force_delete'),
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: t('{{ key }}.force_delete'),
+        rejectLabel: t('common.cancel'),
+        acceptProps: { severity: 'danger' },
+        accept: () => router.delete(workspaceUrl(`/{{ route }}/trash/${row.id}`), { preserveScroll: true }),
+    });
+}
+function fmt(iso: string | null): string { return iso ? new Date(iso).toLocaleString(locale.value) : '—'; }
+</script>
+
+<template>
+    <div>
+        <Head :title="t('{{ key }}.trash_title')" />
+        <ConfirmDialog group="{{ key }}-trash" />
+
+        <PageTitle :title="t('{{ key }}.trash_title')" :subtitle="t('{{ key }}.count', rows.total)">
+            <template #actions>
+                <Link :href="workspaceUrl('/{{ route }}')" :style="{ fontSize: '11.5px', color: 'var(--fg-dim)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '5px 9px' }">
+                    <Icon name="chevR" :size="10" :style="{ transform: 'rotate(180deg)' }" />{{ t('{{ key }}.back_to_list') }}
+                </Link>
+            </template>
+        </PageTitle>
+
+        <CmdDataTable :rows="rows" :columns="columns" v-model:search="search" :searchable="false" :empty-text="t('{{ key }}.trash_empty')">
+            <template #cell:deleted_at="{ row }"><span :style="{ color: 'var(--fg-mute)' }">{{ fmt(row.deleted_at) }}</span></template>
+            <template #actions="{ row }">
+                <button v-if="can_manage" type="button" :title="t('{{ key }}.restore')" :aria-label="t('{{ key }}.restore')" :style="actionBtnStyle" @click="restore(row)"><Icon name="restore" :size="13" /></button>
+                <button v-if="can_manage" type="button" :title="t('{{ key }}.force_delete')" :aria-label="t('{{ key }}.force_delete')" :style="{ ...actionBtnStyle, color: 'var(--danger)' }" @click="confirmForceDelete(row)"><Icon name="trash" :size="13" /></button>
+            </template>
+        </CmdDataTable>
+    </div>
+</template>

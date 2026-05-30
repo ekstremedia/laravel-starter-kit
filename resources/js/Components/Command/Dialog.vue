@@ -82,9 +82,13 @@ watch(
         if (v) {
             lastFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
             nextTick(() => {
-                const focusTarget = panel.value?.querySelector<HTMLElement>(
-                    '[data-autofocus], input:not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled])',
-                );
+                // Prefer an explicit [data-autofocus] target (e.g. a Field with
+                // autofocus) over the first focusable — otherwise querySelector
+                // returns the Close button, which is first in DOM order.
+                const focusTarget = panel.value?.querySelector<HTMLElement>('[data-autofocus]')
+                    ?? panel.value?.querySelector<HTMLElement>(
+                        'input:not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled])',
+                    );
                 focusTarget?.focus();
             });
         } else {

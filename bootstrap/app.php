@@ -5,6 +5,7 @@ use App\Domains\Access\Http\Middleware\EnsureWorkspaceAdmin;
 use App\Domains\Chat\Http\Middleware\EnsureChatEnabled;
 use App\Domains\Files\Http\Middleware\EnsureCompanyStorageAvailable;
 use App\Domains\Files\Http\Middleware\EnsureStorageAvailable;
+use App\Domains\Modules\Http\Middleware\EnsureModuleEnabled;
 use App\Domains\Settings\Http\Middleware\EnforceAppSettings;
 use App\Domains\Workspaces\Http\Middleware\BindDefaultWorkspace;
 use App\Domains\Workspaces\Http\Middleware\ResolveWorkspace;
@@ -80,6 +81,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'company.storage.available' => EnsureCompanyStorageAvailable::class,
             'workspace.admin' => EnsureWorkspaceAdmin::class,
             'super.admin' => EnsureSuperAdmin::class,
+            'module' => EnsureModuleEnabled::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

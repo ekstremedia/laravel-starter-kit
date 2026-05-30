@@ -40,8 +40,7 @@ it('saves the layout and dispatches a recompile job', function () {
             'header_logo_url' => null,
             'footer_text' => '© {{ year }} {{ app_name }}.',
         ])
-        ->assertRedirect()
-        ->assertSessionHas('success');
+        ->assertRedirect();
 
     $layout = MailLayout::current();
     expect($layout->brand_color)->toBe('#123456');

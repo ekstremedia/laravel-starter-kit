@@ -1,0 +1,24 @@
+<?php
+
+/**
+ * Server-side flash strings for the {{ label }} module. The Vue pages use the
+ * `{{ key }}.*` block in resources/js/i18n/{en,no}.ts for UI strings — add one
+ * (mirroring the equipment block) with at least: title, head_title, count,
+ * new_asset, create_asset, edit_asset, search_placeholder, empty, name,
+ * documents, files, files_count, no_category, confirm_delete, back_to_assets,
+ * tab_details, tab_files, columns, selected_of, select_all_matching,
+ * bulk_delete, bulk_download, clear_selection, confirm_bulk_delete, cover,
+ * set_as_cover, stat_total, stat_with_files, trash, trash_title, trash_empty,
+ * deleted_at, restore, force_delete, confirm_force_delete, back_to_list,
+ * activity, activity_empty, activity_created, activity_updated.
+ */
+return [
+    'created' => '{{ label }} ":name" created.',
+    'updated' => '{{ label }} updated.',
+    'deleted' => '{{ label }} deleted.',
+    'restored' => '{{ label }} restored.',
+    'bulk_deleted' => ':count item deleted.|:count items deleted.',
+// @files
+    'cover_set' => 'Cover image updated.',
+// @endfiles
+];

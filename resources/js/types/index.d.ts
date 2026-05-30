@@ -78,6 +78,12 @@ export interface CurrentWorkspace {
     can_view_company_files: boolean;
 }
 
+export interface ModuleFeatures {
+    enabled: boolean;
+    files: boolean;
+    log: boolean;
+}
+
 export interface PageProps extends InertiaPageProps {
     request_id?: string;
     auth: {
@@ -102,7 +108,11 @@ export interface PageProps extends InertiaPageProps {
     chat: {
         enabled: boolean;
     };
-    assetsEnabled?: boolean;
+    // Per-module {enabled, files, log} resolved for the current workspace, from
+    // the `modules` registry — e.g. { equipment: { enabled: true, files: true,
+    // log: true } }. `.enabled` gates routes/sidebar; the feature flags gate the
+    // Files/Log surfaces on the module pages.
+    modules?: Record<string, ModuleFeatures>;
     oauth?: {
         providers: Array<{ name: string; label: string }>;
     };

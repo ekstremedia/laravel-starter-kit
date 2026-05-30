@@ -30,7 +30,9 @@ export function useSidebarItems() {
     const tenancyEnabled = computed(() => page.props.workspaces?.enabled ?? false);
     const chatEnabled = computed(() => page.props.chat?.enabled ?? false);
     const globalFilesEnabled = computed(() => page.props.app_settings?.files_feature_enabled ?? false);
-    const assetsEnabled = computed(() => page.props.assetsEnabled ?? false);
+    // Enabled-modules map, shared from the `modules` registry (see ModuleRegistry).
+    const equipmentEnabled = computed(() => page.props.modules?.equipment?.enabled ?? false);
+    const equipmentCategoryEnabled = computed(() => page.props.modules?.equipment_category?.enabled ?? false);
     const canManageEmailTemplates = computed(() => page.props.auth?.can?.manage_email_templates === true);
 
     // The workspace the rail is scoped to. `current_workspace` is resolved on
@@ -65,15 +67,21 @@ export function useSidebarItems() {
                 { id: 'my-dashboard', href: wsHref('/dashboard'), label: t('rail.dashboard'), icon: 'home', match: railMatch((s) => s.startsWith('/dashboard')) },
                 { id: 'files', href: wsHref('/files'), label: t('rail.files'), icon: 'disk', match: railMatch((s) => s.startsWith('/files') && !s.startsWith('/files/company')), hideWhen: () => !globalFilesEnabled.value || !ws?.files_feature_enabled },
                 { id: 'company-files', href: wsHref('/files/company'), label: t('rail.company_files'), icon: 'workspace', match: railMatch((s) => s.startsWith('/files/company')), hideWhen: () => !tenancyEnabled.value || !globalFilesEnabled.value || !ws?.company_files_enabled || !canViewCompanyFiles.value },
-                // Demo entity documents. Remove this entry (and the Assets
-                // module) to drop the demo — it's the template for real
-                // file-owning entities (Vehicle, Medicine, …).
-                { id: 'assets', href: wsHref('/assets'), label: t('rail.assets'), icon: 'box', match: railMatch((s) => s.startsWith('/assets')), hideWhen: () => !assetsEnabled.value || !canViewCompanyFiles.value },
+                // The Equipment module — the template for real file-owning
+                // modules (Car, Medicine, …). Gated by the `modules` registry,
+                // so toggling it off in /admin/modules hides this entry. The
+                // match is anchored so it does NOT also light up on the nested
+                // /equipment-categories routes below.
+                { id: 'equipment', href: wsHref('/equipment'), label: t('rail.equipment'), icon: 'box', match: railMatch((s) => s === '/equipment' || s.startsWith('/equipment/')), hideWhen: () => !equipmentEnabled.value || !canViewCompanyFiles.value },
+                // Categories — a sub-item nested under Equipment (the demo
+                // related entity). Its own module, gated independently.
+                { id: 'equipment-categories', href: wsHref('/equipment-categories'), label: t('rail.equipment_categories'), icon: 'tag', indent: true, match: railMatch((s) => s.startsWith('/equipment-categories')), hideWhen: () => !equipmentCategoryEnabled.value || !canViewCompanyFiles.value },
             );
 
             if (isWorkspaceAdmin.value) {
                 entries.push(
                     { id: 'members', href: wsHref('/members'), label: t('rail.members'), icon: 'users', match: railMatch((s) => s.startsWith('/members')) },
+                    { id: 'ws-modules', href: wsHref('/settings/modules'), label: t('rail.module_settings'), icon: 'cog', match: railMatch((s) => s.startsWith('/settings/modules')) },
                 );
             }
         }
@@ -93,6 +101,7 @@ export function useSidebarItems() {
                 { id: 'perms', href: '/admin/permissions', label: t('rail.permissions'), icon: 'key', match: (p) => p.startsWith('/admin/permissions') },
                 { separator: true, key: 'system', label: t('rail.section_system') },
                 { id: 'settings', href: '/admin/settings', label: t('rail.app_settings'), icon: 'cog', kb: 'A', match: (p) => p === '/admin/settings' },
+                { id: 'modules', href: '/admin/modules', label: t('rail.modules'), icon: 'box', match: (p) => p.startsWith('/admin/modules') },
                 { id: 'mail', href: '/admin/mail', label: t('rail.mail'), icon: 'mail', match: (p) => p.startsWith('/admin/mail') },
                 { id: 'storage', href: '/admin/storage', label: t('rail.storage'), icon: 'disk', match: (p) => p.startsWith('/admin/storage') },
                 { id: 'backups', href: '/admin/backups', label: t('rail.backups'), icon: 'shield', match: (p) => p.startsWith('/admin/backups') },

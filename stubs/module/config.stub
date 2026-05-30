@@ -1,0 +1,9 @@
+<?php
+
+/**
+ * {{ label }} module flag. Source of truth at runtime is the `modules` table
+ * (see ModuleRegistry); this seeds the default and is the pre-migration fallback.
+ */
+return [
+    'enabled' => (bool) env('{{ keyUpper }}_ENABLED', true),
+];

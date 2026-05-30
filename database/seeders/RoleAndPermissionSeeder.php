@@ -54,6 +54,12 @@ class RoleAndPermissionSeeder extends Seeder
             // / workspace / etc. file trees that aren't strictly "company" or
             // "personal". SuperAdmin always passes the policy without this.
             'manage all files',
+            // Module-content management: create / edit / delete Equipment (its
+            // items, their categories, and their documents). Granted to Editors
+            // too, so a content editor can manage the module without holding the
+            // admin-level "manage company files". New file-owning modules can add
+            // their own "manage <module>" permission the same way.
+            'manage equipment',
         ];
 
         foreach ($workspacePermissions as $permission) {
@@ -78,6 +84,9 @@ class RoleAndPermissionSeeder extends Seeder
             'upload to company files',
             'create company folders',
             'share files to company',
+            // Editors manage the Equipment module's content (but not company-file
+            // administration).
+            'manage equipment',
         ]);
 
         $userRole = Role::firstOrCreate(['name' => 'User']);

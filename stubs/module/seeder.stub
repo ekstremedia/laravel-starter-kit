@@ -1,0 +1,27 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Database\Seeders;
+
+use App\Domains\{{ class }}\Models\{{ class }};
+use App\Domains\Workspaces\Models\Workspace;
+use Illuminate\Database\Seeder;
+
+/**
+ * Demo {{ pluralLabel }} per workspace. Register this in DatabaseSeeder.
+ */
+class {{ class }}Seeder extends Seeder
+{
+    private const TARGET_ROWS = 25;
+
+    public function run(): void
+    {
+        Workspace::query()->each(function (Workspace $workspace): void {
+            $missing = self::TARGET_ROWS - {{ class }}::query()->where('workspace_id', $workspace->id)->count();
+            if ($missing > 0) {
+                {{ class }}::factory()->count($missing)->create(['workspace_id' => $workspace->id]);
+            }
+        });
+    }
+}

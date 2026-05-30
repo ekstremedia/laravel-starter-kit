@@ -1,6 +1,6 @@
 <?php
 
-use App\Domains\Assets\Models\Asset;
+use App\Domains\Equipment\Models\Equipment;
 use App\Domains\Users\Models\User;
 use App\Domains\Workspaces\Models\Workspace;
 
@@ -29,7 +29,7 @@ return [
     'allowed_owner_types' => [
         User::class,
         Workspace::class,
-        Asset::class,
+        Equipment::class,
     ],
 
     // Per-file upload size limit applied to files.* validation. Expressed
