@@ -260,11 +260,6 @@ export default {
     topbar: {
         search_prompt: 'Search or run command',
         open_nav: 'Open navigation',
-        live: {
-            connected: 'Live — real-time updates on',
-            connecting: 'Connecting to live updates…',
-            disconnected: 'Live updates offline',
-        },
         crumbs: {
             home: 'Home',
             admin_overview: 'Admin|Overview',

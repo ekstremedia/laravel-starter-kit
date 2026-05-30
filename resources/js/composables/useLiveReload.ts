@@ -1,5 +1,6 @@
 import { onBeforeUnmount, watch } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
+import { registerLiveHandler } from '@/composables/useLivePage';
 import type { PageProps } from '@/types';
 
 interface ResourcePayload {
@@ -43,6 +44,7 @@ interface LiveReloadOptions {
  * {@see useUserChannel}.
  */
 export function useLiveReload(channelName: () => string | null, opts: LiveReloadOptions) {
+    registerLiveHandler();
     const page = usePage<PageProps>();
     let boundChannel: string | null = null;
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;

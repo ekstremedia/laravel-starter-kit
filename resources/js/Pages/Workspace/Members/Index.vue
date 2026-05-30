@@ -173,6 +173,7 @@ function remove(member: Member) {
                 <label class="field">
                     <span>{{ t('workspace.members.roles') }}</span>
                     <MultiSelect
+                        appendTo="body"
                         v-model="inviteForm.roles"
                         :options="roleOptions"
                         display="chip"
@@ -206,6 +207,7 @@ function remove(member: Member) {
                 <span class="muted">{{ m.email }}</span>
                 <span>
                     <MultiSelect
+                        appendTo="body"
                         v-model="editableRoles[m.id]"
                         :options="roleOptions"
                         display="chip"

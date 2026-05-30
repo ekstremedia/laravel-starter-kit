@@ -7,6 +7,7 @@ use App\Domains\Notifications\Models\EmailTemplate;
 use App\Domains\Notifications\Models\MailLayout;
 use App\Domains\Notifications\Models\MailSetting;
 use App\Http\Controllers\Controller;
+use App\Support\Concerns\BroadcastsResourceChanges;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -17,6 +18,8 @@ use Throwable;
 
 class MailSettingsController extends Controller
 {
+    use BroadcastsResourceChanges;
+
     public function show(Request $request): Response
     {
         $isSuperAdmin = (bool) $request->user()?->isSuperAdmin();
@@ -101,6 +104,8 @@ class MailSettingsController extends Controller
             ->withProperties(['password_changed' => $passwordChanged])
             ->event('updated')
             ->log('Updated mail settings');
+
+        $this->broadcastResourceChanged('mail', 'updated', $settings->id);
 
         return back();
     }

@@ -29,7 +29,6 @@ Verify the result: `npm run build` then check `public/build/manifest.json` — h
 
 Pinia is registered in `app.ts` (with `pinia-plugin-persistedstate`, opt-in per store via `persist`). Stores live in `resources/js/stores/`:
 
-- `realtime` — Echo connection status (drives the topbar `LiveIndicator`).
 - `notifications` — recent-notifications feed, fed by the layout's single user-channel subscription.
 
 Use Pinia for **genuinely shared/new** state. The pre-existing module-singleton composables (`useTweaks`, `useSettings`, `useUnreadCounts`, `useCommandToasts`, …) work and are SSR-aware — leave them; don't migrate for its own sake. Stores must not touch `localStorage`/`window` at module scope (SSR safety).

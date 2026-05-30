@@ -92,7 +92,11 @@ The single-row endpoint must reuse the index's row-shaper and authorize identica
 
 `useLiveReload(channel, { resource, only })` is the lighter alternative: on a ping it just does a debounced `router.reload({ only })`. Fine for a tiny fixed list or a stats-only surface, but for any list that can grow, prefer `useLiveList` so clients don't receive the whole page on every change.
 
-The topbar `LiveIndicator` (driven by the Pinia `realtime` store) reflects the live connection state.
+### Frontend — `useLivePageFallback` (systemic, zero-wiring)
+
+`CommandLayout` calls `useLivePageFallback()` once, so **every** page is subscribed to its resources channel (`workspace.{id}.resources` when inside a workspace, `admin.resources` for a super-admin on a central route). On a ping it does a debounced full `router.reload()` — but **only when the current page registered no surgical handler of its own**. `useLiveList` and `useLiveReload` both call `registerLiveHandler()` (a module-level counter, decremented on unmount); while any are active the fallback stays silent, so big lists keep their surgical single-row behaviour and aren't double-reloaded.
+
+Net effect: a new page is **live by default** — just make sure its controller dispatches `ResourceChanged`. Reach for `useLiveList` only when you want surgical, single-row updates on a list that can grow. The fallback is guarded the same way (no-op without `window.Echo`), so it also degrades gracefully. There is no topbar connection indicator — the app is always treated as live.
 
 ## When you need more than a ping
 

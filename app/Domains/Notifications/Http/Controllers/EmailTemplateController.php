@@ -8,6 +8,7 @@ use App\Domains\Notifications\Mail\TemplateMail;
 use App\Domains\Notifications\Models\EmailTemplate;
 use App\Domains\Notifications\Services\MjmlCompiler;
 use App\Http\Controllers\Controller;
+use App\Support\Concerns\BroadcastsResourceChanges;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,12 +17,16 @@ use Illuminate\Support\Facades\View;
 
 class EmailTemplateController extends Controller
 {
+    use BroadcastsResourceChanges;
+
     public function update(Request $request, EmailTemplate $template): RedirectResponse
     {
         $data = $request->validate($this->contentRules());
 
         $template->update($data);
         $template->compile();
+
+        $this->broadcastResourceChanged('mail', 'updated', $template->id);
 
         return back();
     }

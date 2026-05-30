@@ -15,7 +15,7 @@ import { useTweaks } from '@/composables/useTweaks';
 import { useCommandKeyboard } from '@/composables/useCommandKeyboard';
 import { useUserChannel } from '@/composables/useUserChannel';
 import { useUnreadCounts } from '@/composables/useUnreadCounts';
-import { useRealtimeStore } from '@/stores/realtime';
+import { useLivePageFallback } from '@/composables/useLivePage';
 import { useNotificationsStore } from '@/stores/notifications';
 import type { PageProps } from '@/types';
 import Toast from 'primevue/toast';
@@ -30,6 +30,9 @@ import Icon from '@/Components/Command/Icon.vue';
 // Initialise tweaks (idempotent — applies CSS vars + keeps .dark in sync).
 useTweaks();
 useFlashToast();
+// App-level live-update safety net: any page without its own useLiveList/
+// useLiveReload still refreshes on a ResourceChanged for its channel.
+useLivePageFallback();
 
 const { t } = useI18n();
 const page = usePage<PageProps>();
@@ -51,7 +54,6 @@ function leaveImpersonation() {
 // Server-pushed notifications keep the topbar bell badge in sync.
 const { incrementMessages, incrementNotifications } = useUnreadCounts();
 const notificationsStore = useNotificationsStore();
-const realtimeStore = useRealtimeStore();
 useUserChannel((n) => {
     const isChat = typeof n.type === 'string' && n.type.endsWith('NewChatMessageNotification');
     // Chat messages now land in the bell too, so always bump the notifications
@@ -72,9 +74,6 @@ const mobileNavOpen = ref(false);
 let stopNavigate: (() => void) | null = null;
 onMounted(() => {
     stopNavigate = router.on('navigate', () => { mobileNavOpen.value = false; });
-    // Track the live WebSocket connection so the topbar can show a "live" dot.
-    // No-op when Echo isn't configured.
-    realtimeStore.bind();
 });
 onBeforeUnmount(() => stopNavigate?.());
 

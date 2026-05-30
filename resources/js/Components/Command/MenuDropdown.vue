@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T extends string | number">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import Icon, { type IconName } from '@/Components/Command/Icon.vue';
 
 /**
@@ -43,6 +43,43 @@ const wrap = ref<HTMLElement | null>(null);
 const panel = ref<HTMLElement | null>(null);
 const trigger = ref<HTMLButtonElement | null>(null);
 
+// The panel is teleported to <body> and positioned with fixed coords from the
+// trigger's rect, so it overlays dialogs/scroll containers instead of being
+// clipped by their overflow.
+const panelStyle = ref<Record<string, string>>({});
+
+function updatePosition() {
+    const el = trigger.value;
+    if (!el) {
+        return;
+    }
+    const r = el.getBoundingClientRect();
+    const style: Record<string, string> = {
+        position: 'fixed',
+        top: `${r.bottom + 4}px`,
+        minWidth: `${Math.max(r.width, 180)}px`,
+    };
+    if (props.align === 'right') {
+        style.right = `${window.innerWidth - r.right}px`;
+    } else {
+        style.left = `${r.left}px`;
+    }
+    panelStyle.value = style;
+}
+
+// Keep the floating panel pinned to the trigger while open (e.g. when the user
+// scrolls a dialog body). `true` capture catches scroll on nested containers.
+watch(open, (isOpen) => {
+    if (isOpen) {
+        updatePosition();
+        window.addEventListener('scroll', updatePosition, true);
+        window.addEventListener('resize', updatePosition);
+    } else {
+        window.removeEventListener('scroll', updatePosition, true);
+        window.removeEventListener('resize', updatePosition);
+    }
+});
+
 const selected = computed(() =>
     props.modelValue === '' || props.modelValue === null
         ? null
@@ -68,8 +105,16 @@ function choose(value: T | '') {
 
 function onDocPointerDown(e: PointerEvent) {
     // Outside click: just close — don't steal focus back to the trigger, the
-    // user is interacting elsewhere.
-    if (open.value && wrap.value && !wrap.value.contains(e.target as Node)) open.value = false;
+    // user is interacting elsewhere. The panel is teleported out of `wrap`, so
+    // check it too or a click on a menu item would close before it registers.
+    if (!open.value) {
+        return;
+    }
+    const target = e.target as Node;
+    if (wrap.value?.contains(target) || panel.value?.contains(target)) {
+        return;
+    }
+    open.value = false;
 }
 function onKeydown(e: KeyboardEvent) {
     if (!open.value) return;
@@ -95,6 +140,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
     document.removeEventListener('pointerdown', onDocPointerDown);
     document.removeEventListener('keydown', onKeydown);
+    window.removeEventListener('scroll', updatePosition, true);
+    window.removeEventListener('resize', updatePosition);
 });
 
 const triggerStyle = {
@@ -155,20 +202,18 @@ const itemStyle = {
             <Icon name="chevD" :size="9" :style="{ color: 'var(--fg-mute)', marginLeft: '2px' }" />
         </button>
 
+        <Teleport to="body">
         <div
             v-if="open"
             ref="panel"
             role="menu"
             :style="{
-                position: 'absolute',
-                [align === 'right' ? 'right' : 'left']: 0,
-                top: 'calc(100% + 4px)',
+                ...panelStyle,
                 background: 'var(--panel)',
                 border: '1px solid var(--border)',
                 borderRadius: '6px',
                 boxShadow: 'var(--shadow-palette, 0 10px 30px rgba(0,0,0,0.3))',
-                zIndex: 40,
-                minWidth: '180px',
+                zIndex: 200,
                 maxHeight: '280px',
                 overflowY: 'auto',
                 padding: '4px',
@@ -204,6 +249,7 @@ const itemStyle = {
                 <span :style="{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">{{ opt.label }}</span>
             </button>
         </div>
+        </Teleport>
     </div>
 </template>
 

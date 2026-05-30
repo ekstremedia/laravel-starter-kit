@@ -481,6 +481,7 @@ function chipStyle(tone: Tone) {
                         </div>
                         <div :style="{ background: 'var(--bg)', padding: '8px 12px', display: 'flex', alignItems: 'center' }">
                             <MultiSelect
+                                appendTo="body"
                                 v-model="editableRoles[c.id]"
                                 :options="assignable_roles"
                                 :disabled="roleUpdating === c.id"

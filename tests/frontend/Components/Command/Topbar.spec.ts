@@ -22,7 +22,7 @@ const mountTopbar = (onOpenPalette = vi.fn()) =>
     mount(Topbar, {
         props: { onOpenPalette },
         // Child widgets have their own specs; stub them to isolate the topbar.
-        global: { stubs: { WorkspaceSwitcher: true, NotificationBell: true, LiveIndicator: true } },
+        global: { stubs: { WorkspaceSwitcher: true, NotificationBell: true } },
     });
 
 describe('Command/Topbar', () => {

@@ -1,5 +1,6 @@
 import { onBeforeUnmount, ref, watch, type Ref } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
+import { registerLiveHandler } from '@/composables/useLivePage';
 import type { PageProps } from '@/types';
 
 interface ResourcePayload {
@@ -49,6 +50,7 @@ interface LiveListOptions<Row> {
  * Degrades gracefully: a no-op when Echo/Reverb is unavailable.
  */
 export function useLiveList<Row>(opts: LiveListOptions<Row>): Ref<Row[]> {
+    registerLiveHandler();
     const page = usePage<PageProps>();
     const getId = opts.getId ?? ((r: Row) => (r as { id: number | string }).id);
     const rows = ref<Row[]>([...opts.source()]) as Ref<Row[]>;
