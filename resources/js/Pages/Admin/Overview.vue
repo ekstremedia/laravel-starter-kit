@@ -100,18 +100,6 @@ function formatTime(iso: string | null): string {
     return new Date(iso).toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
-const lastUpdated = ref(t('admin.overview.seconds_ago', { n: 0 }));
-function tickLastUpdated() {
-    const sec = Math.max(0, Math.floor((Date.now() - new Date(metrics.value.generated_at).getTime()) / 1000));
-    lastUpdated.value = sec < 60 ? t('admin.overview.seconds_ago', { n: sec }) : t('admin.overview.minutes_ago', { n: Math.floor(sec / 60) });
-}
-let tickHandle: ReturnType<typeof setInterval> | null = null;
-onMounted(() => {
-    tickLastUpdated();
-    tickHandle = setInterval(tickLastUpdated, 5_000);
-});
-onBeforeUnmount(() => { if (tickHandle) clearInterval(tickHandle); });
-
 interface Kpi {
     label: string;
     value: number | string;
@@ -241,7 +229,7 @@ function handleRefresh() {
 
     <!-- Header -->
     <div :style="{ marginBottom: 'var(--pad-page)' }">
-        <PageTitle :title="t('admin.overview.dashboard')" :subtitle="t('admin.overview.updated_realtime', { when: lastUpdated })">
+        <PageTitle :title="t('admin.overview.dashboard')">
             <template #actions>
                 <button
                     type="button"
@@ -379,7 +367,7 @@ function handleRefresh() {
                 <span
                     class="cmd-mono"
                     :style="{ fontSize: '10px', color: 'var(--fg-mute)' }"
-                >realtime · tail</span>
+                >tail</span>
             </div>
             <div class="cmd-mono" :style="{ fontSize: '11px' }">
                 <div
