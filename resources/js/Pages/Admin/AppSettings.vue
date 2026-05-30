@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { Head, useForm, usePage } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import CommandLayout from '@/Layouts/CommandLayout.vue';
+import { useLiveReload } from '@/composables/useLiveReload';
 import Icon from '@/Components/Command/Icon.vue';
 import PageTitle from '@/Components/Command/PageTitle.vue';
 import Skeleton from '@/Components/Command/Skeleton.vue';
@@ -46,24 +47,28 @@ const props = defineProps<Props>();
 const page = usePage<PageProps>();
 const chatEnabled = computed(() => page.props.chat?.enabled ?? false);
 
-const form = useForm({
-    site_up: props.settings.site_up,
-    registration_open: props.settings.registration_open,
-    login_enabled: props.settings.login_enabled,
-    require_email_verification: props.settings.require_email_verification,
-    default_role: props.settings.default_role,
-    require_2fa_for_admins: props.settings.require_2fa_for_admins,
-    send_welcome_notification: props.settings.send_welcome_notification,
-    maintenance_message: props.settings.maintenance_message ?? '',
-    announcement_banner: props.settings.announcement_banner ?? '',
-    announcement_severity: props.settings.announcement_severity as Severity,
-    files_feature_enabled: props.settings.files_feature_enabled,
-    max_share_days: props.settings.max_share_days,
-    default_personal_storage_bytes: props.settings.default_personal_storage_bytes,
-    default_entity_storage_bytes: props.settings.default_entity_storage_bytes,
-    max_upload_bytes: props.settings.max_upload_bytes,
-    chat_max_upload_bytes: props.settings.chat_max_upload_bytes,
-});
+function formValues(s: Settings) {
+    return {
+        site_up: s.site_up,
+        registration_open: s.registration_open,
+        login_enabled: s.login_enabled,
+        require_email_verification: s.require_email_verification,
+        default_role: s.default_role,
+        require_2fa_for_admins: s.require_2fa_for_admins,
+        send_welcome_notification: s.send_welcome_notification,
+        maintenance_message: s.maintenance_message ?? '',
+        announcement_banner: s.announcement_banner ?? '',
+        announcement_severity: s.announcement_severity as Severity,
+        files_feature_enabled: s.files_feature_enabled,
+        max_share_days: s.max_share_days,
+        default_personal_storage_bytes: s.default_personal_storage_bytes,
+        default_entity_storage_bytes: s.default_entity_storage_bytes,
+        max_upload_bytes: s.max_upload_bytes,
+        chat_max_upload_bytes: s.chat_max_upload_bytes,
+    };
+}
+
+const form = useForm(formValues(props.settings));
 
 // `v-model.number` gives us '' when the user clears the field, but the
 // backend wants a proper null (not 0, which means "blocked"). Round-trip
@@ -158,11 +163,33 @@ function scheduleSave() {
     saveTimer = setTimeout(save, 600);
 }
 
+// True only while we're applying another admin's live change into the form, so
+// the autosave watcher below doesn't mistake the sync for a local edit and
+// PATCH it straight back (which would ping-pong between tabs).
+let applyingRemote = false;
+
 // Persist on any field change once the initial load settles.
 watch(() => JSON.stringify(form.data()), () => {
-    if (loading.value) return;
+    if (loading.value || applyingRemote) return;
     scheduleSave();
 });
+
+// Live updates: another admin saving settings arrives as a tiny partial reload
+// of just the `settings` prop (registering this handler also suppresses the
+// app-level full-page fallback — no whole-page reload). Reflect the new values
+// for an idle viewer, but never clobber an edit in progress.
+useLiveReload(() => 'admin.resources', { resource: 'app_settings', only: ['settings'] });
+watch(
+    () => props.settings,
+    (next) => {
+        if (form.isDirty) return; // don't overwrite the current admin's unsaved edits
+        applyingRemote = true;
+        form.defaults(formValues(next));
+        form.reset();
+        nextTick(() => { applyingRemote = false; });
+    },
+    { deep: true },
+);
 
 const roleOpen = ref(false);
 </script>
