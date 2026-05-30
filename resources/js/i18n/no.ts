@@ -260,6 +260,11 @@ export default {
     topbar: {
         search_prompt: 'Søk eller kjør kommando',
         open_nav: 'Åpne navigasjon',
+        live: {
+            connected: 'Live — sanntidsoppdateringer på',
+            connecting: 'Kobler til sanntidsoppdateringer…',
+            disconnected: 'Sanntidsoppdateringer frakoblet',
+        },
         crumbs: {
             home: 'Min side',
             admin_overview: 'Admin|Oversikt',

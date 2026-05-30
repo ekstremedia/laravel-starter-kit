@@ -46,6 +46,8 @@
     "lucide-vue-next": "^1.0.0",
     "markdown-it": "^14.2.0",
     "mjml": "^5.0.1",
+    "pinia": "^3.0.4",
+    "pinia-plugin-persistedstate": "^4.7.1",
     "primeicons": "^7.0.0",
     "primevue": "^4.5.4",
     "pusher-js": "^8.5.0",

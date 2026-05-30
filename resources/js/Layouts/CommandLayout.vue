@@ -15,6 +15,8 @@ import { useTweaks } from '@/composables/useTweaks';
 import { useCommandKeyboard } from '@/composables/useCommandKeyboard';
 import { useUserChannel } from '@/composables/useUserChannel';
 import { useUnreadCounts } from '@/composables/useUnreadCounts';
+import { useRealtimeStore } from '@/stores/realtime';
+import { useNotificationsStore } from '@/stores/notifications';
 import type { PageProps } from '@/types';
 import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
@@ -48,12 +50,17 @@ function leaveImpersonation() {
 
 // Server-pushed notifications keep the topbar bell badge in sync.
 const { incrementMessages, incrementNotifications } = useUnreadCounts();
+const notificationsStore = useNotificationsStore();
+const realtimeStore = useRealtimeStore();
 useUserChannel((n) => {
     const isChat = typeof n.type === 'string' && n.type.endsWith('NewChatMessageNotification');
     // Chat messages now land in the bell too, so always bump the notifications
     // badge; keep the messages count in sync for chat.
     incrementNotifications(1);
     if (isChat) incrementMessages(1);
+    // Mirror the item into the Pinia feed so dropdowns/toasts can show what
+    // just arrived without a re-fetch.
+    notificationsStore.push({ id: n.id, type: n.type, title: n.title, message: n.message, icon: n.icon });
 });
 
 const paletteOpen = ref(false);
@@ -65,6 +72,9 @@ const mobileNavOpen = ref(false);
 let stopNavigate: (() => void) | null = null;
 onMounted(() => {
     stopNavigate = router.on('navigate', () => { mobileNavOpen.value = false; });
+    // Track the live WebSocket connection so the topbar can show a "live" dot.
+    // No-op when Echo isn't configured.
+    realtimeStore.bind();
 });
 onBeforeUnmount(() => stopNavigate?.());
 

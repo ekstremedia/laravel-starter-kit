@@ -5,6 +5,7 @@ import { Link, usePage, router } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import type { PageProps } from '@/types';
 import Icon from './Icon.vue';
+import LiveIndicator from './LiveIndicator.vue';
 import WorkspaceSwitcher from './WorkspaceSwitcher.vue';
 import NotificationBell from '@/Components/NotificationBell.vue';
 import { useTweaks } from '@/composables/useTweaks';
@@ -168,6 +169,8 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
             </button>
 
             <WorkspaceSwitcher v-if="!isAdminMode" />
+
+            <LiveIndicator />
 
             <NotificationBell />
 
