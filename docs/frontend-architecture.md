@@ -61,5 +61,5 @@ Defaults are kept `false` deliberately: a stale "enabled with no bundle" config 
 ## Localization, design system, testing
 
 - Every visible string uses `t('key')` (vue-i18n); update **both** `resources/js/i18n/{en,no}.ts`.
-- UI composes **Command** primitives (`resources/js/Components/Command/`) + CSS-var tokens — see the design-system notes in `agents.md`.
+- UI composes **Command** primitives (`resources/js/Components/Command/`) + CSS-var tokens — see the design-system notes in `AGENTS.md`.
 - Components/composables are unit-tested with Vitest (`tests/frontend/**`); pages and broadcasts with Pest. Run the lot with `make test-all`.

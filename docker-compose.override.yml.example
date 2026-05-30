@@ -18,4 +18,4 @@
 services:
   app:
     labels:
-      dev.orbstack.domains: ekstremedia-kit.local
+      dev.orbstack.domains: laravel-kit.local

@@ -1,12 +1,12 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "ekstremedia/laravel-starter-kit",
+    "name": "acme/laravel-starter-kit",
     "type": "project",
     "description": "Opinionated Laravel starter kit with Inertia, Vue, Tailwind, PrimeVue, auth, roles, settings, i18n, and Docker.",
     "keywords": ["laravel", "starter-kit", "inertia", "vue"],
     "license": "MIT",
     "require": {
-        "php": "^8.3",
+        "php": "^8.4",
         "blade-ui-kit/blade-heroicons": "^2.7",
         "blade-ui-kit/blade-icons": "^1.9",
         "inertiajs/inertia-laravel": "^3.0",

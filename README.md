@@ -46,7 +46,7 @@ make logs       # tail app logs
 
 ## Admin
 
-Everything under `/admin/*` is gated by `role:Admin`.
+Everything under `/admin/*` is gated by `super.admin` — the platform-level `is_super_admin` flag on the user (a `Gate::before` bypass, not a role). Workspace-admins manage their own members at `/w/{slug}/members`, which uses `role:Admin` scoped to the workspace.
 
 | Route | What's there |
 | --- | --- |

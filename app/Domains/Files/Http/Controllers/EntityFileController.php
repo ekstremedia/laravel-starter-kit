@@ -26,7 +26,7 @@ use Illuminate\Validation\Rules\Exists;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
- * Generic file mutations for ANY polymorphic owner entity (Asset, future
+ * Generic file mutations for ANY polymorphic owner entity (Equipment, future
  * Vehicle/Medicine/Building…). The owner is resolved from owner_type/owner_id
  * via OwnerResolver and authorized through FileItemPolicy + the owner's own
  * canManageFiles rules — so this controller never needs to know about a

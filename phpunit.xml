@@ -34,6 +34,6 @@
         <env name="NIGHTWATCH_ENABLED" value="false" force="true"/>
         <env name="IMAGE_DRIVER" value="imagick" force="true"/>
         <env name="QUEUE_CONVERSIONS_BY_DEFAULT" value="false" force="true"/>
-        <env name="TENANCY_ENABLED" value="true" force="true"/>
+        <env name="WORKSPACES_ENABLED" value="true" force="true"/>
     </php>
 </phpunit>

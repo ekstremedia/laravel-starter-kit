@@ -10,7 +10,7 @@ An opinionated, batteries-included Laravel starter. Generic foundation — resha
 - **Async/real-time:** Redis queues + Horizon · Reverb (WebSockets) + Laravel Echo · generic live-update broadcasts (see Real-time)
 - **Media/files:** spatie/laravel-medialibrary · Gotenberg (doc→image) · ffmpeg
 - **Ops:** Pulse · Sentry (opt) · spatie backup/activitylog · opcodesio log-viewer · lab404 impersonate
-- **Tests/QA:** Pest 4 · Larastan 5 · Pint · Vitest 4 · Husky pre-commit · GitHub Actions
+- **Tests/QA:** Pest 4 · Larastan 3 · Pint · Vitest 4 · Husky pre-commit · GitHub Actions
 
 ## Getting started
 
@@ -54,7 +54,9 @@ Backend code lives in domain modules, **not** flat `app/Http`/`app/Models`. Each
 | `Users` | `User`, `UserSetting`, `PersonalAccessToken`, profile/avatar/token controllers, user commands |
 | `Access` | `Role`, `Permission`, role/permission admin, super-admin & workspace-admin middleware |
 | `Files` | `FileItem`/`FileShare`/`CompanyFileLink`, `FileOwner` contract, `HasFiles`/`HasFileQuota` concerns, `OwnerResolver`, policies, controllers, resources, jobs, events, `StorageUsageService` |
-| `Assets` | Demo file-owning entity (removable — see Files) |
+| `Equipment` | Demo file-owning entity — reference impl of the `FileOwner` contract (gated by `EQUIPMENT_ENABLED`, deletable wholesale — see Files) |
+| `EquipmentCategory` | Demo workspace entity that classifies Equipment (gated by `EQUIPMENT_CATEGORY_ENABLED`) |
+| `Modules` | `ModuleRegistry`, the `modules` table + per-workspace gating (`module:` middleware), shared Inertia module-state props, and the `make:module` scaffolder |
 | `Workspaces` | `Workspace`, `Support\WorkspaceContext` (resolver), `Concerns\BelongsToWorkspace` (global scope), `ResolveWorkspace` + `BindDefaultWorkspace`, workspace controllers, `CreateWorkspace`, `WorkspaceInvitation(Controller)`, `WorkspaceMembership` |
 | `Notifications` | `EmailTemplate`, `MailSetting`, `MjmlCompiler`, mailables, notifications, mail/notification controllers |
 | `Chat` | `Conversation`, `Message`, `ChatController`, `MessageSent` |
@@ -98,7 +100,7 @@ Global infra stays at the `App\` root: base `App\Http\Controllers\Controller`, g
 **Roles & permissions** (Spatie, **teams** = workspaces) — seeded `Admin`/`Editor`/`User`; `is_super_admin` is a column bypass (not a role), enforced via `Gate::before`. Roles are per-workspace (team-scoped); assign from a user's show page / workspace members panel.
 
 **Files + entity documents** — personal files at `/files`, company files at `/files/company`, and **any entity can own a file tree** via the `FileOwner` contract:
-- Adopt `HasFiles` (+ optional `HasFileQuota`), implement `FileOwner`, register a morph alias in `AppServiceProvider`, add the class to `config('files.allowed_owner_types')`, and a route + `<EntityFiles>` browser component. The **Assets** domain is the reference implementation (gated by `ASSETS_ENABLED`, deletable wholesale).
+- Adopt `HasFiles` (+ optional `HasFileQuota`), implement `FileOwner`, register a morph alias in `AppServiceProvider`, add the class to `config('files.allowed_owner_types')`, and a route + `<EntityFiles>` browser component. The **Equipment** domain is the reference implementation (gated by `EQUIPMENT_ENABLED`, deletable wholesale); `php artisan make:module <Name>` scaffolds new ones.
 - File mutations: personal → `FileItemController`; entity-owned → generic `EntityFileController` (owner via `owner_type`/`owner_id`, resolved by `OwnerResolver`, authorized by `FileItemPolicy` + the owner's `canManageFiles`).
 - Previews: image conversions (thumb/medium/large/xlarge); video poster + H.264 transcode; PDF/Office → image via Gotenberg. Conversions run on the queue; `FileItemUpdated` broadcasts when done.
 - **Quota** resolution (`StorageUsageService::effectiveQuota`): per-row override → owner-type default → app default → unlimited (`null`=inherit, `-1`=unlimited, `0`=blocked, `N`=cap). `EnsureStorageAvailable` middleware is owner-aware.
@@ -155,7 +157,7 @@ Project skills auto-activate by domain — use them: `fortify-development`, `lar
 - New user setting → `UserSetting::$defaults` + `UserSettingsShape` PHPDoc + TS interface.
 - New workspace column → migration + cast on `Workspace` + factory (`Workspace` is a plain Eloquent model).
 - New workspace-scoped entity → `use BelongsToWorkspace` (auto-scope + auto-stamp); migration with a `workspace_id` FK; morph-map alias if morphed. See **`docs/adding-a-workspace-entity.md`**.
-- New file-owning entity → mirror `app/Domains/Assets` (`BelongsToWorkspace` + `FileOwner` + `HasFiles`, morph alias, `allowed_owner_types`, route + `<EntityFiles>`).
+- New file-owning entity → `php artisan make:module <Name>`, or mirror `app/Domains/Equipment` by hand (`BelongsToWorkspace` + `FileOwner` + `HasFiles`, morph alias, `allowed_owner_types`, route + `<EntityFiles>`).
 - New interactive list/CRUD page → **dispatch `ResourceChanged` from every controller mutation** (the systemic `useLivePageFallback` then makes the page live with no per-page wiring); add `useLiveList` only when you want surgical single-row updates on a big list. See **`docs/realtime-and-broadcasting.md`**.
 - New Vue page/form → reach for **Inertia v3** helpers (`useForm`/`<Link prefetch>`/deferred props) over hand-rolled fetch; keep browser-only code SSR-guarded.
 - New/changed component → **verify it at mobile/tablet/desktop widths with the Chrome DevTools MCP** (`resize_page` + screenshots) and confirm behaviour/URLs/no console errors with the **Laravel Boost MCP** (`browser-logs`, `last-error`).
