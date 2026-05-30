@@ -12,7 +12,7 @@ import { useWorkspace } from '@/composables/useWorkspace';
 
 defineOptions({ layout: CommandLayout });
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const { workspaceUrl } = useWorkspace();
 const confirm = useConfirm();
 
@@ -67,7 +67,7 @@ function confirmForceDelete(row: TrashedRow) {
 }
 
 function fmt(iso: string | null): string {
-    return iso ? new Date(iso).toLocaleString() : '—';
+    return iso ? new Date(iso).toLocaleString(locale.value) : '—';
 }
 </script>
 

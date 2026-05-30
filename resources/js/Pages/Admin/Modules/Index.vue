@@ -40,7 +40,9 @@ const columns: Column<ModuleRow>[] = [
 ];
 
 function toggle(row: ModuleRow, value: boolean) {
-    router.patch(`/admin/modules/${row.id}`, { enabled: value }, { preserveScroll: true, preserveState: false });
+    // preserveState + only:['modules'] refreshes just the modules prop (fresh
+    // stats) without re-mounting the whole page.
+    router.patch(`/admin/modules/${row.id}`, { enabled: value }, { preserveScroll: true, preserveState: true, only: ['modules'] });
 }
 
 function confirmPurge(row: ModuleRow) {

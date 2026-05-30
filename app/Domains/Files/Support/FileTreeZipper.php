@@ -65,8 +65,10 @@ class FileTreeZipper
 
         if ($item->isFolder()) {
             $zip->addEmptyDir($name);
+            // One shared tracker per folder so two siblings with the same name
+            // (e.g. both "spec.pdf") get de-duplicated instead of overwriting.
+            $childUsed = [];
             foreach ($item->children()->with('media')->get() as $child) {
-                $childUsed = [];
                 $this->addItem($zip, $child, $name.'/', $childUsed);
             }
 

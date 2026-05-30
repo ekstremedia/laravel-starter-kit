@@ -144,6 +144,10 @@ export default {
         welcome: 'Velkommen, {name}',
         subtitle: 'Kontooversikt.',
         workspace_subtitle: 'Aktivitet og forbruk i arbeidsområdet.',
+        customize: 'Tilpass',
+        customize_title: 'Tilpass dashbord',
+        customize_help: 'Velg hvilke modulwidgeter som vises på dashbordet ditt.',
+        no_widgets: 'Ingen modulwidgeter tilgjengelig.',
         role: 'Rolle',
         email_status: 'E-post',
         two_factor_status: 'Tofaktorautentisering',
@@ -514,6 +518,9 @@ export default {
     },
     maintenance: {
         title: 'Vi er straks tilbake',
+    },
+    units: {
+        mb: 'MB',
     },
     admin: {
         modules: {
@@ -1243,6 +1250,13 @@ export default {
         delete: 'Slett',
         open: 'Åpne',
         download: 'Last ned',
+        // Generiske etiketter for den gjenbrukbare EntityFiles-dokumentutforskeren.
+        documents_root: 'Dokumenter',
+        empty_documents: 'Ingen dokumenter ennå.',
+        folder_name: 'Mappenavn',
+        col_name: 'Navn',
+        cover: 'Forside',
+        set_as_cover: 'Sett som forside',
         download_original: 'Last ned original',
         download_converted: 'Last ned konvertert bilde',
         move_to: 'Flytt til …',
@@ -1362,6 +1376,8 @@ export default {
         files: 'Filer',
         files_count: 'Filer',
         no_category: 'Uten kategori',
+        tab_details: 'Detaljer',
+        tab_files: 'Filer',
         confirm_delete: 'Slette «{name}»? Dette fjerner også dokumentene.',
         back_to_assets: 'Tilbake til utstyr',
         all_categories: 'Alle kategorier',
@@ -1373,6 +1389,8 @@ export default {
         columns: 'Kolonner',
         // Masseoperasjoner
         selected: '{count} valgt',
+        selected_of: '{count} av {total} valgt',
+        select_all_matching: 'Velg alle {total}',
         bulk_delete: 'Slett',
         bulk_download: 'Last ned',
         bulk_edit: 'Rediger',

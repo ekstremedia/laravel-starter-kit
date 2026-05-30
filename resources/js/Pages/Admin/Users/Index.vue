@@ -396,7 +396,7 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
                     :style="{ color: 'var(--accent)', transform: sortDir === 'asc' ? 'rotate(180deg)' : 'rotate(0deg)' }"
                 />
             </div>
-            <div>{{ t('admin.users.companies_col', 'Arbeidsområder') }}</div>
+            <div>{{ t('admin.users.companies_col') }}</div>
             <div
                 role="button"
                 tabindex="0"
@@ -649,7 +649,7 @@ const gridCols = '32px 32px 2fr 2.2fr 1fr 1.2fr 1fr 120px';
                 <span class="cmd-dt-value cmd-mono" :style="{ fontSize: '11px' }">{{ u.email }}</span>
             </div>
             <div class="cmd-dt-field">
-                <span class="cmd-dt-label">{{ t('admin.users.companies_col', 'Arbeidsområder') }}</span>
+                <span class="cmd-dt-label">{{ t('admin.users.companies_col') }}</span>
                 <span class="cmd-dt-value" :style="{ display: 'flex', flexWrap: 'wrap', gap: '4px', justifyContent: 'flex-end' }">
                     <RoleBadge v-if="u.is_super_admin" role="SuperAdmin">SUPER</RoleBadge>
                     <span

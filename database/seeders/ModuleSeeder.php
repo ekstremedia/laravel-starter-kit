@@ -28,19 +28,15 @@ class ModuleSeeder extends Seeder
         ];
 
         foreach ($modules as $module) {
-            $existing = Module::query()->where('key', $module['key'])->first();
-
-            if ($existing) {
-                // Preserve the admin's enabled choice; only sync metadata.
-                $existing->update([
-                    'name' => $module['name'],
-                    'morph_alias' => $module['morph_alias'],
-                ]);
-
-                continue;
+            $row = Module::query()->firstOrNew(['key' => $module['key']]);
+            $row->name = $module['name'];
+            $row->morph_alias = $module['morph_alias'];
+            // Only seed `enabled` on first create (respecting the config flag);
+            // on re-seed the admin's on/off choice is preserved.
+            if (! $row->exists) {
+                $row->enabled = $module['enabled'];
             }
-
-            Module::create($module);
+            $row->save();
         }
     }
 }

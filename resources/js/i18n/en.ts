@@ -144,6 +144,10 @@ export default {
         welcome: 'Welcome, {name}',
         subtitle: 'Here\'s an overview of your account.',
         workspace_subtitle: 'Workspace activity and usage at a glance.',
+        customize: 'Customize',
+        customize_title: 'Customize dashboard',
+        customize_help: 'Choose which module widgets appear on your dashboard.',
+        no_widgets: 'No module widgets available.',
         role: 'Role',
         email_status: 'Email',
         two_factor_status: 'Two-factor auth',
@@ -514,6 +518,9 @@ export default {
     },
     maintenance: {
         title: 'We\'ll be right back',
+    },
+    units: {
+        mb: 'MB',
     },
     admin: {
         modules: {
@@ -1243,6 +1250,13 @@ export default {
         delete: 'Delete',
         open: 'Open',
         download: 'Download',
+        // Generic labels for the reusable EntityFiles document browser.
+        documents_root: 'Documents',
+        empty_documents: 'No documents yet.',
+        folder_name: 'Folder name',
+        col_name: 'Name',
+        cover: 'Cover',
+        set_as_cover: 'Set as cover',
         download_original: 'Download original',
         download_converted: 'Download converted image',
         move_to: 'Move to…',
@@ -1364,6 +1378,8 @@ export default {
         files: 'Files',
         files_count: 'Files',
         no_category: 'Uncategorized',
+        tab_details: 'Details',
+        tab_files: 'Files',
         confirm_delete: 'Delete "{name}"? This also removes its documents.',
         back_to_assets: 'Back to equipment',
         all_categories: 'All categories',
@@ -1375,6 +1391,8 @@ export default {
         columns: 'Columns',
         // Mass actions
         selected: '{count} selected',
+        selected_of: '{count} of {total} selected',
+        select_all_matching: 'Select all {total}',
         bulk_delete: 'Delete',
         bulk_download: 'Download',
         bulk_edit: 'Edit',

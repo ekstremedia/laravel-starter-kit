@@ -115,10 +115,23 @@ it('mass re-categorizes selected items', function () {
     ])->pluck('id')->all();
 
     $this->actingAs($this->admin)
-        ->post(workspaceUrl($this->workspace, '/equipment/bulk/update'), ['ids' => $ids, 'category' => 'New'])
+        ->post(workspaceUrl($this->workspace, '/equipment/bulk/update'), ['ids' => $ids, 'set_category' => 'New'])
         ->assertRedirect();
 
     expect(Equipment::whereIn('id', $ids)->where('category', 'New')->count())->toBe(2);
+});
+
+it('mass-deletes all matching items across the current filter', function () {
+    Equipment::factory()->count(4)->create(['workspace_id' => $this->workspace->id, 'category' => 'Drone']);
+    Equipment::factory()->count(2)->create(['workspace_id' => $this->workspace->id, 'category' => 'Other']);
+
+    // "select all matching" → send the filter, not ids; only the filtered set goes.
+    $this->actingAs($this->admin)
+        ->post(workspaceUrl($this->workspace, '/equipment/bulk/delete'), ['all' => 1, 'category' => 'Drone'])
+        ->assertRedirect();
+
+    expect(Equipment::where('category', 'Drone')->count())->toBe(0)
+        ->and(Equipment::where('category', 'Other')->count())->toBe(2);
 });
 
 it('sets a cover and rejects a foreign file', function () {

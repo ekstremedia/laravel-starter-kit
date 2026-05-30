@@ -12,14 +12,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('workspaces', function (Blueprint $table) {
+        Schema::table('workspaces', function (Blueprint $table): void {
             $table->dropColumn(['headline', 'about', 'location', 'website']);
         });
     }
 
     public function down(): void
     {
-        Schema::table('workspaces', function (Blueprint $table) {
+        Schema::table('workspaces', function (Blueprint $table): void {
             $table->string('headline', 160)->nullable();
             $table->text('about')->nullable();
             $table->string('location', 120)->nullable();

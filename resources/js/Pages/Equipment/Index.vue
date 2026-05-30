@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useConfirm } from 'primevue/useconfirm';
 import ConfirmDialog from 'primevue/confirmdialog';
@@ -66,6 +66,10 @@ const sortKey = ref<string>(urlParams.get('sort') ?? 'name');
 const sortDir = ref<'asc' | 'desc'>((urlParams.get('direction') as 'asc' | 'desc') ?? 'asc');
 
 function reload(overrides: Record<string, string | undefined> = {}) {
+    // The matching set changes when filters/sort change, so a carried-over
+    // selection would be meaningless — reset it. (Pagination goes through the
+    // DataTable directly and keeps the selection, so "select all" survives it.)
+    clearSelection();
     const sorted = sortKey.value !== 'name' || sortDir.value !== 'asc';
     const query: Record<string, string | undefined> = {
         q: search.value || undefined,
@@ -118,23 +122,56 @@ function toggleColumn(key: string) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify([...next]));
 }
 
-// ── Selection + mass actions.
+// ── Selection + mass actions, with an optional "select all matching" mode that
+// spans every page of the current filter (not just the visible page).
 const selected = ref<Set<number | string>>(new Set());
+const allMatching = ref(false);
 const selectedIds = computed(() => [...selected.value].map(Number));
 
+const total = computed(() => props.equipment.total);
+const pageIds = computed(() => props.equipment.data.map((r) => r.id));
+const allOnPageSelected = computed(() => pageIds.value.length > 0 && pageIds.value.every((id) => selected.value.has(id)));
+const selectedCount = computed(() => (allMatching.value ? total.value : selected.value.size));
+// Offer "select all N" once the whole page is ticked but more rows exist beyond it.
+const showSelectAllMatching = computed(() => !allMatching.value && allOnPageSelected.value && total.value > selected.value.size);
+// When all-matching, render every visible row checked (even after paging on).
+const displaySelected = computed<Set<number | string>>(() => (allMatching.value ? new Set(pageIds.value) : selected.value));
+
+function onUpdateSelected(s: Set<number | string>) {
+    selected.value = s;
+    allMatching.value = false; // any manual change drops "all matching"
+}
+function selectAllMatching() {
+    allMatching.value = true;
+}
 function clearSelection() {
     selected.value = new Set();
+    allMatching.value = false;
+}
+
+// The filter params that define "all matching" for the bulk endpoints.
+function filterParams(): Record<string, string> {
+    const p: Record<string, string> = {};
+    if (search.value) p.q = search.value;
+    if (category.value) p.category = category.value;
+    return p;
+}
+function bulkBody(extra: Record<string, unknown> = {}) {
+    return allMatching.value ? { all: 1, ...filterParams(), ...extra } : { ids: selectedIds.value, ...extra };
 }
 
 function bulkDownload() {
-    if (!selectedIds.value.length) return;
-    window.location.href = workspaceUrl(`/equipment/bulk/zip?ids=${selectedIds.value.join(',')}`);
+    if (!selectedCount.value) return;
+    const params = new URLSearchParams(
+        allMatching.value ? { all: '1', ...filterParams() } : { ids: selectedIds.value.join(',') },
+    );
+    window.location.href = workspaceUrl(`/equipment/bulk/zip?${params.toString()}`);
 }
 
 function confirmBulkDelete() {
     confirm.require({
         group: 'equipment-index',
-        message: t('equipment.confirm_bulk_delete', { count: selectedIds.value.length }),
+        message: t('equipment.confirm_bulk_delete', { count: selectedCount.value }),
         header: t('equipment.bulk_delete'),
         icon: 'pi pi-exclamation-triangle',
         acceptLabel: t('equipment.bulk_delete'),
@@ -142,7 +179,7 @@ function confirmBulkDelete() {
         acceptProps: { severity: 'danger' },
         accept: () => router.post(
             workspaceUrl('/equipment/bulk/delete'),
-            { ids: selectedIds.value },
+            bulkBody(),
             { preserveScroll: true, onSuccess: clearSelection },
         ),
     });
@@ -158,7 +195,7 @@ function openBulkEdit() {
 function submitBulkEdit() {
     router.post(
         workspaceUrl('/equipment/bulk/update'),
-        { ids: selectedIds.value, category: bulkCategory.value },
+        bulkBody({ set_category: bulkCategory.value }),
         { preserveScroll: true, onSuccess: () => { bulkEditOpen.value = false; clearSelection(); } },
     );
 }
@@ -189,6 +226,27 @@ function doExport(format: 'csv' | 'xlsx') {
     params.set('format', format);
     window.location.href = workspaceUrl(`/equipment/export?${params.toString()}`);
 }
+
+// ── Accessible popovers: close the Export/Columns menus on Escape or an
+// outside click (no @mouseleave, which is mouse-only and traps keyboard users).
+const exportWrap = ref<HTMLElement | null>(null);
+const columnsWrap = ref<HTMLElement | null>(null);
+function onDocPointerDown(e: PointerEvent) {
+    const target = e.target as Node;
+    if (exportOpen.value && exportWrap.value && !exportWrap.value.contains(target)) exportOpen.value = false;
+    if (columnsOpen.value && columnsWrap.value && !columnsWrap.value.contains(target)) columnsOpen.value = false;
+}
+function onEscape(e: KeyboardEvent) {
+    if (e.key === 'Escape') { exportOpen.value = false; columnsOpen.value = false; }
+}
+onMounted(() => {
+    document.addEventListener('pointerdown', onDocPointerDown);
+    document.addEventListener('keydown', onEscape);
+});
+onBeforeUnmount(() => {
+    document.removeEventListener('pointerdown', onDocPointerDown);
+    document.removeEventListener('keydown', onEscape);
+});
 
 // ── Per-row file lightbox. One useFileMedia instance, fed the clicked row's files.
 const lightboxRow = ref<EquipmentRow | null>(null);
@@ -229,9 +287,11 @@ function iconFor(file: MediaFileRow): string {
                 </Link>
 
                 <!-- Export -->
-                <div :style="{ position: 'relative' }">
+                <div ref="exportWrap" :style="{ position: 'relative' }">
                     <button
                         type="button"
+                        aria-haspopup="menu"
+                        :aria-expanded="exportOpen"
                         :style="{ background: 'var(--panel2)', color: 'var(--fg)', border: '1px solid var(--border)', padding: '5px 11px', borderRadius: '5px', fontSize: '11.5px', display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontFamily: 'inherit' }"
                         @click="exportOpen = !exportOpen"
                     >
@@ -241,18 +301,18 @@ function iconFor(file: MediaFileRow): string {
                     </button>
                     <div
                         v-if="exportOpen"
+                        role="menu"
                         :style="{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '6px', boxShadow: 'var(--shadow-palette, 0 10px 30px rgba(0,0,0,0.3))', zIndex: 30, minWidth: '160px', overflow: 'hidden' }"
-                        @mouseleave="exportOpen = false"
                     >
-                        <button type="button" class="cmd-menu-item" :style="menuItemStyle" @click="doExport('csv')">{{ t('equipment.export_csv') }}</button>
-                        <button type="button" class="cmd-menu-item" :style="menuItemStyle" @click="doExport('xlsx')">{{ t('equipment.export_xlsx') }}</button>
+                        <button type="button" role="menuitem" class="cmd-menu-item" :style="menuItemStyle" @click="doExport('csv')">{{ t('equipment.export_csv') }}</button>
+                        <button type="button" role="menuitem" class="cmd-menu-item" :style="menuItemStyle" @click="doExport('xlsx')">{{ t('equipment.export_xlsx') }}</button>
                     </div>
                 </div>
 
                 <button
                     v-if="can_manage"
                     type="button"
-                    :style="{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '5px 11px', borderRadius: '5px', fontSize: '11.5px', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontFamily: 'inherit' }"
+                    :style="{ background: 'var(--accent)', color: 'var(--accent-fg)', border: 'none', padding: '5px 11px', borderRadius: '5px', fontSize: '11.5px', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontFamily: 'inherit' }"
                     @click="openCreate"
                 >
                     <Icon name="plus" :size="12" />
@@ -288,9 +348,11 @@ function iconFor(file: MediaFileRow): string {
                 <option v-for="c in props.categories" :key="c" :value="c">{{ c }}</option>
             </select>
 
-            <div :style="{ position: 'relative' }">
+            <div ref="columnsWrap" :style="{ position: 'relative' }">
                 <button
                     type="button"
+                    aria-haspopup="menu"
+                    :aria-expanded="columnsOpen"
                     :style="{ background: 'var(--panel2)', color: 'var(--fg)', border: '1px solid var(--border)', padding: '5px 11px', borderRadius: '5px', fontSize: '11.5px', display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontFamily: 'inherit' }"
                     @click="columnsOpen = !columnsOpen"
                 >
@@ -299,8 +361,8 @@ function iconFor(file: MediaFileRow): string {
                 </button>
                 <div
                     v-if="columnsOpen"
+                    role="menu"
                     :style="{ position: 'absolute', left: 0, top: 'calc(100% + 4px)', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '6px', boxShadow: 'var(--shadow-palette, 0 10px 30px rgba(0,0,0,0.3))', zIndex: 30, padding: '6px', minWidth: '160px' }"
-                    @mouseleave="columnsOpen = false"
                 >
                     <label
                         v-for="col in allColumns.filter((c) => TOGGLEABLE.includes(c.key))"
@@ -323,11 +385,11 @@ function iconFor(file: MediaFileRow): string {
             :local-search="false"
             :local-sort="false"
             :selectable="can_manage"
-            :selected="selected"
+            :selected="displaySelected"
             :search-placeholder="t('equipment.search_placeholder')"
             :empty-text="t('equipment.empty')"
             @update:search="onSearch"
-            @update:selected="selected = $event"
+            @update:selected="onUpdateSelected"
             @sort="onSort"
         >
             <template #cell:name="{ row }">
@@ -384,8 +446,14 @@ function iconFor(file: MediaFileRow): string {
             leave-active-class="transition ease-in duration-100"
             leave-to-class="opacity-0 translate-y-2"
         >
-            <div v-if="selectedIds.length" class="cmd-bulk-bar">
-                <span class="cmd-bulk-count">{{ t('equipment.selected', { count: selectedIds.length }) }}</span>
+            <div v-if="selectedCount" class="cmd-bulk-bar">
+                <span class="cmd-bulk-count">{{ t('equipment.selected_of', { count: selectedCount, total }) }}</span>
+                <button
+                    v-if="showSelectAllMatching"
+                    type="button"
+                    class="cmd-bulk-link"
+                    @click="selectAllMatching"
+                >{{ t('equipment.select_all_matching', { total }) }}</button>
                 <div :style="{ display: 'flex', alignItems: 'center', gap: '6px' }">
                     <button type="button" class="cmd-bulk-btn" @click="bulkDownload">
                         <i class="pi pi-download" :style="{ fontSize: '13px' }" /><span>{{ t('equipment.bulk_download') }}</span>
@@ -437,7 +505,7 @@ function iconFor(file: MediaFileRow): string {
         </CommandDialog>
 
         <!-- Bulk edit dialog -->
-        <CommandDialog v-model:visible="bulkEditOpen" :title="t('equipment.bulk_edit_title', { count: selectedIds.length })" width="420px">
+        <CommandDialog v-model:visible="bulkEditOpen" :title="t('equipment.bulk_edit_title', { count: selectedCount })" width="420px">
             <form @submit.prevent="submitBulkEdit" :style="{ display: 'flex', flexDirection: 'column', gap: '10px' }">
                 <Field v-model="bulkCategory" :label="t('equipment.category')" />
                 <p :style="{ margin: 0, fontSize: '11px', color: 'var(--fg-mute)' }">{{ t('equipment.bulk_edit_category_help') }}</p>
@@ -523,5 +591,18 @@ function iconFor(file: MediaFileRow): string {
 }
 .cmd-bulk-ghost {
     padding: 6px;
+}
+.cmd-bulk-link {
+    background: transparent;
+    border: none;
+    color: var(--accent);
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    padding: 0;
+    white-space: nowrap;
+}
+.cmd-bulk-link:hover {
+    text-decoration: underline;
 }
 </style>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, useForm, usePage } from '@inertiajs/vue3';
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import CommandLayout from '@/Layouts/CommandLayout.vue';
 import Icon from '@/Components/Command/Icon.vue';
@@ -130,6 +130,13 @@ const severityOptions = computed<{ id: Severity; label: string }[]>(() => [
 const saveState = ref<'idle' | 'saving' | 'saved'>('idle');
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let savedTimer: ReturnType<typeof setTimeout> | null = null;
+
+// Cancel any pending debounce on unmount so a queued autosave can't fire a
+// form.patch() against a page the user has already navigated away from.
+onBeforeUnmount(() => {
+    if (saveTimer) clearTimeout(saveTimer);
+    if (savedTimer) clearTimeout(savedTimer);
+});
 
 function save() {
     saveState.value = 'saving';
@@ -478,7 +485,7 @@ const roleOpen = ref(false);
                                             outline: 'none',
                                         }"
                                     />
-                                    <span :style="{ fontSize: '12px', color: 'var(--fg-dim)' }">MB</span>
+                                    <span :style="{ fontSize: '12px', color: 'var(--fg-dim)' }">{{ t('units.mb') }}</span>
                                 </div>
                                 <p :style="{ fontSize: '11px', color: 'var(--fg-mute)', marginTop: '4px' }">
                                     {{ t('admin.app_settings.max_upload_desc', { max: phpCeilingMb }) }}
@@ -512,7 +519,7 @@ const roleOpen = ref(false);
                                             outline: 'none',
                                         }"
                                     />
-                                    <span :style="{ fontSize: '12px', color: 'var(--fg-dim)' }">MB</span>
+                                    <span :style="{ fontSize: '12px', color: 'var(--fg-dim)' }">{{ t('units.mb') }}</span>
                                 </div>
                                 <p :style="{ fontSize: '11px', color: 'var(--fg-mute)', marginTop: '4px' }">
                                     {{ t('admin.app_settings.chat_max_upload_desc', { max: phpCeilingMb }) }}

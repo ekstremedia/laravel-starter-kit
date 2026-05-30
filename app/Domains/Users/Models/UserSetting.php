@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *     storage_quota_override: int|null,
  *     storage_last_alerted_threshold: array<string, int>|null,
  *     last_workspace_slug: string|null,
+ *     dashboard_hidden_widgets: list<string>,
  * }
  */
 class UserSetting extends Model
@@ -72,6 +73,9 @@ class UserSetting extends Model
         // Most recently visited workspace slug — used by WorkspaceLandingController
         // to auto-redirect returning users instead of forcing them through the picker.
         'last_workspace_slug' => null,
+        // Dashboard widget keys the user has hidden. Empty = all module widgets
+        // shown (default on). Toggled from the dashboard's "Customize" panel.
+        'dashboard_hidden_widgets' => [],
     ];
 
     public function user(): BelongsTo

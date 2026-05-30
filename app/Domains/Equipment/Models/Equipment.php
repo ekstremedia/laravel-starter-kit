@@ -88,10 +88,23 @@ class Equipment extends Model implements FileOwner
         });
 
         // Mirror image of the cascade above: restoring an item from trash also
-        // un-trashes the documents that were soft-deleted alongside it, so a
-        // restored item comes back with its files intact.
+        // un-trashes the documents soft-deleted *alongside it*, so a restored
+        // item comes back with its files intact — but NOT documents the user had
+        // already trashed earlier. The cascade trashes children a hair before
+        // the parent row, so include a short window before the parent's
+        // deleted_at and leave anything trashed earlier untouched.
         static::restoring(function (Equipment $equipment): void {
-            $equipment->files()->onlyTrashed()->get()->each->restore();
+            $deletedAt = $equipment->deleted_at;
+            if ($deletedAt === null) {
+                return;
+            }
+
+            $equipment->files()
+                ->onlyTrashed()
+                ->where('deleted_at', '>=', $deletedAt->copy()->subSeconds(10))
+                ->get()
+                ->each
+                ->restore();
         });
     }
 

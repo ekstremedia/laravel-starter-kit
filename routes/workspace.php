@@ -9,7 +9,6 @@ use App\Domains\Files\Http\Controllers\EntityFileController;
 use App\Domains\Files\Http\Controllers\FileItemController;
 use App\Domains\Files\Http\Controllers\FileShareController;
 use App\Domains\Files\Http\Controllers\FileTrashController;
-use App\Domains\Modules\Services\ModuleRegistry;
 use App\Domains\Notifications\Http\Controllers\NotificationController;
 use App\Domains\Users\Http\Controllers\AvatarController;
 use App\Domains\Workspaces\Http\Controllers\DashboardController;
@@ -152,12 +151,14 @@ Route::delete('/entity-files/{file}', [EntityFileController::class, 'destroy'])-
 Route::get('/entity-files/{file}/download', [EntityFileController::class, 'download'])->whereNumber('file')->name('entity-files.download');
 
 // Equipment module — the reference file-owning entity + its document area.
-// Gated by the `modules` registry (see ModuleRegistry); remove the
-// app/Domains/Equipment module + this block to drop it.
+// Gated per-request by the `module:equipment` middleware (reads the `modules`
+// registry), so toggling it in /admin/modules takes effect immediately and
+// survives `route:cache`. Remove the app/Domains/Equipment module + this block
+// to drop it.
 //
 // Literal segments (export, bulk/*, trash) are registered BEFORE the numeric
 // {equipment} catch-all so e.g. /equipment/export isn't swallowed as an id.
-if (app(ModuleRegistry::class)->isEnabled('equipment')) {
+Route::middleware('module:equipment')->group(function (): void {
     Route::get('/equipment', [EquipmentController::class, 'index'])->name('equipment.index');
     Route::post('/equipment', [EquipmentController::class, 'store'])->name('equipment.store');
     Route::get('/equipment/export', [EquipmentController::class, 'export'])->name('equipment.export');
@@ -174,7 +175,7 @@ if (app(ModuleRegistry::class)->isEnabled('equipment')) {
     Route::put('/equipment/{equipment}', [EquipmentController::class, 'update'])->whereNumber('equipment')->name('equipment.update');
     Route::patch('/equipment/{equipment}/cover', [EquipmentController::class, 'setCover'])->whereNumber('equipment')->name('equipment.cover');
     Route::delete('/equipment/{equipment}', [EquipmentController::class, 'destroy'])->whereNumber('equipment')->name('equipment.destroy');
-}
+});
 
 // Workspace-Admin — manage the members of the active workspace. `role:Admin`
 // resolves against the team id set by ResolveWorkspace, so it means

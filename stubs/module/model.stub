@@ -1,0 +1,115 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\{{ class }}\Models;
+
+use App\Domains\Files\Contracts\FileOwner;
+use App\Domains\Files\Models\Concerns\HasFiles;
+use App\Domains\Files\Models\FileItem;
+use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Concerns\BelongsToWorkspace;
+use App\Domains\Workspaces\Models\Workspace;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
+
+/**
+ * @property int $id
+ * @property int $workspace_id
+ * @property string $name
+ * @property int|null $cover_file_item_id
+ * @property-read Workspace $workspace
+ * @property-read FileItem|null $cover
+ */
+class {{ class }} extends Model implements FileOwner
+{
+    use BelongsToWorkspace;
+    use HasFactory;
+    use HasFiles;
+    use LogsActivity;
+    use SoftDeletes;
+
+    protected $table = '{{ table }}';
+
+    protected $fillable = [
+        'workspace_id',
+        'name',
+        'cover_file_item_id',
+    ];
+
+    protected $casts = [
+        'workspace_id' => 'integer',
+        'cover_file_item_id' => 'integer',
+    ];
+
+    protected static function booted(): void
+    {
+        static::deleting(function ({{ class }} $model): void {
+            if ($model->isForceDeleting()) {
+                $model->files()->withTrashed()->get()->each->forceDelete();
+
+                return;
+            }
+
+            $model->files()->get()->each->delete();
+        });
+
+        static::restoring(function ({{ class }} $model): void {
+            $deletedAt = $model->deleted_at;
+            if ($deletedAt === null) {
+                return;
+            }
+
+            $model->files()
+                ->onlyTrashed()
+                ->where('deleted_at', '>=', $deletedAt->copy()->subSeconds(10))
+                ->get()
+                ->each
+                ->restore();
+        });
+    }
+
+    public function getConnectionName(): ?string
+    {
+        return config('workspaces.database.central_connection');
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'cover_file_item_id'])
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges()
+            ->useLogName('{{ key }}');
+    }
+
+    /**
+     * @return BelongsTo<Workspace, $this>
+     */
+    public function workspace(): BelongsTo
+    {
+        return $this->belongsTo(Workspace::class, 'workspace_id');
+    }
+
+    /**
+     * @return BelongsTo<FileItem, $this>
+     */
+    public function cover(): BelongsTo
+    {
+        return $this->belongsTo(FileItem::class, 'cover_file_item_id');
+    }
+
+    public function canManageFiles(User $user, ?Workspace $workspace = null): bool
+    {
+        return $this->workspace->canManageFiles($user, $workspace ?? $this->workspace);
+    }
+
+    public function canViewFiles(User $user, ?Workspace $workspace = null): bool
+    {
+        return $this->workspace->canViewFiles($user, $workspace ?? $this->workspace);
+    }
+}

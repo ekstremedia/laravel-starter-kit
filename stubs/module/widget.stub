@@ -1,0 +1,58 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\{{ class }}\Dashboard;
+
+use App\Domains\{{ class }}\Models\{{ class }};
+use App\Domains\Modules\Contracts\DashboardWidget;
+use App\Domains\Users\Models\User;
+use App\Domains\Workspaces\Models\Workspace;
+
+class {{ class }}DashboardWidget implements DashboardWidget
+{
+    public function key(): string
+    {
+        return '{{ key }}';
+    }
+
+    public function moduleKey(): ?string
+    {
+        return '{{ key }}';
+    }
+
+    public function titleKey(): string
+    {
+        return '{{ key }}.title';
+    }
+
+    public function icon(): string
+    {
+        return 'box';
+    }
+
+    public function component(): string
+    {
+        return '{{ class }}Widget';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function data(Workspace $workspace, User $user): array
+    {
+        $base = {{ class }}::query()->where('workspace_id', $workspace->id);
+
+        $recent = (clone $base)->latest()
+            ->limit(5)
+            ->get(['id', 'name'])
+            ->map(fn ({{ class }} $m) => ['id' => $m->id, 'name' => $m->name])
+            ->all();
+
+        return [
+            'total' => (clone $base)->count(),
+            'with_files' => (clone $base)->whereHas('files')->count(),
+            'recent' => $recent,
+        ];
+    }
+}

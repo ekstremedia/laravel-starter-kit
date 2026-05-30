@@ -1,0 +1,222 @@
+<script setup lang="ts">
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { computed, nextTick, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useConfirm } from 'primevue/useconfirm';
+import ConfirmDialog from 'primevue/confirmdialog';
+import CommandLayout from '@/Layouts/CommandLayout.vue';
+import CmdDataTable, { type Column } from '@/Components/Command/DataTable.vue';
+import CommandDialog from '@/Components/Command/Dialog.vue';
+import CmdButton from '@/Components/Command/Button.vue';
+import Field from '@/Components/Command/Field.vue';
+import Icon from '@/Components/Command/Icon.vue';
+import PageTitle from '@/Components/Command/PageTitle.vue';
+import ImageLightbox from '@/Components/Files/ImageLightbox.vue';
+import FileDetailsDialog from '@/Components/Files/FileDetailsDialog.vue';
+import TextPreviewDialog from '@/Components/Files/TextPreviewDialog.vue';
+import { useWorkspace } from '@/composables/useWorkspace';
+import { useFileMedia, type MediaFileRow } from '@/composables/useFileMedia';
+
+defineOptions({ layout: CommandLayout });
+
+const { t } = useI18n();
+const { workspaceUrl } = useWorkspace();
+const confirm = useConfirm();
+
+interface Row {
+    id: number;
+    name: string;
+    files_count: number;
+    files_preview: MediaFileRow[];
+    cover: MediaFileRow | null;
+}
+interface Paginated<T> {
+    data: T[];
+    current_page: number;
+    last_page: number;
+    total: number;
+    links: Array<{ url: string | null; label: string; active: boolean }>;
+}
+
+const props = defineProps<{
+    rows: Paginated<Row>;
+    can_manage: boolean;
+    search: string | null;
+    stats: { total: number; with_files: number };
+}>();
+
+const search = ref(props.search ?? '');
+const sortKey = ref('name');
+const sortDir = ref<'asc' | 'desc'>('asc');
+
+function reload() {
+    clearSelection();
+    const sorted = sortKey.value !== 'name' || sortDir.value !== 'asc';
+    router.get(workspaceUrl('/{{ route }}'), {
+        q: search.value || undefined,
+        sort: sorted ? sortKey.value : undefined,
+        direction: sorted ? sortDir.value : undefined,
+    }, { preserveState: true, preserveScroll: true, replace: true });
+}
+function onSearch(v: string) { search.value = v; reload(); }
+function onSort(p: { key: string; dir: 'asc' | 'desc' }) { sortKey.value = p.key; sortDir.value = p.dir; reload(); }
+
+const columns: Column<Row>[] = [
+    { key: 'name', label: t('{{ key }}.name'), sortable: true, width: 'minmax(160px, 2fr)' },
+    { key: 'files', label: t('{{ key }}.documents'), sortable: false, width: 'minmax(0, 150px)' },
+    { key: 'files_count', label: t('{{ key }}.files_count'), sortable: true, width: '80px', align: 'right', mono: true },
+];
+
+// Selection + bulk.
+const selected = ref<Set<number | string>>(new Set());
+const allMatching = ref(false);
+const selectedIds = computed(() => [...selected.value].map(Number));
+const total = computed(() => props.rows.total);
+const pageIds = computed(() => props.rows.data.map((r) => r.id));
+const allOnPage = computed(() => pageIds.value.length > 0 && pageIds.value.every((id) => selected.value.has(id)));
+const selectedCount = computed(() => (allMatching.value ? total.value : selected.value.size));
+const showSelectAll = computed(() => !allMatching.value && allOnPage.value && total.value > selected.value.size);
+const displaySelected = computed<Set<number | string>>(() => (allMatching.value ? new Set(pageIds.value) : selected.value));
+function onSelected(s: Set<number | string>) { selected.value = s; allMatching.value = false; }
+function clearSelection() { selected.value = new Set(); allMatching.value = false; }
+function body() { return allMatching.value ? { all: 1, q: search.value || undefined } : { ids: selectedIds.value }; }
+function bulkDownload() {
+    if (!selectedCount.value) return;
+    const p = new URLSearchParams(allMatching.value ? { all: '1', ...(search.value ? { q: search.value } : {}) } : { ids: selectedIds.value.join(',') });
+    window.location.href = workspaceUrl(`/{{ route }}/bulk/zip?${p.toString()}`);
+}
+function confirmBulkDelete() {
+    confirm.require({
+        group: '{{ key }}-index',
+        message: t('{{ key }}.confirm_bulk_delete', { count: selectedCount.value }),
+        header: t('{{ key }}.bulk_delete'),
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: t('{{ key }}.bulk_delete'),
+        rejectLabel: t('common.cancel'),
+        acceptProps: { severity: 'danger' },
+        accept: () => router.post(workspaceUrl('/{{ route }}/bulk/delete'), body(), { preserveScroll: true, onSuccess: clearSelection }),
+    });
+}
+
+// Create.
+const createOpen = ref(false);
+const form = useForm({ name: '' });
+function openCreate() { form.reset(); form.clearErrors(); createOpen.value = true; }
+function submitCreate() { form.post(workspaceUrl('/{{ route }}'), { onSuccess: () => { createOpen.value = false; } }); }
+
+// File lightbox.
+const lightboxRow = ref<Row | null>(null);
+const lightboxFiles = computed<MediaFileRow[]>(() => lightboxRow.value?.files_preview ?? []);
+const media = useFileMedia<MediaFileRow>({ items: lightboxFiles, downloadUrl: (i) => workspaceUrl(`/entity-files/${i.id}/download`) });
+const { lightboxIndex, lightboxItems, detailsItem, textItem, openDetailsById } = media;
+function openPreview(row: Row, file: MediaFileRow) { lightboxRow.value = row; nextTick(() => media.openFile(file)); }
+function iconFor(file: MediaFileRow): string {
+    if (file.is_video) return 'pi-video';
+    if (file.is_markdown || file.is_text) return 'pi-file-edit';
+    if (file.mime_type === 'application/pdf') return 'pi-file-pdf';
+    return 'pi-file';
+}
+
+const coverBoxStyle = { flexShrink: 0, width: '30px', height: '30px', borderRadius: '5px', overflow: 'hidden', background: 'var(--panel2)', border: '1px solid var(--border)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' };
+const thumbBtnStyle = { ...coverBoxStyle, cursor: 'pointer', padding: 0 };
+</script>
+
+<template>
+    <div>
+        <Head :title="t('{{ key }}.head_title')" />
+        <ConfirmDialog group="{{ key }}-index" />
+
+        <PageTitle :title="t('{{ key }}.title')" :subtitle="t('{{ key }}.count', props.rows.total)">
+            <template #actions>
+                <Link :href="workspaceUrl('/{{ route }}/trash')" :style="{ fontSize: '11.5px', color: 'var(--fg-dim)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '5px 9px' }">
+                    <Icon name="trash" :size="12" />{{ t('{{ key }}.trash') }}
+                </Link>
+                <button v-if="can_manage" type="button" :style="{ background: 'var(--accent)', color: 'var(--accent-fg)', border: 'none', padding: '5px 11px', borderRadius: '5px', fontSize: '11.5px', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontFamily: 'inherit' }" @click="openCreate">
+                    <Icon name="plus" :size="12" />{{ t('{{ key }}.new_asset') }}
+                </button>
+            </template>
+        </PageTitle>
+
+        <div :style="{ display: 'flex', gap: '10px', marginBottom: '14px' }">
+            <div class="cmd-card" :style="{ padding: '10px 16px', minWidth: '96px' }">
+                <div :style="{ fontSize: '20px', fontWeight: 600, color: 'var(--fg)' }">{{ stats.total }}</div>
+                <div :style="{ fontSize: '10.5px', color: 'var(--fg-mute)', textTransform: 'uppercase', letterSpacing: '0.05em' }">{{ t('{{ key }}.stat_total') }}</div>
+            </div>
+            <div class="cmd-card" :style="{ padding: '10px 16px', minWidth: '96px' }">
+                <div :style="{ fontSize: '20px', fontWeight: 600, color: 'var(--fg)' }">{{ stats.with_files }}</div>
+                <div :style="{ fontSize: '10.5px', color: 'var(--fg-mute)', textTransform: 'uppercase', letterSpacing: '0.05em' }">{{ t('{{ key }}.stat_with_files') }}</div>
+            </div>
+        </div>
+
+        <CmdDataTable
+            :rows="rows" :columns="columns"
+            v-model:search="search" v-model:sort-key="sortKey" v-model:sort-dir="sortDir"
+            :local-search="false" :local-sort="false"
+            :selectable="can_manage" :selected="displaySelected"
+            :search-placeholder="t('{{ key }}.search_placeholder')" :empty-text="t('{{ key }}.empty')"
+            @update:search="onSearch" @update:selected="onSelected" @sort="onSort"
+        >
+            <template #cell:name="{ row }">
+                <div :style="{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }">
+                    <span :style="coverBoxStyle">
+                        <img v-if="row.cover?.thumbnail_url" :src="row.cover.thumbnail_url" :alt="row.name" :style="{ width: '100%', height: '100%', objectFit: 'cover' }" loading="lazy" />
+                        <Icon v-else name="box" :size="13" :style="{ color: 'var(--fg-mute)' }" />
+                    </span>
+                    <Link :href="workspaceUrl(`/{{ route }}/${row.id}`)" :style="{ fontWeight: 500, color: 'var(--fg)', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">{{ row.name }}</Link>
+                </div>
+            </template>
+            <template #cell:files="{ row }">
+                <div v-if="row.files_preview.length" :style="{ display: 'flex', alignItems: 'center', gap: '4px' }">
+                    <button v-for="file in row.files_preview" :key="file.id" type="button" :title="file.name" :style="thumbBtnStyle" @click.stop="openPreview(row, file)">
+                        <img v-if="file.thumbnail_url" :src="file.thumbnail_url" :alt="file.name" :style="{ width: '100%', height: '100%', objectFit: 'cover' }" loading="lazy" />
+                        <i v-else :class="`pi ${iconFor(file)}`" :style="{ fontSize: '14px', color: 'var(--fg-mute)' }" />
+                    </button>
+                    <Link v-if="row.files_count > row.files_preview.length" :href="workspaceUrl(`/{{ route }}/${row.id}`)" :style="{ fontSize: '11px', color: 'var(--fg-dim)', textDecoration: 'none', padding: '0 4px' }" @click.stop>{{ t('{{ key }}.more_files', { n: row.files_count - row.files_preview.length }) }}</Link>
+                </div>
+                <span v-else :style="{ color: 'var(--fg-mute)' }">—</span>
+            </template>
+        </CmdDataTable>
+
+        <Transition enter-active-class="transition ease-out duration-150" enter-from-class="opacity-0 translate-y-2" leave-active-class="transition ease-in duration-100" leave-to-class="opacity-0 translate-y-2">
+            <div v-if="selectedCount" class="cmd-bulk-bar">
+                <span class="cmd-bulk-count">{{ t('{{ key }}.selected_of', { count: selectedCount, total }) }}</span>
+                <button v-if="showSelectAll" type="button" class="cmd-bulk-link" @click="allMatching = true">{{ t('{{ key }}.select_all_matching', { total }) }}</button>
+                <div :style="{ display: 'flex', alignItems: 'center', gap: '6px' }">
+                    <button type="button" class="cmd-bulk-btn" @click="bulkDownload"><i class="pi pi-download" :style="{ fontSize: '13px' }" /><span>{{ t('{{ key }}.bulk_download') }}</span></button>
+                    <button v-if="can_manage" type="button" class="cmd-bulk-btn cmd-bulk-danger" @click="confirmBulkDelete"><Icon name="trash" :size="14" /><span>{{ t('{{ key }}.bulk_delete') }}</span></button>
+                    <button type="button" class="cmd-bulk-btn cmd-bulk-ghost" :aria-label="t('{{ key }}.clear_selection')" @click="clearSelection"><Icon name="x" :size="14" /></button>
+                </div>
+            </div>
+        </Transition>
+
+        <CommandDialog v-model:visible="createOpen" :title="t('{{ key }}.new_asset')" width="440px">
+            <form @submit.prevent="submitCreate" :style="{ display: 'flex', flexDirection: 'column', gap: '12px' }">
+                <Field v-model="form.name" :label="t('{{ key }}.name')" :error="form.errors.name" required autofocus />
+                <button type="submit" :style="{ display: 'none' }" aria-hidden="true" />
+            </form>
+            <template #footer>
+                <CmdButton variant="ghost" size="sm" @click="createOpen = false">{{ t('common.cancel') }}</CmdButton>
+                <CmdButton variant="primary" size="sm" :loading="form.processing" @click="submitCreate"><template #icon><Icon name="plus" :size="12" /></template>{{ t('{{ key }}.create_asset') }}</CmdButton>
+            </template>
+        </CommandDialog>
+
+        <ImageLightbox v-if="lightboxItems.length" v-model="lightboxIndex" :items="lightboxItems">
+            <template #header-actions="{ item }">
+                <button type="button" :aria-label="t('files.details.title')" class="rounded-lg bg-white/10 p-2 text-white transition-colors hover:bg-white/20" @click.stop="openDetailsById(item.id)"><i class="pi pi-info-circle" :style="{ fontSize: '18px' }" /></button>
+            </template>
+        </ImageLightbox>
+        <FileDetailsDialog :item="detailsItem" @close="detailsItem = null" />
+        <TextPreviewDialog :item="textItem" :download-url="textItem ? workspaceUrl(`/entity-files/${textItem.id}/download`) : undefined" @close="textItem = null" />
+    </div>
+</template>
+
+<style scoped>
+.cmd-bulk-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 40; display: flex; align-items: center; gap: 16px; padding: 8px 10px 8px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-palette, 0 10px 40px rgba(0, 0, 0, 0.35)); }
+.cmd-bulk-count { font-size: 12.5px; font-weight: 600; color: var(--fg); white-space: nowrap; }
+.cmd-bulk-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 11px; font-size: 12px; font-family: inherit; color: var(--fg); cursor: pointer; }
+.cmd-bulk-btn:hover { background: var(--panel); border-color: var(--accent-border); }
+.cmd-bulk-danger { color: var(--danger); }
+.cmd-bulk-ghost { padding: 6px; }
+.cmd-bulk-link { background: transparent; border: none; color: var(--accent); font-size: 12px; font-family: inherit; cursor: pointer; padding: 0; white-space: nowrap; }
+.cmd-bulk-link:hover { text-decoration: underline; }
+</style>

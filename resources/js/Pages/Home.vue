@@ -25,7 +25,7 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 // "Primary" role surfaces SuperAdmin first (platform-level), then the first
 // workspace-scoped role we know about (Admin on any workspace beats Editor on
@@ -48,7 +48,7 @@ const primaryRole = computed(() => {
 function formatDate(iso: string | null): string {
     if (!iso) return '—';
     const d = new Date(iso);
-    return d.toLocaleDateString('nb-NO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return d.toLocaleDateString(locale.value, { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 </script>
 

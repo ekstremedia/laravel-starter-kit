@@ -135,7 +135,10 @@ class ModuleRegistry
         }
 
         $count = 0;
-        $query->get()->each(function (Model $row) use (&$count, $softDeletes): void {
+        // Stream in bounded batches (lazyById) rather than materializing the
+        // whole module dataset, so purging a large module stays memory-safe
+        // while each row's delete hooks still fire (cascading its file tree).
+        $query->lazyById()->each(function (Model $row) use (&$count, $softDeletes): void {
             // forceDelete on soft-deleting models triggers the entity's own
             // cascade (e.g. Equipment drops its file tree); plain delete otherwise.
             $softDeletes ? $row->forceDelete() : $row->delete();

@@ -11,9 +11,9 @@ import { computed } from 'vue';
 const props = defineProps<{ role: string; label?: string }>();
 
 const TONES: Record<string, { fg: string; bg: string; border: string }> = {
-    SuperAdmin: { fg: '#ef4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.33)' },
-    Admin: { fg: '#8b5cf6', bg: 'rgba(139,92,246,0.12)', border: 'rgba(139,92,246,0.33)' },
-    Editor: { fg: 'var(--warning)', bg: 'rgba(251,191,36,0.12)', border: 'rgba(251,191,36,0.33)' },
+    SuperAdmin: { fg: 'var(--danger)', bg: 'var(--danger-soft)', border: 'var(--danger-border)' },
+    Admin: { fg: 'var(--role-admin)', bg: 'var(--role-admin-soft)', border: 'var(--role-admin-border)' },
+    Editor: { fg: 'var(--warning)', bg: 'var(--warning-soft)', border: 'var(--warning-border)' },
 };
 
 const tone = computed(

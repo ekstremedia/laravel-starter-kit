@@ -161,15 +161,15 @@ class EquipmentController extends Controller
         $workspace = $this->currentTenant($request);
         abort_unless($workspace->canManageFiles($request->user(), $workspace), 403);
 
-        $items = Equipment::query()
-            ->where('workspace_id', $workspace->id)
-            ->whereIn('id', $this->parseIds($request->input('ids')))
-            ->get();
+        // Iterate so each model's deleting hook cascades its documents. lazyById
+        // keeps "select all matching" memory-safe on large workspaces.
+        $count = 0;
+        $this->targetQuery($request, $workspace)->lazyById()->each(function (Equipment $equipment) use (&$count): void {
+            $equipment->delete();
+            $count++;
+        });
 
-        // Iterate so each model's deleting hook cascades its documents.
-        $items->each->delete();
-
-        return back()->with('success', trans_choice('equipment.bulk_deleted', $items->count(), ['count' => $items->count()]));
+        return back()->with('success', trans_choice('equipment.bulk_deleted', $count, ['count' => $count]));
     }
 
     public function bulkUpdate(Request $request): RedirectResponse
@@ -177,16 +177,14 @@ class EquipmentController extends Controller
         $workspace = $this->currentTenant($request);
         abort_unless($workspace->canManageFiles($request->user(), $workspace), 403);
 
+        // `set_category` is the new value; the filter params (q/category) below
+        // resolve the target set in "select all matching" mode without colliding.
         $data = $request->validate([
-            'ids' => ['required', 'array'],
-            'ids.*' => ['integer'],
-            'category' => ['nullable', 'string', 'max:100'],
+            'set_category' => ['nullable', 'string', 'max:100'],
         ]);
 
-        $count = Equipment::query()
-            ->where('workspace_id', $workspace->id)
-            ->whereIn('id', $data['ids'])
-            ->update(['category' => $data['category'] !== '' ? $data['category'] : null]);
+        $count = $this->targetQuery($request, $workspace)
+            ->update(['category' => ($data['set_category'] ?? '') !== '' ? $data['set_category'] : null]);
 
         return back()->with('success', trans_choice('equipment.bulk_updated', $count, ['count' => $count]));
     }
@@ -201,24 +199,27 @@ class EquipmentController extends Controller
         $workspace = $this->currentTenant($request);
         abort_unless($workspace->canViewFiles($request->user(), $workspace), 403);
 
-        $items = Equipment::query()
-            ->where('workspace_id', $workspace->id)
-            ->whereIn('id', $this->parseIds($request->query('ids')))
-            ->orderBy('name')
-            ->get();
+        $items = $this->targetQuery($request, $workspace)->orderBy('name')->get();
         abort_if($items->isEmpty(), 404);
 
         $multi = $items->count() > 1;
+
+        // Batch-load every selected item's root file items in one query (no N+1
+        // across the selection), then group by owner.
+        $rootsByOwner = FileItem::query()
+            ->where('workspace_id', $workspace->id)
+            ->where('owner_type', 'equipment')
+            ->whereIn('owner_id', $items->pluck('id'))
+            ->whereNull('parent_id')
+            ->with(['media'])
+            ->orderByRaw("case when type = 'folder' then 0 else 1 end")
+            ->orderBy('name')
+            ->get()
+            ->groupBy('owner_id');
+
         $groups = [];
         foreach ($items as $equipment) {
-            $roots = FileItem::query()
-                ->where('workspace_id', $workspace->id)
-                ->forOwner($equipment)
-                ->whereNull('parent_id')
-                ->with(['media'])
-                ->orderByRaw("case when type = 'folder' then 0 else 1 end")
-                ->orderBy('name')
-                ->get();
+            $roots = $rootsByOwner->get($equipment->id) ?? collect();
 
             if ($roots->isNotEmpty()) {
                 $groups[] = ['label' => $multi ? str_replace(['/', '\\'], '-', $equipment->name) : '', 'items' => $roots];
@@ -338,6 +339,24 @@ class EquipmentController extends Controller
         $equipment->forceDelete();
 
         return back()->with('success', __('equipment.purged'));
+    }
+
+    /**
+     * Resolve a mass action's target set: the full search/category-filtered
+     * query when `all` is set ("select all matching"), otherwise the explicit
+     * ids. `ids` may be an array (POST) or a comma-separated string (GET).
+     *
+     * @return Builder<Equipment>
+     */
+    private function targetQuery(Request $request, Workspace $workspace): Builder
+    {
+        if ($request->boolean('all')) {
+            return $this->baseQuery($request, $workspace);
+        }
+
+        return Equipment::query()
+            ->where('workspace_id', $workspace->id)
+            ->whereIn('id', $this->parseIds($request->input('ids')));
     }
 
     /**
@@ -544,10 +563,25 @@ class EquipmentController extends Controller
      */
     private function breadcrumbs(?FileItem $folder): array
     {
+        if ($folder === null) {
+            return [];
+        }
+
+        // Load the owner's folders once and walk the parent chain in memory
+        // (the whole chain lives within this owner's tree), so depth no longer
+        // costs one query per level.
+        $folders = FileItem::query()
+            ->where('owner_type', $folder->owner_type)
+            ->where('owner_id', $folder->owner_id)
+            ->where('type', 'folder')
+            ->get(['id', 'name', 'parent_id'])
+            ->keyBy('id');
+
         $crumbs = [];
-        while ($folder !== null) {
-            array_unshift($crumbs, ['id' => $folder->id, 'name' => $folder->name]);
-            $folder = $folder->parent_id !== null ? FileItem::find($folder->parent_id) : null;
+        $current = $folder;
+        while ($current !== null) {
+            array_unshift($crumbs, ['id' => $current->id, 'name' => $current->name]);
+            $current = $current->parent_id !== null ? ($folders[$current->parent_id] ?? null) : null;
         }
 
         return $crumbs;

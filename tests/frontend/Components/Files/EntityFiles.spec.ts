@@ -40,19 +40,19 @@ describe('Files/EntityFiles', () => {
 
     it('shows upload and new-folder buttons when manageable', () => {
         const w = mount(EntityFiles, { props: baseProps });
-        expect(w.text()).toContain('equipment.upload');
-        expect(w.text()).toContain('equipment.new_folder');
+        expect(w.text()).toContain('files.upload');
+        expect(w.text()).toContain('files.new_folder');
     });
 
     it('hides management buttons when not manageable', () => {
         const w = mount(EntityFiles, { props: { ...baseProps, canManage: false } });
-        expect(w.text()).not.toContain('equipment.upload');
-        expect(w.text()).not.toContain('equipment.new_folder');
+        expect(w.text()).not.toContain('files.upload');
+        expect(w.text()).not.toContain('files.new_folder');
     });
 
     it('shows the empty state with no documents', () => {
         const w = mount(EntityFiles, { props: { ...baseProps, files: { data: [] } } });
-        expect(w.text()).toContain('equipment.empty_documents');
+        expect(w.text()).toContain('files.empty_documents');
     });
 
     it('navigates into a folder on click', async () => {

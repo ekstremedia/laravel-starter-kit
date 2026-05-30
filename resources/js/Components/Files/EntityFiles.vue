@@ -210,9 +210,9 @@ function confirmDelete(item: FileRow) {
     confirm.require({
         group: confirmGroup.value,
         message: t('files.confirm_delete', { name: item.name }),
-        header: t('equipment.delete'),
+        header: t('files.delete'),
         icon: 'pi pi-exclamation-triangle',
-        acceptLabel: t('equipment.delete'),
+        acceptLabel: t('files.delete'),
         rejectLabel: t('common.cancel'),
         acceptProps: { severity: 'danger' },
         accept: () => router.delete(workspaceUrl(`/entity-files/${item.id}`), { preserveScroll: true }),
@@ -236,7 +236,7 @@ function confirmDelete(item: FileRow) {
                     @click="navigate(null)"
                 >
                     <i class="pi pi-folder" :style="{ fontSize: '11px' }" />
-                    <span>{{ t('equipment.root') }}</span>
+                    <span>{{ t('files.documents_root') }}</span>
                 </button>
                 <template v-for="(crumb, idx) in breadcrumbs" :key="crumb.id">
                     <i class="pi pi-angle-right" :style="{ fontSize: '10px', color: 'var(--fg-mute)' }" />
@@ -252,26 +252,26 @@ function confirmDelete(item: FileRow) {
                 <div :style="{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: '5px', overflow: 'hidden' }">
                     <button
                         type="button"
-                        :title="t('equipment.view_grid')"
-                        :aria-label="t('equipment.view_grid')"
+                        :title="t('files.view_grid')"
+                        :aria-label="t('files.view_grid')"
                         :style="{ background: viewMode === 'grid' ? 'var(--accent-soft)' : 'transparent', color: viewMode === 'grid' ? 'var(--accent)' : 'var(--fg-mute)', border: 'none', padding: '5px 8px', cursor: 'pointer' }"
                         @click="setViewMode('grid')"
                     ><i class="pi pi-th-large" :style="{ fontSize: '11px' }" /></button>
                     <button
                         type="button"
-                        :title="t('equipment.view_list')"
-                        :aria-label="t('equipment.view_list')"
+                        :title="t('files.view_list')"
+                        :aria-label="t('files.view_list')"
                         :style="{ background: viewMode === 'list' ? 'var(--accent-soft)' : 'transparent', color: viewMode === 'list' ? 'var(--accent)' : 'var(--fg-mute)', border: 'none', padding: '5px 8px', cursor: 'pointer' }"
                         @click="setViewMode('list')"
                     ><i class="pi pi-list" :style="{ fontSize: '11px' }" /></button>
                 </div>
                 <CmdButton v-if="canManage" variant="ghost" size="sm" @click="createFolder">
                     <template #icon><i class="pi pi-folder-plus" :style="{ fontSize: '11px' }" /></template>
-                    {{ t('equipment.new_folder') }}
+                    {{ t('files.new_folder') }}
                 </CmdButton>
                 <CmdButton v-if="canManage" variant="primary" size="sm" @click="uploadOpen = true">
                     <template #icon><i class="pi pi-upload" :style="{ fontSize: '11px' }" /></template>
-                    {{ t('equipment.upload') }}
+                    {{ t('files.upload') }}
                 </CmdButton>
             </div>
         </div>
@@ -284,7 +284,7 @@ function confirmDelete(item: FileRow) {
             :style="{ border: '1px dashed var(--border)', background: 'var(--panel)', borderRadius: '6px', padding: '56px 16px', textAlign: 'center', color: 'var(--fg-mute)' }"
         >
             <i class="pi pi-folder-open" :style="{ fontSize: '28px' }" />
-            <p :style="{ marginTop: '10px', fontSize: '12px' }">{{ t('equipment.empty_documents') }}</p>
+            <p :style="{ marginTop: '10px', fontSize: '12px' }">{{ t('files.empty_documents') }}</p>
         </div>
 
         <!-- Grid -->
@@ -334,13 +334,13 @@ function confirmDelete(item: FileRow) {
                         <span
                             v-if="item.id === coverFileItemId"
                             :style="{ background: 'var(--accent)', color: '#fff', fontSize: '9px', fontWeight: 600, padding: '2px 6px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }"
-                        >{{ t('equipment.cover') }}</span>
+                        >{{ t('files.cover') }}</span>
                         <button
                             v-else-if="canManage"
                             type="button"
                             class="cmd-cover-btn"
-                            :title="t('equipment.set_as_cover')"
-                            :aria-label="t('equipment.set_as_cover')"
+                            :title="t('files.set_as_cover')"
+                            :aria-label="t('files.set_as_cover')"
                             :style="{ background: 'rgba(0,0,0,0.55)', color: '#fff', border: 'none', borderRadius: '4px', width: '22px', height: '22px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }"
                             @click.stop="emit('setCover', item.id)"
                         ><i class="pi pi-star" :style="{ fontSize: '11px' }" /></button>
@@ -397,7 +397,7 @@ function confirmDelete(item: FileRow) {
                         <th
                             class="cmd-mono cmd-uc"
                             :style="{ textAlign: 'left', padding: '9px 14px', fontSize: '10.5px', color: 'var(--fg-mute)', background: 'var(--panel2)', borderBottom: '1px solid var(--border)', fontWeight: 500, letterSpacing: '0.06em' }"
-                        >{{ t('equipment.name') }}</th>
+                        >{{ t('files.col_name') }}</th>
                         <th
                             class="cmd-mono cmd-uc"
                             :style="{ textAlign: 'left', padding: '9px 14px', fontSize: '10.5px', color: 'var(--fg-mute)', background: 'var(--panel2)', borderBottom: '1px solid var(--border)', fontWeight: 500, letterSpacing: '0.06em', width: '110px' }"
@@ -431,6 +431,23 @@ function confirmDelete(item: FileRow) {
                                     @keyup.enter="submitRename(item)"
                                     @blur="submitRename(item)"
                                 />
+                                <span v-if="allowSetCover && item.type === 'file'" @click.stop>
+                                    <i
+                                        v-if="item.id === coverFileItemId"
+                                        class="pi pi-star-fill"
+                                        :title="t('files.cover')"
+                                        :style="{ color: 'var(--accent)', fontSize: '10px' }"
+                                    />
+                                    <button
+                                        v-else-if="canManage"
+                                        type="button"
+                                        class="cmd-list-cover-btn"
+                                        :title="t('files.set_as_cover')"
+                                        :aria-label="t('files.set_as_cover')"
+                                        :style="{ background: 'transparent', border: 'none', color: 'var(--fg-mute)', cursor: 'pointer', padding: '2px', display: 'inline-flex' }"
+                                        @click.stop="emit('setCover', item.id)"
+                                    ><i class="pi pi-star" :style="{ fontSize: '11px' }" /></button>
+                                </span>
                             </div>
                         </td>
                         <td class="cmd-mono" :style="{ padding: '8px 14px', color: 'var(--fg-dim)', fontSize: '11.5px' }">
@@ -466,14 +483,14 @@ function confirmDelete(item: FileRow) {
 
         <CommandDialog
             v-model:visible="newFolderOpen"
-            :title="t('equipment.new_folder')"
+            :title="t('files.new_folder')"
             width="380px"
         >
             <form @submit.prevent="submitNewFolder">
                 <Field
                     v-model="newFolderName"
-                    :label="t('equipment.folder_name')"
-                    :placeholder="t('equipment.new_folder')"
+                    :label="t('files.folder_name')"
+                    :placeholder="t('files.new_folder')"
                     autofocus
                     @keyup.enter="submitNewFolder"
                 />
@@ -484,7 +501,7 @@ function confirmDelete(item: FileRow) {
                 </CmdButton>
                 <CmdButton variant="primary" size="sm" @click="submitNewFolder">
                     <template #icon><Icon name="disk" :size="12" /></template>
-                    {{ t('equipment.new_folder') }}
+                    {{ t('files.new_folder') }}
                 </CmdButton>
             </template>
         </CommandDialog>
@@ -536,5 +553,13 @@ function confirmDelete(item: FileRow) {
 }
 .cmd-file-row:hover {
     background: var(--row-hover) !important;
+}
+.cmd-list-cover-btn {
+    opacity: 0;
+    transition: opacity 0.12s;
+}
+.cmd-file-row:hover .cmd-list-cover-btn,
+.cmd-file-row:focus-within .cmd-list-cover-btn {
+    opacity: 1;
 }
 </style>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useConfirm } from 'primevue/useconfirm';
 import ConfirmDialog from 'primevue/confirmdialog';
@@ -8,7 +8,8 @@ import CommandLayout from '@/Layouts/CommandLayout.vue';
 import CommandDialog from '@/Components/Command/Dialog.vue';
 import CmdButton from '@/Components/Command/Button.vue';
 import Field from '@/Components/Command/Field.vue';
-import Icon from '@/Components/Command/Icon.vue';
+import Icon, { type IconName } from '@/Components/Command/Icon.vue';
+import Tabs from '@/Components/Command/Tabs.vue';
 import EntityFiles, { type FileRow } from '@/Components/Files/EntityFiles.vue';
 import { useWorkspace } from '@/composables/useWorkspace';
 
@@ -41,14 +42,37 @@ const props = defineProps<{
     can_manage: boolean;
 }>();
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const { workspaceUrl } = useWorkspace();
 const confirm = useConfirm();
 
+// ── Tabs: Details (default) + Files. Initialised from ?tab, and forced to
+// Files when we're inside a folder so document navigation keeps its tab.
+const tabs = computed<{ key: string; label: string; icon?: IconName }[]>(() => [
+    { key: 'details', label: t('equipment.tab_details'), icon: 'box' },
+    { key: 'files', label: t('equipment.tab_files'), icon: 'disk' },
+]);
+function initialTab(): string {
+    if (typeof window !== 'undefined') {
+        const tab = new URLSearchParams(window.location.search).get('tab');
+        if (tab === 'files' || tab === 'details') return tab;
+    }
+    return props.current_folder ? 'files' : 'details';
+}
+const activeTab = ref<string>(initialTab());
+watch(activeTab, (v) => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', v);
+    window.history.replaceState({}, '', url.toString());
+});
+
 function folderUrl(folderId: number | null): string {
-    return folderId === null
-        ? workspaceUrl(`/equipment/${props.equipment.id}`)
-        : workspaceUrl(`/equipment/${props.equipment.id}/folders/${folderId}`);
+    const base = folderId === null
+        ? `/equipment/${props.equipment.id}`
+        : `/equipment/${props.equipment.id}/folders/${folderId}`;
+    // Keep the Files tab active across folder navigation (a full Inertia visit).
+    return `${workspaceUrl(base)}?tab=files`;
 }
 
 function setCover(fileId: number) {
@@ -103,7 +127,7 @@ function activityLabel(a: ActivityRow): string {
 }
 
 function activityTime(iso: string | null): string {
-    return iso ? new Date(iso).toLocaleString() : '';
+    return iso ? new Date(iso).toLocaleString(locale.value) : '';
 }
 </script>
 
@@ -112,7 +136,7 @@ function activityTime(iso: string | null): string {
         <Head :title="equipment.name" />
         <ConfirmDialog group="equipment-show" />
 
-        <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '6px' }">
+        <div :style="{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '14px' }">
             <Link
                 :href="workspaceUrl('/equipment')"
                 :style="{ fontSize: '11.5px', color: 'var(--fg-dim)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '5px' }"
@@ -132,81 +156,83 @@ function activityTime(iso: string | null): string {
             </div>
         </div>
 
-        <!-- Equipment header -->
-        <div class="cmd-card" :style="{ padding: '18px 20px', marginBottom: '20px' }">
-            <h1 :style="{ margin: 0, fontSize: '20px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--fg)' }">
-                {{ equipment.name }}
-            </h1>
-            <div :style="{ display: 'flex', flexWrap: 'wrap', gap: '20px', marginTop: '12px' }">
-                <div>
-                    <div class="cmd-mono cmd-uc" :style="{ fontSize: '10px', color: 'var(--fg-mute)', letterSpacing: '0.06em', marginBottom: '3px' }">
-                        {{ t('equipment.category') }}
+        <h1 :style="{ margin: '0 0 16px', fontSize: '22px', fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--fg)' }">
+            {{ equipment.name }}
+        </h1>
+
+        <Tabs v-model="activeTab" :tabs="tabs" />
+
+        <!-- Details tab -->
+        <div v-show="activeTab === 'details'">
+            <div class="cmd-card" :style="{ padding: '18px 20px', marginBottom: '20px' }">
+                <div :style="{ display: 'flex', flexWrap: 'wrap', gap: '20px' }">
+                    <div>
+                        <div class="cmd-mono cmd-uc" :style="{ fontSize: '10px', color: 'var(--fg-mute)', letterSpacing: '0.06em', marginBottom: '3px' }">
+                            {{ t('equipment.category') }}
+                        </div>
+                        <div :style="{ fontSize: '13px', color: equipment.category ? 'var(--fg)' : 'var(--fg-mute)' }">
+                            {{ equipment.category || t('equipment.no_category') }}
+                        </div>
                     </div>
-                    <div :style="{ fontSize: '13px', color: equipment.category ? 'var(--fg)' : 'var(--fg-mute)' }">
-                        {{ equipment.category || t('equipment.no_category') }}
+                    <div>
+                        <div class="cmd-mono cmd-uc" :style="{ fontSize: '10px', color: 'var(--fg-mute)', letterSpacing: '0.06em', marginBottom: '3px' }">
+                            {{ t('equipment.serial') }}
+                        </div>
+                        <div class="cmd-mono" :style="{ fontSize: '13px', color: equipment.serial ? 'var(--fg)' : 'var(--fg-mute)' }">
+                            {{ equipment.serial || '—' }}
+                        </div>
                     </div>
                 </div>
-                <div>
-                    <div class="cmd-mono cmd-uc" :style="{ fontSize: '10px', color: 'var(--fg-mute)', letterSpacing: '0.06em', marginBottom: '3px' }">
-                        {{ t('equipment.serial') }}
+                <div v-if="equipment.notes" :style="{ marginTop: '14px' }">
+                    <div class="cmd-mono cmd-uc" :style="{ fontSize: '10px', color: 'var(--fg-mute)', letterSpacing: '0.06em', marginBottom: '4px' }">
+                        {{ t('equipment.notes') }}
                     </div>
-                    <div class="cmd-mono" :style="{ fontSize: '13px', color: equipment.serial ? 'var(--fg)' : 'var(--fg-mute)' }">
-                        {{ equipment.serial || '—' }}
-                    </div>
+                    <p :style="{ margin: 0, fontSize: '13px', color: 'var(--fg-dim)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }">{{ equipment.notes }}</p>
                 </div>
             </div>
-            <div v-if="equipment.notes" :style="{ marginTop: '14px' }">
-                <div class="cmd-mono cmd-uc" :style="{ fontSize: '10px', color: 'var(--fg-mute)', letterSpacing: '0.06em', marginBottom: '4px' }">
-                    {{ t('equipment.notes') }}
+
+            <!-- Activity timeline -->
+            <h2 :style="{ margin: '24px 0 12px', fontSize: '14px', fontWeight: 600, color: 'var(--fg)', display: 'flex', alignItems: 'center', gap: '7px' }">
+                <i class="pi pi-history" :style="{ fontSize: '13px', color: 'var(--accent)' }" />
+                {{ t('equipment.activity') }}
+            </h2>
+            <div class="cmd-card" :style="{ padding: '6px 4px' }">
+                <p v-if="!activities.length" :style="{ margin: 0, padding: '16px', fontSize: '12px', color: 'var(--fg-mute)', textAlign: 'center' }">
+                    {{ t('equipment.activity_empty') }}
+                </p>
+                <div
+                    v-for="a in activities"
+                    :key="a.id"
+                    :style="{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 14px', borderBottom: '1px solid var(--border)' }"
+                >
+                    <span :style="{ flexShrink: 0, width: '24px', height: '24px', borderRadius: '50%', background: 'var(--panel2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fg-mute)' }">
+                        <Icon :name="a.event === 'created' ? 'plus' : a.event === 'deleted' ? 'trash' : 'edit'" :size="11" />
+                    </span>
+                    <div :style="{ flex: 1, minWidth: 0 }">
+                        <span :style="{ fontSize: '12.5px', color: 'var(--fg)' }">
+                            <strong v-if="a.causer">{{ a.causer.name }}</strong>
+                            {{ ' ' }}{{ activityLabel(a) }}
+                        </span>
+                    </div>
+                    <span class="cmd-mono" :style="{ fontSize: '10.5px', color: 'var(--fg-mute)', flexShrink: 0 }">{{ activityTime(a.created_at) }}</span>
                 </div>
-                <p :style="{ margin: 0, fontSize: '13px', color: 'var(--fg-dim)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }">{{ equipment.notes }}</p>
             </div>
         </div>
 
-        <!-- Documents -->
-        <h2 :style="{ margin: '0 0 12px', fontSize: '14px', fontWeight: 600, color: 'var(--fg)', display: 'flex', alignItems: 'center', gap: '7px' }">
-            <i class="pi pi-folder" :style="{ fontSize: '13px', color: 'var(--accent)' }" />
-            {{ t('equipment.documents') }}
-        </h2>
-
-        <EntityFiles
-            :owner-type="owner.type"
-            :owner-id="owner.id"
-            :files="files"
-            :breadcrumbs="breadcrumbs"
-            :current-folder="current_folder"
-            :can-manage="can_manage"
-            :allow-set-cover="can_manage"
-            :cover-file-item-id="equipment.cover_file_item_id"
-            :folder-url="folderUrl"
-            @set-cover="setCover"
-        />
-
-        <!-- Activity timeline -->
-        <h2 :style="{ margin: '24px 0 12px', fontSize: '14px', fontWeight: 600, color: 'var(--fg)', display: 'flex', alignItems: 'center', gap: '7px' }">
-            <i class="pi pi-history" :style="{ fontSize: '13px', color: 'var(--accent)' }" />
-            {{ t('equipment.activity') }}
-        </h2>
-        <div class="cmd-card" :style="{ padding: '6px 4px' }">
-            <p v-if="!activities.length" :style="{ margin: 0, padding: '16px', fontSize: '12px', color: 'var(--fg-mute)', textAlign: 'center' }">
-                {{ t('equipment.activity_empty') }}
-            </p>
-            <div
-                v-for="a in activities"
-                :key="a.id"
-                :style="{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 14px', borderBottom: '1px solid var(--border)' }"
-            >
-                <span :style="{ flexShrink: 0, width: '24px', height: '24px', borderRadius: '50%', background: 'var(--panel2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fg-mute)' }">
-                    <Icon :name="a.event === 'created' ? 'plus' : a.event === 'deleted' ? 'trash' : 'edit'" :size="11" />
-                </span>
-                <div :style="{ flex: 1, minWidth: 0 }">
-                    <span :style="{ fontSize: '12.5px', color: 'var(--fg)' }">
-                        <strong v-if="a.causer">{{ a.causer.name }}</strong>
-                        {{ ' ' }}{{ activityLabel(a) }}
-                    </span>
-                </div>
-                <span class="cmd-mono" :style="{ fontSize: '10.5px', color: 'var(--fg-mute)', flexShrink: 0 }">{{ activityTime(a.created_at) }}</span>
-            </div>
+        <!-- Files tab -->
+        <div v-show="activeTab === 'files'">
+            <EntityFiles
+                :owner-type="owner.type"
+                :owner-id="owner.id"
+                :files="files"
+                :breadcrumbs="breadcrumbs"
+                :current-folder="current_folder"
+                :can-manage="can_manage"
+                :allow-set-cover="can_manage"
+                :cover-file-item-id="equipment.cover_file_item_id"
+                :folder-url="folderUrl"
+                @set-cover="setCover"
+            />
         </div>
 
         <!-- Edit dialog -->
