@@ -2,9 +2,9 @@
 import { Head, router } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import VueApexCharts from 'vue3-apexcharts';
 import type { ApexOptions } from 'apexcharts';
 import CommandLayout from '@/Layouts/CommandLayout.vue';
+import LazyChart from '@/Components/Command/LazyChart.vue';
 import Counter from '@/Components/Command/Counter.vue';
 import Dot from '@/Components/Command/Dot.vue';
 import PageTitle from '@/Components/Command/PageTitle.vue';
@@ -335,7 +335,7 @@ function handleRefresh() {
                 </div>
             </div>
             <Skeleton v-if="loading" :width="'100%'" :height="180" :radius="4" />
-            <VueApexCharts
+            <LazyChart
                 v-else
                 type="area"
                 height="180"
@@ -353,7 +353,7 @@ function handleRefresh() {
                 >events:{{ metrics.activity.total }}</div>
             </div>
             <Skeleton v-if="loading" :width="'100%'" :height="180" :radius="4" />
-            <VueApexCharts
+            <LazyChart
                 v-else
                 type="bar"
                 height="180"

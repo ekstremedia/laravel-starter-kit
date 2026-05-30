@@ -9,7 +9,6 @@ import PrimeVue from 'primevue/config';
 import ToastService from 'primevue/toastservice';
 import ConfirmationService from 'primevue/confirmationservice';
 import Aura from '@primevue/themes/aura';
-import VueApexCharts from 'vue3-apexcharts';
 import { i18n } from '@/i18n';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel Starter Kit';
@@ -27,7 +26,6 @@ createInertiaApp({
             .use(i18n)
             .use(ToastService)
             .use(ConfirmationService)
-            .use(VueApexCharts)
             .use(PrimeVue, {
                 theme: {
                     preset: Aura,

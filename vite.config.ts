@@ -43,6 +43,26 @@ export default defineConfig(({ mode }) => {
                 '@': resolve(__dirname, 'resources/js'),
             },
         },
+        build: {
+            rollupOptions: {
+                output: {
+                    // Split the rarely-changing critical-path vendors into stable
+                    // chunks so an app-code change doesn't bust their long-term
+                    // cache. ApexCharts/leaflet/markdown-it are deliberately NOT
+                    // matched here — they're loaded via dynamic import() and get
+                    // their own chunks automatically; pinning them would pull
+                    // them back onto the critical path. (Vite 8 / rolldown wants
+                    // manualChunks as a function, not the classic object map.)
+                    manualChunks(id: string) {
+                        if (!id.includes('node_modules')) return;
+                        if (/[\\/]node_modules[\\/]@?vue[\\/]/.test(id)) return 'vendor-vue';
+                        if (id.includes('@inertiajs')) return 'vendor-inertia';
+                        if (/[\\/]node_modules[\\/]@?primevue[\\/]/.test(id)) return 'vendor-primevue';
+                        if (id.includes('vue-i18n') || id.includes('@intlify')) return 'vendor-i18n';
+                    },
+                },
+            },
+        },
         server: {
             host: '0.0.0.0',
             port: vitePort,

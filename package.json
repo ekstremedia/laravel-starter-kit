@@ -36,16 +36,11 @@
     "vitest": "^4.1.4"
   },
   "dependencies": {
-    "@fullcalendar/core": "^6.1.20",
-    "@fullcalendar/daygrid": "^6.1.20",
-    "@fullcalendar/interaction": "^6.1.20",
-    "@fullcalendar/timegrid": "^6.1.20",
     "@inertiajs/vue3": "^3.0.3",
     "@primevue/themes": "^4.5.4",
     "@vitejs/plugin-vue": "^6.0.5",
     "apexcharts": "^5.10.6",
     "dompurify": "^3.4.7",
-    "gsap": "^3.14.2",
     "laravel-echo": "^2.3.4",
     "leaflet": "^1.9.4",
     "lucide-vue-next": "^1.0.0",

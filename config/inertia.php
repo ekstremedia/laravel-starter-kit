@@ -131,7 +131,10 @@ return [
 
     'history' => [
 
-        'encrypt' => (bool) env('INERTIA_ENCRYPT_HISTORY', false),
+        // Default ON: page props are encrypted before being written to the
+        // browser's history state, so the back button can't reveal data from
+        // an authenticated session after logout. Reversible via env.
+        'encrypt' => (bool) env('INERTIA_ENCRYPT_HISTORY', true),
 
     ],
 
