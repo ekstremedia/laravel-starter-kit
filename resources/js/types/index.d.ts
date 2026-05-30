@@ -102,7 +102,8 @@ export interface PageProps extends InertiaPageProps {
     chat: {
         enabled: boolean;
     };
-    assetsEnabled?: boolean;
+    // Enabled-modules map from the `modules` registry, e.g. { equipment: true }.
+    modules?: Record<string, boolean>;
     oauth?: {
         providers: Array<{ name: string; label: string }>;
     };

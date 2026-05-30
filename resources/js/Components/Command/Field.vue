@@ -88,6 +88,7 @@ function onBlur(e: FocusEvent) {
             :placeholder="placeholder"
             :autocomplete="autocomplete"
             :autofocus="autofocus"
+            :data-autofocus="autofocus || undefined"
             :disabled="disabled"
             :required="required"
             :min="min"

@@ -4,12 +4,13 @@ namespace App\Providers;
 
 use App\Domains\Access\Models\Permission;
 use App\Domains\Access\Models\Role;
-use App\Domains\Assets\Models\Asset;
 use App\Domains\Chat\Models\Conversation;
 use App\Domains\Chat\Models\Message;
+use App\Domains\Equipment\Models\Equipment;
 use App\Domains\Files\Models\CompanyFileLink;
 use App\Domains\Files\Models\FileItem;
 use App\Domains\Files\Models\FileShare;
+use App\Domains\Modules\Services\ModuleRegistry;
 use App\Domains\Operations\Models\Activity;
 use App\Domains\Users\Models\PersonalAccessToken;
 use App\Domains\Users\Models\User;
@@ -43,6 +44,11 @@ class AppServiceProvider extends ServiceProvider
         // and the BelongsToWorkspace global scope read the same active
         // workspace for the request.
         $this->app->singleton(WorkspaceContext::class);
+
+        // Module registry. A singleton so route gating and the Inertia share
+        // read the enabled-map once per request (and a toggle's forget() is seen
+        // by both).
+        $this->app->singleton(ModuleRegistry::class);
     }
 
     /**
@@ -80,8 +86,8 @@ class AppServiceProvider extends ServiceProvider
             'App\\Models\\Role' => Role::class,
             'App\\Models\\Permission' => Permission::class,
             // New domain entities use a clean alias from day one (no legacy
-            // FQCN to preserve). New file-owning entities add a line here.
-            'asset' => Asset::class,
+            // FQCN to preserve). New file-owning modules add a line here.
+            'equipment' => Equipment::class,
         ]);
 
         // Generate absolute URLs from APP_URL rather than the request Host

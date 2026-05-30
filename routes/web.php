@@ -6,6 +6,7 @@ use App\Domains\Auth\Http\Controllers\DevLoginController;
 use App\Domains\Auth\Http\Controllers\SocialiteController;
 use App\Domains\Chat\Http\Controllers\ChatController;
 use App\Domains\Files\Http\Controllers\PublicShareController;
+use App\Domains\Modules\Http\Controllers\ModuleController;
 use App\Domains\Notifications\Http\Controllers\EmailTemplateController;
 use App\Domains\Notifications\Http\Controllers\MailLayoutController;
 use App\Domains\Notifications\Http\Controllers\MailSettingsController;
@@ -190,6 +191,12 @@ Route::middleware(['auth', 'verified', 'super.admin'])
 
         Route::get('settings', [AppSettingsController::class, 'show'])->name('settings.show');
         Route::patch('settings', [AppSettingsController::class, 'update'])->name('settings.update');
+
+        // Module registry — enable/disable domain modules, see per-module stats,
+        // and purge a module's data.
+        Route::get('modules', [ModuleController::class, 'index'])->name('modules.index');
+        Route::patch('modules/{module}', [ModuleController::class, 'update'])->name('modules.update');
+        Route::post('modules/{module}/purge', [ModuleController::class, 'purge'])->name('modules.purge');
 
         Route::get('storage', [StorageDashboardController::class, 'index'])->name('storage.index');
 

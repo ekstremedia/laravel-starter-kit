@@ -20,8 +20,11 @@ class DatabaseSeeder extends Seeder
             WorkspaceSeeder::class,
             UserSeeder::class,
             EmailTemplateSeeder::class,
-            // Demo file-owning entity. Remove with the rest of the Assets module.
-            AssetSeeder::class,
+            // Module registry — must run before the modules' own seeders so the
+            // enabled-flag and stats can resolve.
+            ModuleSeeder::class,
+            // Demo file-owning module. Remove with the rest of the Equipment module.
+            EquipmentSeeder::class,
         ]);
     }
 }

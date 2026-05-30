@@ -5,28 +5,26 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Demo entity for the polymorphic file system: an "Asset" register (think
- * cars, equipment, medicines — any trackable thing that owns documents).
- * Lives on the central schema alongside users/workspaces/file_items. Remove the
- * whole app/Domains/Assets module + this migration to drop the demo.
+ * The Equipment ("Utstyr") module — the reference file-owning entity (think
+ * cars, equipment, medicines — any trackable thing that owns documents). Lives
+ * on the central schema alongside users/workspaces/file_items. It is the
+ * template for future modules; register new ones in the `modules` table.
  */
 return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('assets', function (Blueprint $table): void {
+        Schema::create('equipment', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('workspace_id')->constrained('workspaces')->cascadeOnDelete();
             $table->string('name');
             $table->string('category')->nullable();
             $table->string('serial')->nullable();
             $table->text('notes')->nullable();
-            // Per-entity storage override. null = inherit the app/entity
-            // default; -1 = explicit unlimited; 0 = blocked; N>0 = byte cap.
-            // Signed so the -1 sentinel fits (mirrors workspaces.storage_quota_bytes).
-            $table->bigInteger('file_quota_bytes')->nullable();
-            // Denormalized billable bytes, refreshed by StorageUsageService.
-            $table->unsignedBigInteger('storage_used_bytes')->default(0);
+            // The "main" document used as the row thumbnail / cover image. Null
+            // falls back to the first previewable file. Nulled (not cascaded)
+            // when the referenced file is deleted so the item itself survives.
+            $table->foreignId('cover_file_item_id')->nullable()->constrained('file_items')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
 
@@ -34,8 +32,9 @@ return new class extends Migration
         });
 
         Schema::table('app_settings', function (Blueprint $table): void {
-            // Global default storage cap for file-owning entities (Assets and
-            // future Building/Vehicle/etc.) when they set no per-row override.
+            // Global default storage cap for file-owning entities that opt into
+            // per-row quotas (via HasFileQuota). Equipment itself does not, but
+            // the column is shared infra for future modules that might.
             // null = unlimited; -1 = explicit unlimited; N>=0 = byte cap.
             $table->bigInteger('default_entity_storage_bytes')->nullable()->after('default_personal_storage_bytes');
         });
@@ -47,6 +46,6 @@ return new class extends Migration
             $table->dropColumn('default_entity_storage_bytes');
         });
 
-        Schema::dropIfExists('assets');
+        Schema::dropIfExists('equipment');
     }
 };

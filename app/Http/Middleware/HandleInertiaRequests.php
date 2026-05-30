@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Domains\Files\Support\UploadLimits;
+use App\Domains\Modules\Services\ModuleRegistry;
 use App\Domains\Settings\Models\AppSetting;
 use App\Domains\Users\Models\User;
 use App\Domains\Users\Models\UserSetting;
@@ -110,10 +111,10 @@ class HandleInertiaRequests extends Middleware
             'chat' => [
                 'enabled' => (bool) config('chat.enabled'),
             ],
-            // Named `assetsEnabled` (not `assets`) to avoid colliding with the
-            // Assets/Index page's own `assets` paginator prop, which would
-            // otherwise shadow this shared flag on that page.
-            'assetsEnabled' => (bool) config('assets.enabled'),
+            // Enabled-modules map from the `modules` registry — gates module
+            // routes (routes/workspace.php) and sidebar entries. Keyed by module
+            // key (e.g. ['equipment' => true]). Null-safe before the table exists.
+            'modules' => fn () => app(ModuleRegistry::class)->enabledMap(),
             // Which OAuth providers to render "Sign in with …" buttons for.
             // Empty array when the whole feature is gated off, so the Vue
             // template's v-if collapses cleanly.
