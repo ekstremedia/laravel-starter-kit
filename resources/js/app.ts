@@ -48,3 +48,20 @@ createInertiaApp({
         color: '#6366f1',
     },
 });
+
+// Opt-in PWA service worker. Registered only in a production build with the
+// flag on and a real browser (so dev HMR and SSR are never touched). The
+// `virtual:pwa-register` module only exists when vite-plugin-pwa is active, so
+// it's imported dynamically behind the guard.
+if (
+    import.meta.env.PROD &&
+    import.meta.env.VITE_PWA_ENABLED === 'true' &&
+    typeof window !== 'undefined' &&
+    'serviceWorker' in navigator
+) {
+    import('virtual:pwa-register')
+        .then(({ registerSW }) => registerSW({ immediate: true }))
+        .catch(() => {
+            // PWA disabled at build time — nothing to register.
+        });
+}
