@@ -215,7 +215,9 @@ class WorkspaceController extends Controller
 
         $this->broadcastResourceChanged('workspaces', 'updated', $workspace->id);
 
-        return back()->with('success', __('flash.workspaces.updated'));
+        // No success toast — the edit page autosaves and shows its own quiet
+        // "Saving…/Saved" status. Validation errors still surface inline.
+        return back();
     }
 
     public function destroy(Workspace $workspace): RedirectResponse

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useConfirm } from 'primevue/useconfirm';
 import CommandLayout from '@/Layouts/CommandLayout.vue';
@@ -9,13 +9,11 @@ import Toggle from '@/Components/Command/Toggle.vue';
 import Icon from '@/Components/Command/Icon.vue';
 import Dot from '@/Components/Command/Dot.vue';
 import PageTitle from '@/Components/Command/PageTitle.vue';
-import { useCommandToasts } from '@/composables/useCommandToasts';
 import { humanBytes as sharedHumanBytes } from '@/utils/bytes';
 
 defineOptions({ layout: CommandLayout });
 
 const { t } = useI18n();
-const { push } = useCommandToasts();
 const confirmer = useConfirm();
 
 interface Member {
@@ -134,22 +132,62 @@ function humanBytes(n: number | null | undefined): string {
     return sharedHumanBytes(n);
 }
 
+// Autosave: changes persist as you edit — no Save button, no toast. A quiet
+// "Saving…/Saved" status is the only feedback (mirrors /admin/settings). A
+// custom quota that's mid-edit (empty/invalid) simply isn't persisted yet; the
+// field stays editable and the next valid value saves.
+const saveState = ref<'idle' | 'saving' | 'saved'>('idle');
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let savedTimer: ReturnType<typeof setTimeout> | null = null;
+
+// Cancel any pending debounce on unmount so a queued autosave can't fire a
+// form.put() against a page the user has already navigated away from.
+onBeforeUnmount(() => {
+    if (saveTimer) clearTimeout(saveTimer);
+    if (savedTimer) clearTimeout(savedTimer);
+});
+
 function save() {
-    if (companyMode.value === 'custom' && !isValidCustomGb(companyCustomGb.value)) {
-        push(t('admin.workspaces.custom_quota_required'), 'danger');
-        return;
-    }
-    if (memberMode.value === 'custom' && !isValidCustomGb(memberCustomGb.value)) {
-        push(t('admin.workspaces.custom_quota_required'), 'danger');
-        return;
-    }
+    if (companyMode.value === 'custom' && !isValidCustomGb(companyCustomGb.value)) return;
+    if (memberMode.value === 'custom' && !isValidCustomGb(memberCustomGb.value)) return;
 
     form.storage_quota_bytes = materializeCompanyQuota();
     form.default_member_storage_bytes = materializeMemberQuota();
 
-    // Server flashes flash.workspaces.updated via useFlashToast.
-    form.put(`/admin/workspaces/${props.workspace.id}`, { preserveScroll: true });
+    saveState.value = 'saving';
+    // The server returns quietly (no flash) — autosave never toasts.
+    form.put(`/admin/workspaces/${props.workspace.id}`, {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => {
+            form.defaults();
+            saveState.value = 'saved';
+            if (savedTimer) clearTimeout(savedTimer);
+            savedTimer = setTimeout(() => { if (saveState.value === 'saved') saveState.value = 'idle'; }, 1500);
+        },
+        onError: () => { saveState.value = 'idle'; },
+    });
 }
+
+// Don't fire while we're still hydrating the initial props into the form.
+let ready = false;
+function scheduleSave() {
+    if (!ready) return;
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(save, 600);
+}
+
+// Persist on any change to a settings field or quota control. The quota refs
+// (mode + custom GB) are watched directly since they only materialize into the
+// form inside save().
+watch(
+    () => JSON.stringify([
+        form.name, form.status, form.files_feature_enabled, form.company_files_enabled,
+        companyMode.value, companyCustomGb.value, memberMode.value, memberCustomGb.value,
+    ]),
+    scheduleSave,
+);
+ready = true;
 
 // The member-add panel sends a role alongside the email — the backend
 // requires at least one assignable role. `memberRole` drives the selector and
@@ -414,29 +452,13 @@ function detach(member: Member) {
                     </div>
                 </div>
 
-                <div>
-                    <button
-                        type="submit"
-                        :disabled="form.processing"
-                        :style="{
-                            background: 'var(--accent)',
-                            color: '#fff',
-                            border: 'none',
-                            padding: '7px 12px',
-                            borderRadius: '5px',
-                            fontSize: '12px',
-                            fontWeight: 500,
-                            cursor: form.processing ? 'not-allowed' : 'pointer',
-                            opacity: form.processing ? 0.6 : 1,
-                            fontFamily: 'inherit',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                        }"
-                    >
-                        <Icon name="arrow" :size="12" />
-                        {{ t('common.save') }}
-                    </button>
+                <!-- Autosave: no Save button. A quiet status is the only feedback. -->
+                <div :style="{ minHeight: '18px' }" aria-live="polite">
+                    <span
+                        v-if="saveState !== 'idle'"
+                        class="cmd-mono"
+                        :style="{ fontSize: '11px', color: 'var(--fg-mute)' }"
+                    >{{ saveState === 'saving' ? t('common.saving') : t('common.saved') }}</span>
                 </div>
             </form>
         </section>
