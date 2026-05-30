@@ -90,7 +90,9 @@ const { t } = useI18n();
 const { workspaceUrl } = useWorkspace();
 const confirm = useConfirm();
 
-const viewMode = ref<'grid' | 'list'>((localStorage.getItem('entityFiles.viewMode') as 'grid' | 'list') || 'grid');
+const viewMode = ref<'grid' | 'list'>(
+    (typeof localStorage !== 'undefined' && (localStorage.getItem('entityFiles.viewMode') as 'grid' | 'list')) || 'grid',
+);
 const uploadOpen = ref(false);
 const newFolderOpen = ref(false);
 const newFolderName = ref('');

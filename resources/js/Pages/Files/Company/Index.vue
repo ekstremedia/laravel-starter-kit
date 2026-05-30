@@ -35,7 +35,9 @@ const page = usePage<PageProps>();
 
 const parentId = computed(() => props.current_folder?.id ?? null);
 
-const viewMode = ref<'grid' | 'list'>((localStorage.getItem('files.viewMode') as 'grid' | 'list') || 'grid');
+const viewMode = ref<'grid' | 'list'>(
+    (typeof localStorage !== 'undefined' && (localStorage.getItem('files.viewMode') as 'grid' | 'list')) || 'grid',
+);
 function setViewMode(m: 'grid' | 'list') {
     viewMode.value = m;
     localStorage.setItem('files.viewMode', m);

@@ -21,11 +21,15 @@ return [
 
     'ssr' => [
 
-        'enabled' => (bool) env('INERTIA_SSR_ENABLED', true),
+        // OFF by default — SSR is opt-in. Enabling it requires building the
+        // bundle (`npm run build:ssr`) AND running the renderer
+        // (`supervisorctl start inertia-ssr`). Defaulting to true with no bundle
+        // present is the silent-CSR-fallback trap, so we default both to false.
+        'enabled' => (bool) env('INERTIA_SSR_ENABLED', false),
 
         'url' => env('INERTIA_SSR_URL', 'http://127.0.0.1:13714'),
 
-        'ensure_bundle_exists' => (bool) env('INERTIA_SSR_ENSURE_BUNDLE_EXISTS', true),
+        'ensure_bundle_exists' => (bool) env('INERTIA_SSR_ENSURE_BUNDLE_EXISTS', false),
 
         // 'bundle' => base_path('bootstrap/ssr/ssr.mjs'),
 

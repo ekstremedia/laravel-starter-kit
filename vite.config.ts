@@ -4,7 +4,7 @@ import vue from '@vitejs/plugin-vue';
 import tailwindcss from '@tailwindcss/vite';
 import { resolve } from 'path';
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, isSsrBuild }) => {
     const env = loadEnv(mode, process.cwd(), '');
     let devServerHost = env.VITE_DEV_SERVER_HOST || 'localhost';
 
@@ -26,6 +26,9 @@ export default defineConfig(({ mode }) => {
         plugins: [
             laravel({
                 input: ['resources/css/app.css', 'resources/js/app.ts'],
+                // Opt-in SSR entry — only built by `npm run build:ssr` (the
+                // `vite build --ssr` pass), emitted to bootstrap/ssr.
+                ssr: 'resources/js/ssr.ts',
                 refresh: true,
             }),
             vue({
@@ -46,20 +49,23 @@ export default defineConfig(({ mode }) => {
         build: {
             rollupOptions: {
                 output: {
-                    // Split the rarely-changing critical-path vendors into stable
-                    // chunks so an app-code change doesn't bust their long-term
-                    // cache. ApexCharts/leaflet/markdown-it are deliberately NOT
-                    // matched here — they're loaded via dynamic import() and get
-                    // their own chunks automatically; pinning them would pull
-                    // them back onto the critical path. (Vite 8 / rolldown wants
-                    // manualChunks as a function, not the classic object map.)
-                    manualChunks(id: string) {
-                        if (!id.includes('node_modules')) return;
-                        if (/[\\/]node_modules[\\/]@?vue[\\/]/.test(id)) return 'vendor-vue';
-                        if (id.includes('@inertiajs')) return 'vendor-inertia';
-                        if (/[\\/]node_modules[\\/]@?primevue[\\/]/.test(id)) return 'vendor-primevue';
-                        if (id.includes('vue-i18n') || id.includes('@intlify')) return 'vendor-i18n';
-                    },
+                    // Client only: split the rarely-changing critical-path
+                    // vendors into stable chunks so an app-code change doesn't
+                    // bust their long-term cache. ApexCharts/leaflet/markdown-it
+                    // are deliberately NOT matched — they're loaded via dynamic
+                    // import() and get their own chunks automatically; pinning
+                    // them would pull them back onto the critical path. (Vite 8 /
+                    // rolldown wants manualChunks as a function.) The SSR build
+                    // wants a single bundle, so skip chunking there.
+                    manualChunks: isSsrBuild
+                        ? undefined
+                        : (id: string) => {
+                            if (!id.includes('node_modules')) return;
+                            if (/[\\/]node_modules[\\/]@?vue[\\/]/.test(id)) return 'vendor-vue';
+                            if (id.includes('@inertiajs')) return 'vendor-inertia';
+                            if (/[\\/]node_modules[\\/]@?primevue[\\/]/.test(id)) return 'vendor-primevue';
+                            if (id.includes('vue-i18n') || id.includes('@intlify')) return 'vendor-i18n';
+                        },
                 },
             },
         },

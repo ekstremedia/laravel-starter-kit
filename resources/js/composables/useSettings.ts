@@ -32,6 +32,10 @@ function sanitizePartial(partial: Partial<UserSettings>): Record<string, UserSet
 // (useTweaks writes theme/accent/density/show_kbd_hints/rail_expanded into
 // the same localStorage key).
 function mergeWrite(next: Record<string, unknown>) {
+    // No localStorage under SSR (and it may be blocked in the browser).
+    if (typeof localStorage === 'undefined') {
+        return;
+    }
     try {
         const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
         localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...existing, ...next }));
@@ -52,8 +56,9 @@ export function useSettings() {
     if (!initialized) {
         initialized = true;
 
-        // 1. Load from localStorage immediately (fast, works for guests too)
-        const stored = localStorage.getItem(STORAGE_KEY);
+        // 1. Load from localStorage immediately (fast, works for guests too).
+        //    Skipped under SSR where localStorage is undefined.
+        const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
         if (stored) {
             try {
                 settings.value = { ...defaults, ...JSON.parse(stored) };
