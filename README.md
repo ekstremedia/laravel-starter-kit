@@ -1,5 +1,5 @@
 # Laravel Starter Kit
-
+ 
 A Laravel 13 + Inertia/Vue starter with the usual production pieces already wired up — auth with 2FA, an admin dashboard, roles & permissions, queues, broadcasting, media uploads, activity log, backups, observability, and tests — all running in Docker.
 
 ## Stack
