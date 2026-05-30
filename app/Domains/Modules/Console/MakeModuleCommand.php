@@ -24,7 +24,8 @@ class MakeModuleCommand extends Command
 {
     protected $signature = 'make:module {name : Studly singular name, e.g. Car}
         {--no-files : Scaffold a lean module with no file area (no uploads/cover/zip)}
-        {--no-log : Scaffold without an activity log}';
+        {--no-log : Scaffold without an activity log}
+        {--base= : Internal — write the generated tree under this directory instead of the project root (used by tests to avoid polluting config/ + app/)}';
 
     protected $description = 'Scaffold a new workspace-scoped module (CRUD + datatable; optionally files + log)';
 
@@ -63,19 +64,25 @@ class MakeModuleCommand extends Command
         $stubDir = base_path('stubs/module');
         $migrationTs = Carbon::now()->format('Y_m_d_His');
 
+        // Where the generated tree lands. Defaults to the project root; tests pass
+        // a throwaway dir so generation never writes into the live config/ + app/
+        // dirs the framework auto-loads on every boot (which races parallel test
+        // workers — a stray config/<key>.php breaks their LoadConfiguration).
+        $root = $this->option('base') ? rtrim((string) $this->option('base'), '/') : base_path();
+
         /** @var array<string, string> $files stub => target path */
         $files = [
-            'model.stub' => app_path("Domains/{$studly}/Models/{$studly}.php"),
-            'controller.stub' => app_path("Domains/{$studly}/Http/Controllers/{$studly}Controller.php"),
-            'widget.stub' => app_path("Domains/{$studly}/Dashboard/{$studly}DashboardWidget.php"),
-            'config.stub' => config_path("{$key}.php"),
-            'factory.stub' => database_path("factories/{$studly}Factory.php"),
-            'seeder.stub' => database_path("seeders/{$studly}Seeder.php"),
-            'migration.stub' => database_path("migrations/{$migrationTs}_create_{$table}_table.php"),
-            'Index.vue.stub' => resource_path("js/Pages/{$pluralStudly}/Index.vue"),
-            'Show.vue.stub' => resource_path("js/Pages/{$pluralStudly}/Show.vue"),
-            'Trash.vue.stub' => resource_path("js/Pages/{$pluralStudly}/Trash.vue"),
-            'lang.stub' => lang_path("en/{$key}.php"),
+            'model.stub' => "{$root}/app/Domains/{$studly}/Models/{$studly}.php",
+            'controller.stub' => "{$root}/app/Domains/{$studly}/Http/Controllers/{$studly}Controller.php",
+            'widget.stub' => "{$root}/app/Domains/{$studly}/Dashboard/{$studly}DashboardWidget.php",
+            'config.stub' => "{$root}/config/{$key}.php",
+            'factory.stub' => "{$root}/database/factories/{$studly}Factory.php",
+            'seeder.stub' => "{$root}/database/seeders/{$studly}Seeder.php",
+            'migration.stub' => "{$root}/database/migrations/{$migrationTs}_create_{$table}_table.php",
+            'Index.vue.stub' => "{$root}/resources/js/Pages/{$pluralStudly}/Index.vue",
+            'Show.vue.stub' => "{$root}/resources/js/Pages/{$pluralStudly}/Show.vue",
+            'Trash.vue.stub' => "{$root}/resources/js/Pages/{$pluralStudly}/Trash.vue",
+            'lang.stub' => "{$root}/lang/en/{$key}.php",
         ];
 
         /** @var array<int, string> $generatedPhp paths to Pint after generation */
@@ -104,7 +111,7 @@ class MakeModuleCommand extends Command
         }
 
         // Norwegian lang file (same stub, dev translates).
-        $noLang = lang_path("no/{$key}.php");
+        $noLang = "{$root}/lang/no/{$key}.php";
         if (! is_file($noLang)) {
             if (! $this->writeFile($noLang, $this->render("{$stubDir}/lang.stub", $replacements, $withFiles, $withLog))) {
                 return self::FAILURE;
@@ -115,7 +122,10 @@ class MakeModuleCommand extends Command
 
         // Tidy the generated PHP so the output is style-clean regardless of the
         // module name (e.g. import ordering, which depends on the class name).
-        $this->formatGenerated($generatedPhp);
+        // Skipped when targeting a custom base (tests) — purely cosmetic there.
+        if (! $this->option('base')) {
+            $this->formatGenerated($generatedPhp);
+        }
 
         $this->printChecklist($studly, $key, $route, $label, $withFiles, $withLog);
 

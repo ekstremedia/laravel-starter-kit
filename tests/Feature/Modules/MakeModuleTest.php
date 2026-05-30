@@ -4,30 +4,26 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 
-// Always clean up generated files, even if an assertion fails.
+// Generate into a throwaway directory (via --base) rather than the live config/
+// + app/ tree. Writing real config/<key>.php into the project races parallel
+// test workers — their LoadConfiguration globs config/*.php and chokes on a
+// transient file. A temp base keeps generation fully isolated.
+beforeEach(function () {
+    $this->base = sys_get_temp_dir().'/modgen_'.Str::random(12);
+    File::ensureDirectoryExists($this->base);
+});
+
 afterEach(function () {
-    foreach (['Gadget' => 'gadget', 'Gizmo' => 'gizmo'] as $studly => $key) {
-        $plural = $studly.'s';
-        $table = $key.'s';
-        File::deleteDirectory(app_path("Domains/{$studly}"));
-        File::deleteDirectory(resource_path("js/Pages/{$plural}"));
-        @unlink(config_path("{$key}.php"));
-        @unlink(database_path("factories/{$studly}Factory.php"));
-        @unlink(database_path("seeders/{$studly}Seeder.php"));
-        @unlink(lang_path("en/{$key}.php"));
-        @unlink(lang_path("no/{$key}.php"));
-        foreach (glob(database_path("migrations/*_create_{$table}_table.php")) ?: [] as $f) {
-            @unlink($f);
-        }
-    }
+    File::deleteDirectory($this->base);
 });
 
 it('scaffolds a full file-owning module with its tokens replaced', function () {
-    expect(Artisan::call('make:module', ['name' => 'Gadget']))->toBe(0);
+    expect(Artisan::call('make:module', ['name' => 'Gadget', '--base' => $this->base]))->toBe(0);
 
-    $model = app_path('Domains/Gadget/Models/Gadget.php');
-    $widget = app_path('Domains/Gadget/Dashboard/GadgetDashboardWidget.php');
+    $model = "{$this->base}/app/Domains/Gadget/Models/Gadget.php";
+    $widget = "{$this->base}/app/Domains/Gadget/Dashboard/GadgetDashboardWidget.php";
     expect(File::exists($model))->toBeTrue()
         ->and(File::exists($widget))->toBeTrue();
 
@@ -46,17 +42,17 @@ it('scaffolds a full file-owning module with its tokens replaced', function () {
     expect($widgetContents)->toContain('class GadgetDashboardWidget implements DashboardWidget')
         ->and($widgetContents)->not->toContain('{{ class }}');
 
-    expect(File::exists(config_path('gadget.php')))->toBeTrue()
-        ->and(File::exists(app_path('Domains/Gadget/Http/Controllers/GadgetController.php')))->toBeTrue()
-        ->and(File::exists(resource_path('js/Pages/Gadgets/Index.vue')))->toBeTrue()
-        ->and(File::exists(resource_path('js/Pages/Gadgets/Show.vue')))->toBeTrue()
-        ->and(count(glob(database_path('migrations/*_create_gadgets_table.php')) ?: []))->toBe(1);
+    expect(File::exists("{$this->base}/config/gadget.php"))->toBeTrue()
+        ->and(File::exists("{$this->base}/app/Domains/Gadget/Http/Controllers/GadgetController.php"))->toBeTrue()
+        ->and(File::exists("{$this->base}/resources/js/Pages/Gadgets/Index.vue"))->toBeTrue()
+        ->and(File::exists("{$this->base}/resources/js/Pages/Gadgets/Show.vue"))->toBeTrue()
+        ->and(count(glob("{$this->base}/database/migrations/*_create_gadgets_table.php") ?: []))->toBe(1);
 });
 
 it('scaffolds a lean module with --no-files and --no-log', function () {
-    expect(Artisan::call('make:module', ['name' => 'Gizmo', '--no-files' => true, '--no-log' => true]))->toBe(0);
+    expect(Artisan::call('make:module', ['name' => 'Gizmo', '--no-files' => true, '--no-log' => true, '--base' => $this->base]))->toBe(0);
 
-    $model = File::get(app_path('Domains/Gizmo/Models/Gizmo.php'));
+    $model = File::get("{$this->base}/app/Domains/Gizmo/Models/Gizmo.php");
     expect($model)->toContain('class Gizmo extends Model')
         ->and($model)->not->toContain('implements FileOwner')
         ->and($model)->not->toContain('HasFiles')
@@ -65,24 +61,24 @@ it('scaffolds a lean module with --no-files and --no-log', function () {
         ->and($model)->not->toContain('@files')
         ->and($model)->not->toContain('@log');
 
-    $controller = File::get(app_path('Domains/Gizmo/Http/Controllers/GizmoController.php'));
+    $controller = File::get("{$this->base}/app/Domains/Gizmo/Http/Controllers/GizmoController.php");
     expect($controller)->not->toContain('bulkZip')
         ->and($controller)->not->toContain('setCover')
         ->and($controller)->not->toContain('private function activities')
         ->and($controller)->not->toContain('FileItem');
 
-    $show = File::get(resource_path('js/Pages/Gizmos/Show.vue'));
+    $show = File::get("{$this->base}/resources/js/Pages/Gizmos/Show.vue");
     expect($show)->not->toContain('EntityFiles')
         ->and($show)->not->toContain('activityLabel')
         ->and($show)->not->toContain('@files')
         ->and($show)->not->toContain('@log');
 
-    $migration = collect(glob(database_path('migrations/*_create_gizmos_table.php')) ?: [])->first();
+    $migration = collect(glob("{$this->base}/database/migrations/*_create_gizmos_table.php") ?: [])->first();
     expect($migration)->not->toBeNull()
         ->and(File::get($migration))->not->toContain('cover_file_item_id');
 });
 
 it('refuses reserved module names', function () {
-    expect(Artisan::call('make:module', ['name' => 'Equipment']))->toBe(1)
-        ->and(Artisan::call('make:module', ['name' => 'EquipmentCategory']))->toBe(1);
+    expect(Artisan::call('make:module', ['name' => 'Equipment', '--base' => $this->base]))->toBe(1)
+        ->and(Artisan::call('make:module', ['name' => 'EquipmentCategory', '--base' => $this->base]))->toBe(1);
 });
