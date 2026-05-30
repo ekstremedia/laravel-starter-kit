@@ -30,7 +30,7 @@ docker compose exec app php artisan <cmd>
 docker compose exec app composer <cmd>
 docker compose exec app npm <cmd>
 make test           # Pest (serial)        make test-all   # full CI: pint + stan + pest + tsc + vitest
-make test-parallel  # paratest (~6× faster)  make stan       # Larastan level 5
+make test-parallel  # paratest (~6× faster)  make stan       # PHPStan level 5
 make shell  make logs  make rebuild        # rebuild = migrate:fresh --seed (local only)
 ```
 
