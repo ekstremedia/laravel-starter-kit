@@ -106,7 +106,7 @@ describe('useSidebarItems — app rail', () => {
             chat: { enabled: false },
             workspaces: { enabled: true },
             app_settings: { files_feature_enabled: true },
-            modules: { equipment: true },
+            modules: { equipment: { enabled: true, files: true, log: true }, equipment_category: { enabled: true, files: false, log: true } },
             workspace: null, // /home → no workspaces-scoped workspace
             current_workspace: workspace({ is_admin: true, can_view_company_files: true }),
             available_workspaces: [{ id: 1, slug: 'acme', name: 'Acme' }],
@@ -116,13 +116,13 @@ describe('useSidebarItems — app rail', () => {
             chat: { enabled: false },
             workspaces: { enabled: true },
             app_settings: { files_feature_enabled: true },
-            modules: { equipment: true },
+            modules: { equipment: { enabled: true, files: true, log: true }, equipment_category: { enabled: true, files: false, log: true } },
             workspace: workspace({ is_admin: true, can_view_company_files: true }), // /w/acme/... → set
             current_workspace: workspace({ is_admin: true, can_view_company_files: true }),
             available_workspaces: [{ id: 1, slug: 'acme', name: 'Acme' }],
         });
         expect(onHome.appIds).toEqual(inWorkspace.appIds);
-        expect(onHome.appIds).toEqual(expect.arrayContaining(['home', 'my-dashboard', 'files', 'company-files', 'equipment', 'members']));
+        expect(onHome.appIds).toEqual(expect.arrayContaining(['home', 'my-dashboard', 'files', 'company-files', 'equipment', 'equipment-categories', 'members']));
     });
 
     it('hides files when the global flag is off even when the workspace has them on', () => {

@@ -7,10 +7,11 @@ import { computed, onMounted, ref } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import Icon from '@/Components/Command/Icon.vue';
+import CategoryChip from '@/Components/Equipment/CategoryChip.vue';
 import { useWorkspace } from '@/composables/useWorkspace';
 
-interface CategoryDatum { label: string; count: number }
-interface RecentItem { id: number; name: string; category: string | null }
+interface CategoryDatum { label: string; count: number; color: string | null }
+interface RecentItem { id: number; name: string; category: { name: string; color: string | null } | null }
 interface WidgetData {
     total: number;
     with_files: number;
@@ -52,11 +53,16 @@ onMounted(() => {
 });
 
 const series = computed(() => props.data.by_category.map((c) => c.count));
+// Prefer each category's own chip colour; fall back to the theme palette for
+// uncategorised / colourless buckets so every slice still has a distinct fill.
+const sliceColors = computed(() =>
+    props.data.by_category.map((c, i) => c.color || theme.value.palette[i % theme.value.palette.length]),
+);
 const chartOptions = computed(() => ({
     chart: { background: 'transparent', toolbar: { show: false } },
     labels: props.data.by_category.map((c) => c.label),
     legend: { position: 'bottom', fontSize: '11px', labels: { colors: theme.value.legend } },
-    colors: theme.value.palette,
+    colors: sliceColors.value,
     dataLabels: { enabled: false },
     stroke: { width: 0 },
     tooltip: { theme: theme.value.tooltip },
@@ -91,7 +97,7 @@ const chartOptions = computed(() => ({
                     <Icon name="box" :size="11" :style="{ color: 'var(--fg-mute)', flexShrink: 0 }" />
                     <span :style="{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">{{ item.name }}</span>
                 </span>
-                <span :style="{ fontSize: '10.5px', color: 'var(--fg-mute)', flexShrink: 0 }">{{ item.category || t('equipment.no_category') }}</span>
+                <span :style="{ flexShrink: 0 }"><CategoryChip :category="item.category" /></span>
             </Link>
         </div>
     </div>

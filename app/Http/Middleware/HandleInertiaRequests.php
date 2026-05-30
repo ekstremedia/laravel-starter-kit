@@ -111,10 +111,11 @@ class HandleInertiaRequests extends Middleware
             'chat' => [
                 'enabled' => (bool) config('chat.enabled'),
             ],
-            // Enabled-modules map from the `modules` registry — gates module
-            // routes (routes/workspace.php) and sidebar entries. Keyed by module
-            // key (e.g. ['equipment' => true]). Null-safe before the table exists.
-            'modules' => fn () => app(ModuleRegistry::class)->enabledMap(),
+            // Per-module {enabled, files, log} resolved for the current workspace
+            // (workspace override → platform toggle → capability). Gates module
+            // routes / sidebar entries (.enabled) and the Files/Log surfaces on
+            // the module pages. Null-safe before the tables exist.
+            'modules' => fn () => app(ModuleRegistry::class)->featuresFor($this->currentTenantOrNull()),
             // Which OAuth providers to render "Sign in with …" buttons for.
             // Empty array when the whole feature is gated off, so the Vue
             // template's v-if collapses cleanly.
@@ -137,6 +138,17 @@ class HandleInertiaRequests extends Middleware
             // `workspaces` paginator prop on /admin/workspaces and similar pages.
             'available_workspaces' => fn () => $this->availableWorkspaces($request),
         ];
+    }
+
+    /**
+     * The active workspace tenant, or null on central (non-workspace) routes.
+     * Used to resolve per-workspace module-feature overrides for the share.
+     */
+    private function currentTenantOrNull(): ?Workspace
+    {
+        $tenancy = app(WorkspaceContext::class);
+
+        return $tenancy->check() ? $tenancy->current() : null;
     }
 
     /**

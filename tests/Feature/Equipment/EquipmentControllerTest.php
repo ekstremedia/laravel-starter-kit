@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domains\Equipment\Models\Equipment;
+use App\Domains\EquipmentCategory\Models\EquipmentCategory;
 use App\Domains\Files\Models\FileItem;
 use App\Domains\Operations\Models\Activity;
 use App\Domains\Settings\Models\AppSetting;
@@ -32,15 +33,17 @@ it('lists and creates equipment', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page->component('Equipment/Index')->has('stats')->has('categories'));
 
+    $category = EquipmentCategory::factory()->create(['workspace_id' => $this->workspace->id, 'name' => 'Machine']);
+
     $this->actingAs($this->admin)
         ->post(workspaceUrl($this->workspace, '/equipment'), [
             'name' => 'Forklift #3',
-            'category' => 'Machine',
+            'equipment_category_id' => $category->id,
             'serial' => 'FL-00042',
         ])
         ->assertRedirect();
 
-    expect(Equipment::where('workspace_id', $this->workspace->id)->where('name', 'Forklift #3')->exists())->toBeTrue();
+    expect(Equipment::where('workspace_id', $this->workspace->id)->where('name', 'Forklift #3')->where('equipment_category_id', $category->id)->exists())->toBeTrue();
 });
 
 it('shows an item with its document area and activity', function () {
@@ -109,29 +112,34 @@ it('mass-deletes selected items', function () {
 });
 
 it('mass re-categorizes selected items', function () {
+    $old = EquipmentCategory::factory()->create(['workspace_id' => $this->workspace->id, 'name' => 'Old']);
+    $new = EquipmentCategory::factory()->create(['workspace_id' => $this->workspace->id, 'name' => 'New']);
     $ids = Equipment::factory()->count(2)->create([
         'workspace_id' => $this->workspace->id,
-        'category' => 'Old',
+        'equipment_category_id' => $old->id,
     ])->pluck('id')->all();
 
     $this->actingAs($this->admin)
-        ->post(workspaceUrl($this->workspace, '/equipment/bulk/update'), ['ids' => $ids, 'set_category' => 'New'])
+        ->post(workspaceUrl($this->workspace, '/equipment/bulk/update'), ['ids' => $ids, 'category_id' => $new->id])
         ->assertRedirect();
 
-    expect(Equipment::whereIn('id', $ids)->where('category', 'New')->count())->toBe(2);
+    expect(Equipment::whereIn('id', $ids)->where('equipment_category_id', $new->id)->count())->toBe(2);
 });
 
 it('mass-deletes all matching items across the current filter', function () {
-    Equipment::factory()->count(4)->create(['workspace_id' => $this->workspace->id, 'category' => 'Drone']);
-    Equipment::factory()->count(2)->create(['workspace_id' => $this->workspace->id, 'category' => 'Other']);
+    $drone = EquipmentCategory::factory()->create(['workspace_id' => $this->workspace->id, 'name' => 'Drone']);
+    $other = EquipmentCategory::factory()->create(['workspace_id' => $this->workspace->id, 'name' => 'Other']);
+    Equipment::factory()->count(4)->create(['workspace_id' => $this->workspace->id, 'equipment_category_id' => $drone->id]);
+    Equipment::factory()->count(2)->create(['workspace_id' => $this->workspace->id, 'equipment_category_id' => $other->id]);
 
-    // "select all matching" → send the filter, not ids; only the filtered set goes.
+    // "select all matching" → send the filter (category = id), not ids; only the
+    // filtered set goes.
     $this->actingAs($this->admin)
-        ->post(workspaceUrl($this->workspace, '/equipment/bulk/delete'), ['all' => 1, 'category' => 'Drone'])
+        ->post(workspaceUrl($this->workspace, '/equipment/bulk/delete'), ['all' => 1, 'category' => $drone->id])
         ->assertRedirect();
 
-    expect(Equipment::where('category', 'Drone')->count())->toBe(0)
-        ->and(Equipment::where('category', 'Other')->count())->toBe(2);
+    expect(Equipment::where('equipment_category_id', $drone->id)->count())->toBe(0)
+        ->and(Equipment::where('equipment_category_id', $other->id)->count())->toBe(2);
 });
 
 it('sets a cover and rejects a foreign file', function () {
@@ -211,7 +219,8 @@ it('zips selected items\' documents into a valid archive', function () {
 });
 
 it('downloads all matching documents as a ZIP from the export action', function () {
-    $equipment = Equipment::factory()->create(['workspace_id' => $this->workspace->id, 'category' => 'Drone']);
+    $drone = EquipmentCategory::factory()->create(['workspace_id' => $this->workspace->id, 'name' => 'Drone']);
+    $equipment = Equipment::factory()->create(['workspace_id' => $this->workspace->id, 'equipment_category_id' => $drone->id]);
     $this->actingAs($this->admin)
         ->post(workspaceUrl($this->workspace, '/entity-files'), [
             'owner_type' => 'equipment',
@@ -219,9 +228,10 @@ it('downloads all matching documents as a ZIP from the export action', function 
             'files' => [UploadedFile::fake()->create('flight.log', 3), UploadedFile::fake()->create('notes.txt', 2)],
         ])->assertRedirect();
 
-    // The Export → ZIP option hits bulk/zip with all=1 + the active filter.
+    // The Export → ZIP option hits bulk/zip with all=1 + the active filter
+    // (category = id).
     $res = $this->actingAs($this->admin)
-        ->get(workspaceUrl($this->workspace, '/equipment/bulk/zip?all=1&category=Drone'));
+        ->get(workspaceUrl($this->workspace, "/equipment/bulk/zip?all=1&category={$drone->id}"));
 
     $res->assertOk();
     $zip = new ZipArchive;

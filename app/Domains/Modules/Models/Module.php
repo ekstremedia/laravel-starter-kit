@@ -16,6 +16,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $name
  * @property bool $enabled
  * @property string|null $morph_alias
+ * @property array<string, bool>|null $capabilities the features the code ships
+ * @property array<string, bool>|null $features the runtime-toggled features (platform default)
  */
 class Module extends Model
 {
@@ -24,10 +26,14 @@ class Module extends Model
         'name',
         'enabled',
         'morph_alias',
+        'capabilities',
+        'features',
     ];
 
     protected $casts = [
         'enabled' => 'boolean',
+        'capabilities' => 'array',
+        'features' => 'array',
     ];
 
     /**

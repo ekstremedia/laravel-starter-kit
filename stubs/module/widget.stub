@@ -37,7 +37,7 @@ class {{ class }}DashboardWidget implements DashboardWidget
     }
 
     /**
-     * @return array{total: int, with_files: int, recent: array<int, array{id: int, name: string}>}
+     * @return array<string, mixed>
      */
     public function data(Workspace $workspace, User $user): array
     {
@@ -51,7 +51,9 @@ class {{ class }}DashboardWidget implements DashboardWidget
 
         return [
             'total' => (clone $base)->count(),
+// @files
             'with_files' => (clone $base)->whereHas('files')->count(),
+// @endfiles
             'recent' => $recent,
         ];
     }

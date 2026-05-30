@@ -19,7 +19,7 @@ vi.mock('@inertiajs/vue3', async () => {
         ...actual,
         Head: { name: 'Head', render: () => null },
         Link: { name: 'Link', props: ['href'], template: '<a :href="href"><slot /></a>' },
-        usePage: () => ({ props: { auth: { user: null }, locale: 'en' } }),
+        usePage: () => ({ props: { auth: { user: null }, locale: 'en', modules: { equipment: { enabled: true, files: true, log: true } } } }),
         router: { get: vi.fn(), post: vi.fn(), delete: vi.fn(), patch: vi.fn(), put: vi.fn(), visit: vi.fn(), on: vi.fn(() => vi.fn()) },
     };
 });
@@ -27,7 +27,7 @@ vi.mock('@inertiajs/vue3', async () => {
 import Index from '@/Pages/Equipment/Index.vue';
 
 const row = (over: Record<string, unknown> = {}) => ({
-    id: 1, name: 'Forklift', category: 'Machine', serial: 'FL-1',
+    id: 1, name: 'Forklift', category: { id: 1, name: 'Machine', color: '#f59e0b' }, serial: 'FL-1',
     files_count: 0, files_preview: [], cover: null, ...over,
 });
 
@@ -38,8 +38,8 @@ const baseProps = () => ({
     },
     can_manage: true,
     search: null,
-    categories: ['Machine'],
-    stats: { total: 5, with_files: 1, by_category: [{ label: 'Machine', count: 5 }] },
+    categories: [{ value: 1, label: 'Machine', color: '#f59e0b' }],
+    stats: { total: 5, with_files: 1, by_category: [{ label: 'Machine', count: 5, color: '#f59e0b' }] },
 });
 
 // <Head> needs Inertia's head manager (absent in unit tests); stub it.

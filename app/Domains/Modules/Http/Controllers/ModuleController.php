@@ -32,14 +32,31 @@ class ModuleController extends Controller
     {
         $data = $request->validate([
             'enabled' => ['required', 'boolean'],
+            // Platform feature toggles (files/log). Optional — only the keys the
+            // module's code supports are applied; the rest are ignored.
+            'features' => ['sometimes', 'array'],
+            'features.*' => ['boolean'],
         ]);
 
-        $module->update(['enabled' => $data['enabled']]);
+        $module->enabled = $data['enabled'];
+
+        if (array_key_exists('features', $data)) {
+            $features = $module->features ?? [];
+            foreach (ModuleRegistry::FEATURE_KEYS as $feature) {
+                // Never let a feature be toggled on past what the code ships.
+                if ($this->registry->supports($module, $feature) && array_key_exists($feature, $data['features'])) {
+                    $features[$feature] = (bool) $data['features'][$feature];
+                }
+            }
+            $module->features = $features;
+        }
+
+        $module->save();
         $this->registry->forget();
 
         activity('modules')
             ->performedOn($module)
-            ->withProperties(['enabled' => $module->enabled])
+            ->withProperties(['enabled' => $module->enabled, 'features' => $module->features])
             ->event($module->enabled ? 'enabled' : 'disabled')
             ->log($module->enabled ? 'Enabled module' : 'Disabled module');
 

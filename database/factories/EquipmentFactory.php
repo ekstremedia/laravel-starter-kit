@@ -26,7 +26,10 @@ class EquipmentFactory extends Factory
             // Title-cased two-word name with a short suffix so large seed batches
             // don't exhaust faker's unique() pool (the table allows duplicates).
             'name' => ucwords(fake()->words(2, true)).' '.mb_strtoupper(fake()->bothify('##?')),
-            'category' => fake()->randomElement(['Vehicle', 'Machine', 'Device', 'Tool', null]),
+            // Left uncategorised by default; the seeder (and tests that need a
+            // relation) assign an equipment_category_id explicitly. Keeps the
+            // factory from creating a stray category per row.
+            'equipment_category_id' => null,
             'serial' => fake()->boolean(70) ? mb_strtoupper(fake()->bothify('??-#####')) : null,
             'notes' => fake()->boolean(40) ? fake()->sentence() : null,
         ];

@@ -24,6 +24,16 @@ class ModuleSeeder extends Seeder
                 'name' => 'Equipment',
                 'morph_alias' => 'equipment',
                 'enabled' => (bool) config('equipment.enabled', true),
+                // The reference file-owning module: ships both files and a Log.
+                'capabilities' => ['files' => true, 'log' => true],
+            ],
+            [
+                'key' => 'equipment_category',
+                'name' => 'Equipment categories',
+                'morph_alias' => 'equipment_category',
+                'enabled' => (bool) config('equipment_category.enabled', true),
+                // The reference lean module: a Log, but no file area.
+                'capabilities' => ['files' => false, 'log' => true],
             ],
         ];
 
@@ -31,10 +41,14 @@ class ModuleSeeder extends Seeder
             $row = Module::query()->firstOrNew(['key' => $module['key']]);
             $row->name = $module['name'];
             $row->morph_alias = $module['morph_alias'];
-            // Only seed `enabled` on first create (respecting the config flag);
-            // on re-seed the admin's on/off choice is preserved.
+            // Keep declared capabilities in sync with the code on every re-seed.
+            $row->capabilities = $module['capabilities'];
+            // Only seed `enabled` + `features` on first create (respecting the
+            // config flag); on re-seed the admin's on/off + feature choices are
+            // preserved. New modules default every shipped capability to "on".
             if (! $row->exists) {
                 $row->enabled = $module['enabled'];
+                $row->features = $module['capabilities'];
             }
             $row->save();
         }

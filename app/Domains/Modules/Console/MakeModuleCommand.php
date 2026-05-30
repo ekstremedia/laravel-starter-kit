@@ -7,6 +7,7 @@ namespace App\Domains\Modules\Console;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 
 /**
@@ -21,9 +22,11 @@ use Illuminate\Support\Str;
  */
 class MakeModuleCommand extends Command
 {
-    protected $signature = 'make:module {name : Studly singular name, e.g. Car}';
+    protected $signature = 'make:module {name : Studly singular name, e.g. Car}
+        {--no-files : Scaffold a lean module with no file area (no uploads/cover/zip)}
+        {--no-log : Scaffold without an activity log}';
 
-    protected $description = 'Scaffold a new workspace-scoped, file-owning module (CRUD + datatable + files)';
+    protected $description = 'Scaffold a new workspace-scoped module (CRUD + datatable; optionally files + log)';
 
     public function handle(): int
     {
@@ -35,7 +38,12 @@ class MakeModuleCommand extends Command
         $label = Str::headline($studly);                       // Car
         $pluralLabel = Str::headline($pluralStudly);           // Cars
 
-        if (in_array($key, ['user', 'workspace', 'equipment', 'module'], true)) {
+        // Composable features: which of the optional surfaces this module ships.
+        // EquipmentCategory is the hand-built equivalent of `--no-files`.
+        $withFiles = ! $this->option('no-files');
+        $withLog = ! $this->option('no-log');
+
+        if (in_array($key, ['user', 'workspace', 'equipment', 'equipment_category', 'module'], true)) {
             $this->error("'{$key}' is reserved or already exists. Choose another name.");
 
             return self::FAILURE;
@@ -70,6 +78,9 @@ class MakeModuleCommand extends Command
             'lang.stub' => lang_path("en/{$key}.php"),
         ];
 
+        /** @var array<int, string> $generatedPhp paths to Pint after generation */
+        $generatedPhp = [];
+
         foreach ($files as $stub => $target) {
             $stubPath = "{$stubDir}/{$stub}";
             if (! is_file($stubPath)) {
@@ -83,8 +94,11 @@ class MakeModuleCommand extends Command
                 continue;
             }
 
-            if (! $this->writeFile($target, strtr((string) file_get_contents($stubPath), $replacements))) {
+            if (! $this->writeFile($target, $this->render($stubPath, $replacements, $withFiles, $withLog))) {
                 return self::FAILURE;
+            }
+            if (str_ends_with($target, '.php')) {
+                $generatedPhp[] = $target;
             }
             $this->info('Created: '.str_replace(base_path().'/', '', $target));
         }
@@ -92,15 +106,99 @@ class MakeModuleCommand extends Command
         // Norwegian lang file (same stub, dev translates).
         $noLang = lang_path("no/{$key}.php");
         if (! is_file($noLang)) {
-            if (! $this->writeFile($noLang, strtr((string) file_get_contents("{$stubDir}/lang.stub"), $replacements))) {
+            if (! $this->writeFile($noLang, $this->render("{$stubDir}/lang.stub", $replacements, $withFiles, $withLog))) {
                 return self::FAILURE;
             }
+            $generatedPhp[] = $noLang;
             $this->info('Created: '.str_replace(base_path().'/', '', $noLang));
         }
 
-        $this->printChecklist($studly, $key, $route, $pluralStudly, $label);
+        // Tidy the generated PHP so the output is style-clean regardless of the
+        // module name (e.g. import ordering, which depends on the class name).
+        $this->formatGenerated($generatedPhp);
+
+        $this->printChecklist($studly, $key, $route, $pluralStudly, $label, $withFiles, $withLog);
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Read a stub, replace its tokens, then keep/strip the optional `@files` and
+     * `@log` regions so the output matches the requested capabilities.
+     *
+     * @param  array<string, string>  $replacements
+     */
+    private function render(string $stubPath, array $replacements, bool $withFiles, bool $withLog): string
+    {
+        $content = strtr((string) file_get_contents($stubPath), $replacements);
+        $content = $this->stripRegions($content, 'files', $withFiles);
+        $content = $this->stripRegions($content, 'log', $withLog);
+
+        // Collapse any blank-line runs left behind by stripped regions.
+        return (string) preg_replace("/\n{3,}/", "\n\n", $content);
+    }
+
+    /**
+     * Resolve a conditional region tagged `@<tag>` … (`@no<tag>` …) `@end<tag>`,
+     * in both `//` (PHP/TS) and `<!-- -->` (Vue/HTML) comment styles. Keeps the
+     * primary branch when $keep is true, the `@no<tag>` else-branch otherwise;
+     * the marker lines themselves are always dropped. Regions of the same tag do
+     * not nest (files and log are resolved in separate passes, so they may).
+     */
+    private function stripRegions(string $content, string $tag, bool $keep): string
+    {
+        $markers = [
+            'start' => ["// @{$tag}", "<!-- @{$tag} -->"],
+            'else' => ["// @no{$tag}", "<!-- @no{$tag} -->"],
+            'end' => ["// @end{$tag}", "<!-- @end{$tag} -->"],
+        ];
+
+        $out = [];
+        $state = 'outside'; // outside | keep | drop
+        foreach (preg_split('/\n/', $content) ?: [] as $line) {
+            $trim = trim($line);
+            if (in_array($trim, $markers['start'], true)) {
+                $state = $keep ? 'keep' : 'drop';
+
+                continue;
+            }
+            if (in_array($trim, $markers['else'], true)) {
+                $state = $keep ? 'drop' : 'keep';
+
+                continue;
+            }
+            if (in_array($trim, $markers['end'], true)) {
+                $state = 'outside';
+
+                continue;
+            }
+            if ($state !== 'drop') {
+                $out[] = $line;
+            }
+        }
+
+        return implode("\n", $out);
+    }
+
+    /**
+     * Best-effort Pint pass over the freshly generated PHP so its style matches
+     * the codebase (import order in particular is class-name dependent). Silent
+     * no-op when Pint isn't installed; never fails the generation.
+     *
+     * @param  array<int, string>  $paths
+     */
+    private function formatGenerated(array $paths): void
+    {
+        $pint = base_path('vendor/bin/pint');
+        if ($paths === [] || ! is_file($pint)) {
+            return;
+        }
+
+        try {
+            Process::path(base_path())->run(array_merge([$pint, '--quiet'], $paths));
+        } catch (\Throwable) {
+            // Formatting is a nicety — a missing/odd Pint must not break scaffolding.
+        }
     }
 
     /**
@@ -119,31 +217,46 @@ class MakeModuleCommand extends Command
         return true;
     }
 
-    private function printChecklist(string $studly, string $key, string $route, string $pluralStudly, string $label): void
+    private function printChecklist(string $studly, string $key, string $route, string $pluralStudly, string $label, bool $withFiles, bool $withLog): void
     {
         $ns = "App\\Domains\\{$studly}";
+        // Capabilities the generated code ships, for the ModuleSeeder row.
+        $caps = "['files' => ".($withFiles ? 'true' : 'false').", 'log' => ".($withLog ? 'true' : 'false').']';
+        $morphAlias = $withFiles ? "'{$key}'" : 'null';
+
         $this->newLine();
-        $this->components->info("Module '{$studly}' scaffolded. Finish wiring it:");
+        $this->components->info("Module '{$studly}' scaffolded (files: ".($withFiles ? 'yes' : 'no').', log: '.($withLog ? 'yes' : 'no').'). Finish wiring it:');
         $this->line('');
-        $this->line('  <fg=yellow>1.</> app/Providers/AppServiceProvider.php → Relation::morphMap([...]):');
+        $n = 1;
+        $this->line("  <fg=yellow>{$n}.</> app/Providers/AppServiceProvider.php → Relation::morphMap([...]):");
         $this->line("       '{$key}' => \\{$ns}\\Models\\{$studly}::class,");
         $this->line('');
-        $this->line("  <fg=yellow>2.</> config/files.php → allowed_owner_types: add \\{$ns}\\Models\\{$studly}::class");
+        $n++;
+        if ($withFiles) {
+            $this->line("  <fg=yellow>{$n}.</> config/files.php → allowed_owner_types: add \\{$ns}\\Models\\{$studly}::class");
+            $this->line('');
+            $n++;
+        }
+        $this->line("  <fg=yellow>{$n}.</> database/seeders/ModuleSeeder.php → add a row:");
+        $this->line("       ['key' => '{$key}', 'name' => '{$label}', 'morph_alias' => {$morphAlias}, 'enabled' => config('{$key}.enabled', true), 'capabilities' => {$caps}],");
         $this->line('');
-        $this->line('  <fg=yellow>3.</> database/seeders/ModuleSeeder.php → add a row:');
-        $this->line("       ['key' => '{$key}', 'name' => '{$label}', 'morph_alias' => '{$key}', 'enabled' => config('{$key}.enabled', true)],");
+        $n++;
+        $this->line("  <fg=yellow>{$n}.</> app/Domains/Modules/Services/ModuleRegistry.php → configDefaults(): '{$key}' => (bool) config('{$key}.enabled', true),");
         $this->line('');
-        $this->line("  <fg=yellow>4.</> app/Domains/Modules/Services/ModuleRegistry.php → configDefaults(): '{$key}' => (bool) config('{$key}.enabled', true),");
+        $n++;
+        $this->line("  <fg=yellow>{$n}.</> config/dashboard.php → widgets: add \\{$ns}\\Dashboard\\{$studly}DashboardWidget::class");
         $this->line('');
-        $this->line("  <fg=yellow>5.</> config/dashboard.php → widgets: add \\{$ns}\\Dashboard\\{$studly}DashboardWidget::class");
+        $n++;
+        $this->line("  <fg=yellow>{$n}.</> routes/workspace.php → copy the equipment block, s/equipment/{$route}/ (and the controller import), gated by ->middleware('module:{$key}')");
         $this->line('');
-        $this->line("  <fg=yellow>6.</> routes/workspace.php → copy the equipment block, s/equipment/{$route}/ (and the controller import), gated by ->middleware('module:{$key}')");
+        $n++;
+        $this->line("  <fg=yellow>{$n}.</> resources/js/composables/useSidebarItems.ts → add an entry gated on page.props.modules?.{$key}?.enabled");
         $this->line('');
-        $this->line("  <fg=yellow>7.</> resources/js/composables/useSidebarItems.ts → add an entry gated on page.props.modules?.{$key}");
+        $n++;
+        $this->line("  <fg=yellow>{$n}.</> resources/js/Pages/Dashboard.vue → import {$studly}Widget + add to widgetComponents map");
         $this->line('');
-        $this->line("  <fg=yellow>8.</> resources/js/Pages/Dashboard.vue → import {$studly}Widget + add to widgetComponents map");
-        $this->line('');
-        $this->line("  <fg=yellow>9.</> resources/js/i18n/{en,no}.ts → add a `{$key}:` block + `rail.{$key}` (see lang/en/{$key}.php for the keys the Vue pages use)");
+        $n++;
+        $this->line("  <fg=yellow>{$n}.</> resources/js/i18n/{en,no}.ts → add a `{$key}:` block + `rail.{$key}` (see lang/en/{$key}.php for the keys the Vue pages use)");
         $this->line('');
         $this->line('  Then: <fg=green>php artisan migrate</> and add the module to your test suite.');
         $this->newLine();

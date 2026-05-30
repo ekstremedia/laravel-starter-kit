@@ -9,17 +9,27 @@ import CommandDialog from '@/Components/Command/Dialog.vue';
 import CmdButton from '@/Components/Command/Button.vue';
 import Field from '@/Components/Command/Field.vue';
 import Icon, { type IconName } from '@/Components/Command/Icon.vue';
+import MenuDropdown from '@/Components/Command/MenuDropdown.vue';
+import CategoryChip from '@/Components/Equipment/CategoryChip.vue';
 import Tabs from '@/Components/Command/Tabs.vue';
 import EntityFiles, { type FileRow } from '@/Components/Files/EntityFiles.vue';
 import { useWorkspace } from '@/composables/useWorkspace';
+import { useModuleFeatures } from '@/composables/useModuleFeatures';
 import { relativeTime, absoluteTime } from '@/utils/time';
 
 defineOptions({ layout: CommandLayout });
 
+interface CategoryRef {
+    id: number;
+    name: string;
+    color: string | null;
+}
+
 interface Equipment {
     id: number;
     name: string;
-    category: string | null;
+    equipment_category_id: number | null;
+    category: CategoryRef | null;
     serial: string | null;
     notes: string | null;
     cover_file_item_id: number | null;
@@ -36,6 +46,7 @@ interface ActivityRow {
 const props = defineProps<{
     equipment: Equipment;
     owner: { type: string; id: number };
+    categories: { value: number; label: string; color: string | null }[];
     files: { data: FileRow[] };
     breadcrumbs: { id: number; name: string }[];
     current_folder: { id: number; name: string } | null;
@@ -47,19 +58,24 @@ const { t, locale } = useI18n();
 const { workspaceUrl } = useWorkspace();
 const confirm = useConfirm();
 
-// ── Tabs: Details (default) + Files + Activity. Initialised from ?tab, and
-// forced to Files when we're inside a folder so document navigation keeps its tab.
+// Files / Log are composable: an admin can toggle them per module (and per
+// workspace) in the settings panel, so the tabs follow the resolved features.
+const { filesEnabled, logEnabled } = useModuleFeatures('equipment');
+
+// ── Tabs: Details (default) + Files + Log. Files/Log appear only when enabled.
+// Initialised from ?tab, and forced to Files when we're inside a folder so
+// document navigation keeps its tab.
 const tabs = computed<{ key: string; label: string; icon?: IconName }[]>(() => [
-    { key: 'details', label: t('equipment.tab_details'), icon: 'box' },
-    { key: 'files', label: t('equipment.tab_files'), icon: 'disk' },
-    { key: 'activity', label: t('equipment.tab_log'), icon: 'log' },
+    { key: 'details', label: t('equipment.tab_details'), icon: 'box' as IconName },
+    ...(filesEnabled.value ? [{ key: 'files', label: t('equipment.tab_files'), icon: 'disk' as IconName }] : []),
+    ...(logEnabled.value ? [{ key: 'activity', label: t('equipment.tab_log'), icon: 'log' as IconName }] : []),
 ]);
 function initialTab(): string {
     if (typeof window !== 'undefined') {
         const tab = new URLSearchParams(window.location.search).get('tab');
-        if (tab && ['details', 'files', 'activity'].includes(tab)) return tab;
+        if (tab && tabs.value.some((x) => x.key === tab)) return tab;
     }
-    return props.current_folder ? 'files' : 'details';
+    return props.current_folder && filesEnabled.value ? 'files' : 'details';
 }
 const activeTab = ref<string>(initialTab());
 watch(activeTab, (v) => {
@@ -86,16 +102,16 @@ function setCover(fileId: number) {
 }
 
 const editOpen = ref(false);
-const form = useForm({
+const form = useForm<{ name: string; equipment_category_id: number | ''; serial: string; notes: string }>({
     name: props.equipment.name,
-    category: props.equipment.category ?? '',
+    equipment_category_id: props.equipment.equipment_category_id ?? '',
     serial: props.equipment.serial ?? '',
     notes: props.equipment.notes ?? '',
 });
 
 function openEdit() {
     form.name = props.equipment.name;
-    form.category = props.equipment.category ?? '';
+    form.equipment_category_id = props.equipment.equipment_category_id ?? '';
     form.serial = props.equipment.serial ?? '';
     form.notes = props.equipment.notes ?? '';
     form.clearErrors();
@@ -187,8 +203,11 @@ function absTime(iso: string | null): string {
                         <div class="cmd-mono cmd-uc" :style="{ fontSize: '10px', color: 'var(--fg-mute)', letterSpacing: '0.06em', marginBottom: '3px' }">
                             {{ t('equipment.category') }}
                         </div>
-                        <div :style="{ fontSize: '13px', color: equipment.category ? 'var(--fg)' : 'var(--fg-mute)' }">
-                            {{ equipment.category || t('equipment.no_category') }}
+                        <div :style="{ fontSize: '13px' }">
+                            <Link v-if="equipment.category" :href="workspaceUrl(`/equipment-categories/${equipment.category.id}`)" :style="{ textDecoration: 'none' }">
+                                <CategoryChip :category="equipment.category" />
+                            </Link>
+                            <CategoryChip v-else :category="null" />
                         </div>
                     </div>
                     <div>
@@ -209,8 +228,8 @@ function absTime(iso: string | null): string {
             </div>
         </div>
 
-        <!-- Activity tab -->
-        <div v-show="activeTab === 'activity'">
+        <!-- Log tab -->
+        <div v-if="logEnabled" v-show="activeTab === 'activity'">
             <div v-if="!activities.length" class="cmd-card" :style="{ padding: '44px 16px', textAlign: 'center' }">
                 <i class="pi pi-history" :style="{ fontSize: '24px', color: 'var(--fg-mute)' }" />
                 <p :style="{ margin: '12px 0 0', fontSize: '13px', color: 'var(--fg-mute)' }">{{ t('equipment.activity_empty') }}</p>
@@ -241,7 +260,7 @@ function absTime(iso: string | null): string {
         </div>
 
         <!-- Files tab -->
-        <div v-show="activeTab === 'files'">
+        <div v-if="filesEnabled" v-show="activeTab === 'files'">
             <EntityFiles
                 :owner-type="owner.type"
                 :owner-id="owner.id"
@@ -261,7 +280,17 @@ function absTime(iso: string | null): string {
             <form @submit.prevent="submitEdit" :style="{ display: 'flex', flexDirection: 'column', gap: '12px' }">
                 <Field v-model="form.name" :label="t('equipment.name')" :error="form.errors.name" required autofocus />
                 <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }">
-                    <Field v-model="form.category" :label="t('equipment.category')" :error="form.errors.category" />
+                    <div>
+                        <label class="cmd-mono cmd-uc" :style="{ display: 'block', fontSize: '10px', color: 'var(--fg-mute)', marginBottom: '6px', letterSpacing: '0.06em', fontWeight: 500 }">{{ t('equipment.category') }}</label>
+                        <MenuDropdown
+                            v-model="form.equipment_category_id"
+                            :options="props.categories"
+                            :placeholder="t('equipment.no_category')"
+                            :include-empty="true"
+                            block
+                        />
+                        <div v-if="form.errors.equipment_category_id" :style="{ color: 'var(--danger)', fontSize: '11px', marginTop: '4px' }">{{ form.errors.equipment_category_id }}</div>
+                    </div>
                     <Field v-model="form.serial" :label="t('equipment.serial')" :error="form.errors.serial" />
                 </div>
                 <div>

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domains\Equipment\Http\Controllers\EquipmentController;
+use App\Domains\EquipmentCategory\Http\Controllers\EquipmentCategoryController;
 use App\Domains\Files\Http\Controllers\CompanyFileController;
 use App\Domains\Files\Http\Controllers\CompanyFileTrashController;
 use App\Domains\Files\Http\Controllers\EntityFileController;
@@ -14,6 +15,7 @@ use App\Domains\Users\Http\Controllers\AvatarController;
 use App\Domains\Workspaces\Http\Controllers\DashboardController;
 use App\Domains\Workspaces\Http\Controllers\WorkspaceInvitationController;
 use App\Domains\Workspaces\Http\Controllers\WorkspaceMembersController;
+use App\Domains\Workspaces\Http\Controllers\WorkspaceModuleController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -177,6 +179,24 @@ Route::middleware('module:equipment')->group(function (): void {
     Route::delete('/equipment/{equipment}', [EquipmentController::class, 'destroy'])->whereNumber('equipment')->name('equipment.destroy');
 });
 
+// EquipmentCategory module — the reference *lean* module (no files, with Log)
+// and the owner of the demo Equipment relation. Same per-request gating shape
+// as Equipment (module:equipment_category). Literal segments (export, bulk/*,
+// trash) before the numeric {equipmentCategory} catch-all.
+Route::middleware('module:equipment_category')->group(function (): void {
+    Route::get('/equipment-categories', [EquipmentCategoryController::class, 'index'])->name('equipment-categories.index');
+    Route::post('/equipment-categories', [EquipmentCategoryController::class, 'store'])->name('equipment-categories.store');
+    Route::get('/equipment-categories/export', [EquipmentCategoryController::class, 'export'])->name('equipment-categories.export');
+    Route::post('/equipment-categories/bulk/delete', [EquipmentCategoryController::class, 'bulkDestroy'])->name('equipment-categories.bulk.delete');
+    Route::get('/equipment-categories/trash', [EquipmentCategoryController::class, 'trash'])->name('equipment-categories.trash');
+    Route::post('/equipment-categories/trash/{id}/restore', [EquipmentCategoryController::class, 'restore'])->whereNumber('id')->name('equipment-categories.trash.restore');
+    Route::delete('/equipment-categories/trash/{id}', [EquipmentCategoryController::class, 'forceDelete'])->whereNumber('id')->name('equipment-categories.trash.forceDelete');
+
+    Route::get('/equipment-categories/{equipmentCategory}', [EquipmentCategoryController::class, 'show'])->whereNumber('equipmentCategory')->name('equipment-categories.show');
+    Route::put('/equipment-categories/{equipmentCategory}', [EquipmentCategoryController::class, 'update'])->whereNumber('equipmentCategory')->name('equipment-categories.update');
+    Route::delete('/equipment-categories/{equipmentCategory}', [EquipmentCategoryController::class, 'destroy'])->whereNumber('equipmentCategory')->name('equipment-categories.destroy');
+});
+
 // Workspace-Admin — manage the members of the active workspace. `role:Admin`
 // resolves against the team id set by ResolveWorkspace, so it means
 // "Admin on THIS workspace" (not platform admin).
@@ -190,4 +210,13 @@ Route::middleware('workspace.admin')->prefix('members')->name('members.')->group
     Route::post('/invitations', [WorkspaceInvitationController::class, 'store'])->name('invitations.store');
     Route::delete('/invitations/{invitation}', [WorkspaceInvitationController::class, 'destroy'])
         ->whereNumber('invitation')->name('invitations.destroy');
+});
+
+// Workspace-Admin — per-workspace module-feature overrides (files / log). The
+// platform default lives in /admin/modules (super admin); this lets a workspace
+// admin diverge from it for their own workspace only.
+Route::middleware('workspace.admin')->prefix('settings/modules')->name('settings.modules.')->group(function () {
+    Route::get('/', [WorkspaceModuleController::class, 'edit'])->name('edit');
+    Route::patch('/{module}', [WorkspaceModuleController::class, 'update'])->whereNumber('module')->name('update');
+    Route::delete('/{module}', [WorkspaceModuleController::class, 'reset'])->whereNumber('module')->name('reset');
 });

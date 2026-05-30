@@ -10,11 +10,14 @@ import CommandDialog from '@/Components/Command/Dialog.vue';
 import CmdButton from '@/Components/Command/Button.vue';
 import Field from '@/Components/Command/Field.vue';
 import Icon from '@/Components/Command/Icon.vue';
+import MenuDropdown from '@/Components/Command/MenuDropdown.vue';
+import CategoryChip from '@/Components/Equipment/CategoryChip.vue';
 import PageTitle from '@/Components/Command/PageTitle.vue';
 import ImageLightbox from '@/Components/Files/ImageLightbox.vue';
 import FileDetailsDialog from '@/Components/Files/FileDetailsDialog.vue';
 import TextPreviewDialog from '@/Components/Files/TextPreviewDialog.vue';
 import { useWorkspace } from '@/composables/useWorkspace';
+import { useModuleFeatures } from '@/composables/useModuleFeatures';
 import { useFileMedia, type MediaFileRow } from '@/composables/useFileMedia';
 
 defineOptions({ layout: CommandLayout });
@@ -23,14 +26,30 @@ const { t } = useI18n();
 const { workspaceUrl } = useWorkspace();
 const confirm = useConfirm();
 
+// Files are composable per module/workspace — hide the document column + the
+// file-only actions (download, ZIP export) when files are disabled.
+const { filesEnabled } = useModuleFeatures('equipment');
+
+interface CategoryRef {
+    id: number;
+    name: string;
+    color: string | null;
+}
+
 interface EquipmentRow {
     id: number;
     name: string;
-    category: string | null;
+    category: CategoryRef | null;
     serial: string | null;
     files_count: number;
     files_preview: MediaFileRow[];
     cover: MediaFileRow | null;
+}
+
+interface CategoryOption {
+    value: number;
+    label: string;
+    color: string | null;
 }
 
 interface Paginated<T> {
@@ -46,12 +65,13 @@ const props = defineProps<{
     equipment: Paginated<EquipmentRow>;
     can_manage: boolean;
     search: string | null;
-    categories: string[];
-    stats: { total: number; with_files: number; by_category: { label: string; count: number }[] };
+    categories: CategoryOption[];
+    stats: { total: number; with_files: number; by_category: { label: string; count: number; color: string | null }[] };
 }>();
 
 // Inline-style fragments reused across the template.
 const menuItemStyle = { display: 'block', width: '100%', textAlign: 'left' as const, background: 'transparent', border: 'none', padding: '8px 12px', fontSize: '12px', color: 'var(--fg)', cursor: 'pointer', fontFamily: 'inherit' };
+const fieldLabelStyle = { display: 'block', fontSize: '10px', color: 'var(--fg-mute)', marginBottom: '6px', letterSpacing: '0.06em', fontWeight: 500 as const };
 const statCardStyle = { padding: '10px 16px', minWidth: '96px' };
 const statValueStyle = { fontSize: '20px', fontWeight: 600, color: 'var(--fg)', lineHeight: 1.1 };
 const statLabelStyle = { fontSize: '10.5px', color: 'var(--fg-mute)', textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginTop: '3px' };
@@ -61,7 +81,8 @@ const thumbBtnStyle = { flexShrink: 0, width: '30px', height: '30px', borderRadi
 // ── Toolbar state (search / category / sort), round-tripped through the URL.
 const urlParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
 const search = ref(props.search ?? '');
-const category = ref(urlParams.get('category') ?? '');
+// The category filter carries a category id (the picker's value); '' = all.
+const category = ref<number | ''>(urlParams.get('category') ? Number(urlParams.get('category')) : '');
 const sortKey = ref<string>(urlParams.get('sort') ?? 'name');
 const sortDir = ref<'asc' | 'desc'>((urlParams.get('direction') as 'asc' | 'desc') ?? 'asc');
 
@@ -73,7 +94,7 @@ function reload(overrides: Record<string, string | undefined> = {}) {
     const sorted = sortKey.value !== 'name' || sortDir.value !== 'asc';
     const query: Record<string, string | undefined> = {
         q: search.value || undefined,
-        category: category.value || undefined,
+        category: category.value !== '' ? String(category.value) : undefined,
         sort: sorted ? sortKey.value : undefined,
         direction: sorted ? sortDir.value : undefined,
         ...overrides,
@@ -92,7 +113,7 @@ function onSort(payload: { key: string; dir: 'asc' | 'desc' }) {
     reload();
 }
 
-function onCategory(value: string) {
+function onCategory(value: number | '') {
     category.value = value;
     reload();
 }
@@ -122,7 +143,17 @@ const allColumns: Column<EquipmentRow>[] = [
     { key: 'files_count', label: t('equipment.files_count'), sortable: true, width: '80px', align: 'right', mono: true },
 ];
 
-const columns = computed<Column<EquipmentRow>[]>(() => allColumns.filter((c) => c.key === 'name' || !hidden.value.has(c.key)));
+// File columns drop out entirely when files are disabled for the module.
+const fileColumns = ['files', 'files_count'];
+const columns = computed<Column<EquipmentRow>[]>(() =>
+    allColumns.filter((c) => {
+        if (!filesEnabled.value && fileColumns.includes(c.key)) return false;
+        return c.key === 'name' || !hidden.value.has(c.key);
+    }),
+);
+const toggleableColumns = computed(() =>
+    allColumns.filter((c) => TOGGLEABLE.includes(c.key) && (filesEnabled.value || !fileColumns.includes(c.key))),
+);
 
 function toggleColumn(key: string) {
     const next = new Set(hidden.value);
@@ -162,7 +193,7 @@ function clearSelection() {
 function filterParams(): Record<string, string> {
     const p: Record<string, string> = {};
     if (search.value) p.q = search.value;
-    if (category.value) p.category = category.value;
+    if (category.value !== '') p.category = String(category.value);
     return p;
 }
 function bulkBody(extra: Record<string, unknown> = {}) {
@@ -194,9 +225,9 @@ function confirmBulkDelete() {
     });
 }
 
-// Bulk edit (re-categorize).
+// Bulk edit (re-categorize). The picker value is a category id, or '' to clear.
 const bulkEditOpen = ref(false);
-const bulkCategory = ref('');
+const bulkCategory = ref<number | ''>('');
 function openBulkEdit() {
     bulkCategory.value = '';
     bulkEditOpen.value = true;
@@ -204,14 +235,19 @@ function openBulkEdit() {
 function submitBulkEdit() {
     router.post(
         workspaceUrl('/equipment/bulk/update'),
-        bulkBody({ set_category: bulkCategory.value }),
+        bulkBody({ category_id: bulkCategory.value === '' ? null : bulkCategory.value }),
         { preserveScroll: true, onSuccess: () => { bulkEditOpen.value = false; clearSelection(); } },
     );
 }
 
 // ── Create.
 const createOpen = ref(false);
-const form = useForm({ name: '', category: '', serial: '', notes: '' });
+const form = useForm<{ name: string; equipment_category_id: number | ''; serial: string; notes: string }>({
+    name: '',
+    equipment_category_id: '',
+    serial: '',
+    notes: '',
+});
 
 function openCreate() {
     form.reset();
@@ -231,7 +267,7 @@ function doExport(format: 'csv' | 'xlsx') {
     exportOpen.value = false;
     const params = new URLSearchParams();
     if (search.value) params.set('q', search.value);
-    if (category.value) params.set('category', category.value);
+    if (category.value !== '') params.set('category', String(category.value));
     params.set('format', format);
     window.location.href = workspaceUrl(`/equipment/export?${params.toString()}`);
 }
@@ -322,7 +358,7 @@ function iconFor(file: MediaFileRow): string {
                     >
                         <button type="button" role="menuitem" class="cmd-menu-item" :style="menuItemStyle" @click="doExport('csv')">{{ t('equipment.export_csv') }}</button>
                         <button type="button" role="menuitem" class="cmd-menu-item" :style="menuItemStyle" @click="doExport('xlsx')">{{ t('equipment.export_xlsx') }}</button>
-                        <button type="button" role="menuitem" class="cmd-menu-item" :style="menuItemStyle" @click="doExportZip">{{ t('equipment.export_zip') }}</button>
+                        <button v-if="filesEnabled" type="button" role="menuitem" class="cmd-menu-item" :style="menuItemStyle" @click="doExportZip">{{ t('equipment.export_zip') }}</button>
                     </div>
                 </div>
 
@@ -344,7 +380,7 @@ function iconFor(file: MediaFileRow): string {
                 <div :style="statValueStyle">{{ props.stats.total }}</div>
                 <div :style="statLabelStyle">{{ t('equipment.stat_total') }}</div>
             </div>
-            <div class="cmd-card" :style="statCardStyle">
+            <div v-if="filesEnabled" class="cmd-card" :style="statCardStyle">
                 <div :style="statValueStyle">{{ props.stats.with_files }}</div>
                 <div :style="statLabelStyle">{{ t('equipment.stat_with_files') }}</div>
             </div>
@@ -356,14 +392,14 @@ function iconFor(file: MediaFileRow): string {
 
         <!-- Toolbar: category filter + column toggle -->
         <div :style="{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }">
-            <select
-                :value="category"
-                :style="{ background: 'var(--panel2)', border: '1px solid var(--border)', borderRadius: '5px', padding: '5px 9px', color: 'var(--fg)', fontSize: '11.5px', fontFamily: 'inherit', outline: 'none' }"
-                @change="onCategory(($event.target as HTMLSelectElement).value)"
-            >
-                <option value="">{{ t('equipment.all_categories') }}</option>
-                <option v-for="c in props.categories" :key="c" :value="c">{{ c }}</option>
-            </select>
+            <MenuDropdown
+                :model-value="category"
+                :options="props.categories"
+                :placeholder="t('equipment.all_categories')"
+                :include-empty="true"
+                :aria-label="t('equipment.all_categories')"
+                @update:model-value="onCategory($event as number | '')"
+            />
 
             <div ref="columnsWrap" :style="{ position: 'relative' }">
                 <button
@@ -382,7 +418,7 @@ function iconFor(file: MediaFileRow): string {
                     :style="{ position: 'absolute', left: 0, top: 'calc(100% + 4px)', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: '6px', boxShadow: 'var(--shadow-palette, 0 10px 30px rgba(0,0,0,0.3))', zIndex: 30, padding: '6px', minWidth: '160px' }"
                 >
                     <label
-                        v-for="col in allColumns.filter((c) => TOGGLEABLE.includes(c.key))"
+                        v-for="col in toggleableColumns"
                         :key="col.key"
                         :style="{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 7px', fontSize: '12px', color: 'var(--fg)', cursor: 'pointer', borderRadius: '4px' }"
                     >
@@ -446,9 +482,7 @@ function iconFor(file: MediaFileRow): string {
             </template>
 
             <template #cell:category="{ row }">
-                <span :style="{ color: row.category ? 'var(--fg-dim)' : 'var(--fg-mute)' }">
-                    {{ row.category || t('equipment.no_category') }}
-                </span>
+                <CategoryChip :category="row.category" />
             </template>
 
             <template #cell:serial="{ row }">
@@ -472,7 +506,7 @@ function iconFor(file: MediaFileRow): string {
                     @click="selectAllMatching"
                 >{{ t('equipment.select_all_matching', { total }) }}</button>
                 <div :style="{ display: 'flex', alignItems: 'center', gap: '6px' }">
-                    <button type="button" class="cmd-bulk-btn" @click="bulkDownload">
+                    <button v-if="filesEnabled" type="button" class="cmd-bulk-btn" @click="bulkDownload">
                         <i class="pi pi-download" :style="{ fontSize: '13px' }" /><span>{{ t('equipment.bulk_download') }}</span>
                     </button>
                     <button v-if="can_manage" type="button" class="cmd-bulk-btn" @click="openBulkEdit">
@@ -493,7 +527,17 @@ function iconFor(file: MediaFileRow): string {
             <form @submit.prevent="submitCreate" :style="{ display: 'flex', flexDirection: 'column', gap: '12px' }">
                 <Field v-model="form.name" :label="t('equipment.name')" :error="form.errors.name" required autofocus />
                 <div :style="{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }">
-                    <Field v-model="form.category" :label="t('equipment.category')" :error="form.errors.category" />
+                    <div>
+                        <label class="cmd-mono cmd-uc" :style="fieldLabelStyle">{{ t('equipment.category') }}</label>
+                        <MenuDropdown
+                            v-model="form.equipment_category_id"
+                            :options="props.categories"
+                            :placeholder="t('equipment.no_category')"
+                            :include-empty="true"
+                            block
+                        />
+                        <div v-if="form.errors.equipment_category_id" :style="{ color: 'var(--danger)', fontSize: '11px', marginTop: '4px' }">{{ form.errors.equipment_category_id }}</div>
+                    </div>
                     <Field v-model="form.serial" :label="t('equipment.serial')" :error="form.errors.serial" />
                 </div>
                 <div>
@@ -524,7 +568,16 @@ function iconFor(file: MediaFileRow): string {
         <!-- Bulk edit dialog -->
         <CommandDialog v-model:visible="bulkEditOpen" :title="t('equipment.bulk_edit_title', { count: selectedCount })" width="420px">
             <form @submit.prevent="submitBulkEdit" :style="{ display: 'flex', flexDirection: 'column', gap: '10px' }">
-                <Field v-model="bulkCategory" :label="t('equipment.category')" />
+                <div>
+                    <label class="cmd-mono cmd-uc" :style="fieldLabelStyle">{{ t('equipment.category') }}</label>
+                    <MenuDropdown
+                        v-model="bulkCategory"
+                        :options="props.categories"
+                        :placeholder="t('equipment.no_category')"
+                        :include-empty="true"
+                        block
+                    />
+                </div>
                 <p :style="{ margin: 0, fontSize: '11px', color: 'var(--fg-mute)' }">{{ t('equipment.bulk_edit_category_help') }}</p>
                 <button type="submit" :style="{ display: 'none' }" aria-hidden="true" />
             </form>

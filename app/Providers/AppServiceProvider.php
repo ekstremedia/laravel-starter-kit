@@ -7,6 +7,7 @@ use App\Domains\Access\Models\Role;
 use App\Domains\Chat\Models\Conversation;
 use App\Domains\Chat\Models\Message;
 use App\Domains\Equipment\Models\Equipment;
+use App\Domains\EquipmentCategory\Models\EquipmentCategory;
 use App\Domains\Files\Models\CompanyFileLink;
 use App\Domains\Files\Models\FileItem;
 use App\Domains\Files\Models\FileShare;
@@ -88,6 +89,9 @@ class AppServiceProvider extends ServiceProvider
             // New domain entities use a clean alias from day one (no legacy
             // FQCN to preserve). New file-owning modules add a line here.
             'equipment' => Equipment::class,
+            // Owns no files, but still aliased so its activity-log subjects and
+            // /admin/modules record counts resolve via the morph map.
+            'equipment_category' => EquipmentCategory::class,
         ]);
 
         // Generate absolute URLs from APP_URL rather than the request Host

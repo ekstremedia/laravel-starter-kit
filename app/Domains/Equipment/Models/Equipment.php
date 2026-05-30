@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domains\Equipment\Models;
 
+use App\Domains\EquipmentCategory\Models\EquipmentCategory;
 use App\Domains\Files\Contracts\FileOwner;
 use App\Domains\Files\Models\Concerns\HasFiles;
 use App\Domains\Files\Models\FileItem;
@@ -33,11 +34,12 @@ use Spatie\Activitylog\Support\LogOptions;
  * @property int $id
  * @property int $workspace_id
  * @property string $name
- * @property string|null $category
+ * @property int|null $equipment_category_id
  * @property string|null $serial
  * @property string|null $notes
  * @property int|null $cover_file_item_id the file used as the row thumbnail / "main image"
  * @property-read Workspace $workspace
+ * @property-read EquipmentCategory|null $category
  * @property-read FileItem|null $cover
  */
 class Equipment extends Model implements FileOwner
@@ -57,7 +59,7 @@ class Equipment extends Model implements FileOwner
     protected $fillable = [
         'workspace_id',
         'name',
-        'category',
+        'equipment_category_id',
         'serial',
         'notes',
         'cover_file_item_id',
@@ -65,6 +67,7 @@ class Equipment extends Model implements FileOwner
 
     protected $casts = [
         'workspace_id' => 'integer',
+        'equipment_category_id' => 'integer',
         'cover_file_item_id' => 'integer',
     ];
 
@@ -121,7 +124,7 @@ class Equipment extends Model implements FileOwner
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'category', 'serial', 'notes', 'cover_file_item_id'])
+            ->logOnly(['name', 'equipment_category_id', 'serial', 'notes', 'cover_file_item_id'])
             ->logOnlyDirty()
             ->dontLogEmptyChanges()
             ->useLogName('equipment');
@@ -133,6 +136,17 @@ class Equipment extends Model implements FileOwner
     public function workspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class, 'workspace_id');
+    }
+
+    /**
+     * The demo relation: the EquipmentCategory this item is filed under (or null
+     * when uncategorised). The reverse side is EquipmentCategory::equipment().
+     *
+     * @return BelongsTo<EquipmentCategory, $this>
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(EquipmentCategory::class, 'equipment_category_id');
     }
 
     /**

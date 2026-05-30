@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Domains\Equipment\Http\Controllers;
 
 use App\Domains\Equipment\Models\Equipment;
+use App\Domains\EquipmentCategory\Models\EquipmentCategory;
 use App\Domains\Files\Http\Resources\FileItemResource;
 use App\Domains\Files\Models\FileItem;
 use App\Domains\Files\Support\FileTreeZipper;
+use App\Domains\Modules\Services\ModuleRegistry;
 use App\Domains\Operations\Models\Activity;
 use App\Domains\Workspaces\Models\Workspace;
 use App\Http\Controllers\Controller;
@@ -15,6 +17,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Exists;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\SimpleExcel\SimpleExcelWriter;
@@ -43,16 +47,25 @@ class EquipmentController extends Controller
         abort_unless($workspace->canViewFiles($request->user(), $workspace), 403);
 
         // Server-side sort with an allowlist; falls back to name. files_count is
-        // the withCount alias, orderable directly in Postgres.
+        // the withCount alias, orderable directly in Postgres; category sorts on
+        // the related category name via a left join.
         $allowed = ['name', 'category', 'serial', 'files_count', 'created_at'];
         $sort = in_array($request->string('sort')->toString(), $allowed, true)
             ? $request->string('sort')->toString()
             : 'name';
         $dir = $request->string('direction')->toString() === 'desc' ? 'desc' : 'asc';
 
-        $query = $this->baseQuery($request, $workspace)->withCount('files')->orderBy($sort, $dir);
+        $query = $this->baseQuery($request, $workspace)->withCount('files')->with('category:id,name,color');
+        if ($sort === 'category') {
+            // withCount already qualifies the select to equipment.*, so the join
+            // adds no ambiguous columns; order by the related name (nulls last in pg).
+            $query->leftJoin('equipment_categories as ec', 'ec.id', '=', 'equipment.equipment_category_id')
+                ->orderBy('ec.name', $dir);
+        } else {
+            $query->orderBy($sort, $dir);
+        }
         if ($sort !== 'name') {
-            $query->orderBy('name'); // stable secondary order
+            $query->orderBy('equipment.name'); // stable secondary order (qualified under the join)
         }
 
         $items = $query->paginate(self::PER_PAGE)->withQueryString();
@@ -103,6 +116,8 @@ class EquipmentController extends Controller
             abort(404);
         }
 
+        $equipment->loadMissing('category:id,name,color');
+
         $items = FileItem::query()
             ->where('workspace_id', $workspace->id)
             ->forOwner($equipment)
@@ -116,16 +131,23 @@ class EquipmentController extends Controller
             'equipment' => [
                 'id' => $equipment->id,
                 'name' => $equipment->name,
-                'category' => $equipment->category,
+                'equipment_category_id' => $equipment->equipment_category_id,
+                'category' => $equipment->category
+                    ? ['id' => $equipment->category->id, 'name' => $equipment->category->name, 'color' => $equipment->category->color]
+                    : null,
                 'serial' => $equipment->serial,
                 'notes' => $equipment->notes,
                 'cover_file_item_id' => $equipment->cover_file_item_id,
             ],
+            'categories' => $this->categories($workspace),
             'owner' => ['type' => $equipment->getMorphClass(), 'id' => $equipment->id],
             'files' => FileItemResource::collection($items),
             'breadcrumbs' => $this->breadcrumbs($folder),
             'current_folder' => $folder?->only(['id', 'name']),
-            'activities' => $this->activities($equipment),
+            // The Log is composable — skip the query when the feature is off.
+            'activities' => app(ModuleRegistry::class)->featureEnabled('equipment', 'log', $workspace)
+                ? $this->activities($equipment)
+                : [],
             'can_manage' => $workspace->canManageFiles($request->user(), $workspace),
         ]);
     }
@@ -177,14 +199,15 @@ class EquipmentController extends Controller
         $workspace = $this->currentTenant($request);
         abort_unless($workspace->canManageFiles($request->user(), $workspace), 403);
 
-        // `set_category` is the new value; the filter params (q/category) below
-        // resolve the target set in "select all matching" mode without colliding.
+        // `category_id` is the new category (null = clear it); the filter params
+        // (q/category) below resolve the target set in "select all matching" mode
+        // without colliding. The id must belong to this workspace.
         $data = $request->validate([
-            'set_category' => ['nullable', 'string', 'max:100'],
+            'category_id' => ['nullable', 'integer', $this->categoryExistsRule($workspace)],
         ]);
 
         $count = $this->targetQuery($request, $workspace)
-            ->update(['category' => ($data['set_category'] ?? '') !== '' ? $data['set_category'] : null]);
+            ->update(['equipment_category_id' => $data['category_id'] ?? null]);
 
         return back()->with('success', trans_choice('equipment.bulk_updated', $count, ['count' => $count]));
     }
@@ -284,12 +307,13 @@ class EquipmentController extends Controller
 
         $this->baseQuery($request, $workspace)
             ->withCount('files')
+            ->with('category:id,name')
             ->orderBy('name')
             ->cursor()
             ->each(function (Equipment $equipment) use ($writer): void {
                 $writer->addRow([
                     'Name' => $equipment->name,
-                    'Category' => $equipment->category,
+                    'Category' => $equipment->category?->name,
                     'Serial' => $equipment->serial,
                     'Notes' => $equipment->notes,
                     'Files' => $equipment->files_count,
@@ -373,17 +397,18 @@ class EquipmentController extends Controller
         $op = DB::connection()->getDriverName() === 'pgsql' ? 'ilike' : 'like';
 
         return Equipment::query()
-            ->where('workspace_id', $workspace->id)
+            ->where('equipment.workspace_id', $workspace->id)
             ->when($request->string('q')->toString(), function (Builder $query, string $search) use ($op): void {
                 $like = '%'.addcslashes($search, '%_\\').'%';
                 $query->where(function (Builder $q) use ($like, $op): void {
-                    $q->where('name', $op, $like)
-                        ->orWhere('category', $op, $like)
-                        ->orWhere('serial', $op, $like);
+                    $q->where('equipment.name', $op, $like)
+                        ->orWhere('equipment.serial', $op, $like)
+                        ->orWhereHas('category', fn (Builder $c) => $c->where('name', $op, $like));
                 });
             })
-            ->when($request->string('category')->toString(), function (Builder $query, string $category): void {
-                $query->where('category', $category);
+            // The category filter carries a category id (the picker's value).
+            ->when($request->integer('category'), function (Builder $query, int $categoryId): void {
+                $query->where('equipment.equipment_category_id', $categoryId);
             });
     }
 
@@ -438,36 +463,58 @@ class EquipmentController extends Controller
     }
 
     /**
-     * Distinct categories in the workspace, for the filter dropdown + mass-edit.
+     * The workspace's categories, shaped for the filter dropdown / pickers
+     * (value = id, label = name, plus the chip colour).
      *
-     * @return array<int, string>
+     * @return array<int, array{value: int, label: string, color: string|null}>
      */
     private function categories(Workspace $workspace): array
     {
-        return Equipment::query()
+        return EquipmentCategory::query()
             ->where('workspace_id', $workspace->id)
-            ->whereNotNull('category')
-            ->distinct()
-            ->orderBy('category')
-            ->pluck('category')
+            ->orderBy('name')
+            ->get(['id', 'name', 'color'])
+            ->map(fn (EquipmentCategory $c) => ['value' => $c->id, 'label' => $c->name, 'color' => $c->color])
             ->all();
     }
 
     /**
-     * Lightweight workspace statistics for the index header strip.
+     * Validation rule: the category id must be one of this workspace's categories.
+     */
+    private function categoryExistsRule(Workspace $workspace): Exists
+    {
+        return Rule::exists('equipment_categories', 'id')->where('workspace_id', $workspace->id);
+    }
+
+    /**
+     * Lightweight workspace statistics for the index header strip. by_category
+     * groups via the relation, carrying each category's chip colour (and a
+     * null-keyed "uncategorised" bucket) for the dashboard donut.
      *
-     * @return array{total: int, with_files: int, by_category: array<int, array{label: string, count: int}>}
+     * @return array{total: int, with_files: int, by_category: array<int, array{label: string, count: int, color: string|null}>}
      */
     private function workspaceStats(Workspace $workspace): array
     {
         $base = Equipment::query()->where('workspace_id', $workspace->id);
 
+        // Names + colours for the workspace's categories, to label the grouped counts.
+        $names = EquipmentCategory::query()
+            ->where('workspace_id', $workspace->id)
+            ->get(['id', 'name', 'color'])
+            ->keyBy('id');
+
         $byCategory = (clone $base)->toBase()
-            ->selectRaw('coalesce(category, ?) as label, count(*) as count', [__('equipment.no_category')])
-            ->groupBy('label')
+            ->selectRaw('equipment_category_id, count(*) as count')
+            ->groupBy('equipment_category_id')
             ->orderByDesc('count')
             ->get()
-            ->map(fn ($r) => ['label' => (string) $r->label, 'count' => (int) $r->count])
+            ->map(fn ($r) => [
+                'label' => $r->equipment_category_id !== null && $names->has($r->equipment_category_id)
+                    ? $names[$r->equipment_category_id]->name
+                    : __('equipment.no_category'),
+                'count' => (int) $r->count,
+                'color' => $r->equipment_category_id !== null ? ($names[$r->equipment_category_id]->color ?? null) : null,
+            ])
             ->all();
 
         return [
@@ -525,14 +572,16 @@ class EquipmentController extends Controller
     }
 
     /**
-     * @return array{name: string, category: string|null, serial: string|null, notes: string|null}
+     * @return array{name: string, equipment_category_id: int|null, serial: string|null, notes: string|null}
      */
     private function validateEquipment(Request $request): array
     {
-        /** @var array{name: string, category: string|null, serial: string|null, notes: string|null} $data */
+        $workspace = $this->currentTenant($request);
+
+        /** @var array{name: string, equipment_category_id: int|null, serial: string|null, notes: string|null} $data */
         $data = $request->validate([
             'name' => 'required|string|max:255',
-            'category' => 'nullable|string|max:100',
+            'equipment_category_id' => ['nullable', 'integer', $this->categoryExistsRule($workspace)],
             'serial' => 'nullable|string|max:100',
             'notes' => 'nullable|string|max:2000',
         ]);

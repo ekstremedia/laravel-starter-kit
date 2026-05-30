@@ -6,6 +6,8 @@ namespace App\Domains\Modules\Services;
 
 use App\Domains\Files\Services\StorageUsageService;
 use App\Domains\Modules\Models\Module;
+use App\Domains\Modules\Models\WorkspaceModuleFeature;
+use App\Domains\Workspaces\Models\Workspace;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -19,6 +21,9 @@ use Throwable;
  */
 class ModuleRegistry
 {
+    /** The optional, per-module-toggleable features. A module's `capabilities` say which of these its code ships. */
+    public const FEATURE_KEYS = ['files', 'log'];
+
     /** @var array<string, bool>|null Per-request memo of the enabled map. */
     private ?array $memo = null;
 
@@ -54,12 +59,98 @@ class ModuleRegistry
     }
 
     /**
+     * Whether a module's feature (e.g. 'files', 'log') is effectively on for the
+     * given workspace — the same resolution the front end sees. Lets controllers
+     * skip work for a disabled feature (e.g. not loading the activity Log).
+     */
+    public function featureEnabled(string $key, string $feature, ?Workspace $workspace = null): bool
+    {
+        return (bool) ($this->featuresFor($workspace)[$key][$feature] ?? false);
+    }
+
+    /**
      * Clear the per-request memo after a toggle so a follow-up read in the same
      * request reflects the change.
      */
     public function forget(): void
     {
         $this->memo = null;
+    }
+
+    /**
+     * Whether a module's code ships a given feature (the toggle ceiling).
+     */
+    public function supports(Module $module, string $feature): bool
+    {
+        return (bool) (($module->capabilities ?? [])[$feature] ?? false);
+    }
+
+    /**
+     * The platform-level (super-admin) effective state of a feature: the
+     * `modules.features` toggle, clamped to what the code supports. Defaults to
+     * "on where supported" when the toggle is unset (legacy rows).
+     */
+    public function platformFeature(Module $module, string $feature): bool
+    {
+        if (! $this->supports($module, $feature)) {
+            return false;
+        }
+
+        return (bool) (($module->features ?? [])[$feature] ?? true);
+    }
+
+    /**
+     * Resolve every module's effective {enabled, <feature>...} for a workspace:
+     * a per-workspace override (workspace_module_features) wins over the platform
+     * toggle, which wins over the capability default. `enabled` is platform-global
+     * (no per-workspace override). This is the shape shared to the front end as
+     * the `modules` prop and read by the sidebar + page conditional rendering.
+     *
+     * Null-safe: before the tables exist (fresh install) falls back to a
+     * conservative config-derived map.
+     *
+     * @return array<string, array<string, bool>>
+     */
+    public function featuresFor(?Workspace $workspace): array
+    {
+        try {
+            $modules = Module::query()->get();
+
+            /** @var array<int, array<string, bool>|null> $overrideMap */
+            $overrideMap = $workspace
+                ? WorkspaceModuleFeature::query()
+                    ->where('workspace_id', $workspace->getKey())
+                    ->pluck('features', 'module_id')
+                    ->all()
+                : [];
+
+            $map = [];
+            foreach ($modules as $module) {
+                $override = $overrideMap[$module->getKey()] ?? [];
+
+                $entry = ['enabled' => (bool) $module->enabled];
+                foreach (self::FEATURE_KEYS as $feature) {
+                    if (! $this->supports($module, $feature)) {
+                        $entry[$feature] = false;
+
+                        continue;
+                    }
+                    $entry[$feature] = array_key_exists($feature, $override)
+                        ? (bool) $override[$feature]
+                        : $this->platformFeature($module, $feature);
+                }
+                $map[$module->key] = $entry;
+            }
+
+            return $map;
+        } catch (Throwable) {
+            $fallback = [];
+            foreach ($this->configDefaults() as $key => $enabled) {
+                $fallback[$key] = ['enabled' => $enabled, 'files' => false, 'log' => false];
+            }
+
+            return $fallback;
+        }
     }
 
     /**
@@ -78,12 +169,23 @@ class ModuleRegistry
                 $bytes = (int) ($storage[$module->morph_alias]['bytes'] ?? 0);
                 $fileCount = (int) ($storage[$module->morph_alias]['file_count'] ?? 0);
 
+                // Per-feature {supported, enabled} so the admin UI can render a
+                // toggle only where the code ships the capability.
+                $features = [];
+                foreach (self::FEATURE_KEYS as $feature) {
+                    $features[$feature] = [
+                        'supported' => $this->supports($module, $feature),
+                        'enabled' => $this->platformFeature($module, $feature),
+                    ];
+                }
+
                 return [
                     'id' => $module->id,
                     'key' => $module->key,
                     'name' => $module->name,
                     'enabled' => $module->enabled,
                     'morph_alias' => $module->morph_alias,
+                    'features' => $features,
                     ...$this->recordCounts($module),
                     'storage_used_bytes' => $bytes,
                     'file_count' => $fileCount,
@@ -157,6 +259,7 @@ class ModuleRegistry
     {
         return [
             'equipment' => (bool) config('equipment.enabled', true),
+            'equipment_category' => (bool) config('equipment_category.enabled', true),
         ];
     }
 }

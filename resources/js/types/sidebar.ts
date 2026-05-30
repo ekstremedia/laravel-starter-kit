@@ -8,6 +8,9 @@ export interface SidebarItem {
     kb?: string;
     match: (path: string) => boolean;
     hideWhen?: () => boolean;
+    // Render as a nested sub-item (extra left padding when the rail is expanded).
+    // Used to file e.g. "Categories" under its parent "Equipment" entry.
+    indent?: boolean;
 }
 
 export interface SidebarSeparator {

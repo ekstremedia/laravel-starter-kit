@@ -195,9 +195,9 @@ type Entry = SidebarEntry;
                     display: 'flex',
                     alignItems: 'center',
                     gap: '10px',
-                    height: '34px',
+                    height: entry.indent ? '30px' : '34px',
                     minWidth: '34px',
-                    padding: expanded ? '0 10px' : '0',
+                    padding: expanded ? (entry.indent ? '0 10px 0 24px' : '0 10px') : '0',
                     justifyContent: expanded ? 'flex-start' : 'center',
                     borderRadius: '6px',
                     marginBottom: '2px',
@@ -211,7 +211,7 @@ type Entry = SidebarEntry;
                 }"
                 class="cmd-rail-item"
             >
-                <Icon :name="entry.icon" :size="15" :style="{ flexShrink: 0 }" />
+                <Icon :name="entry.icon" :size="entry.indent ? 13 : 15" :style="{ flexShrink: 0, opacity: entry.indent ? 0.85 : 1 }" />
 
                 <span
                     v-if="entry.match(currentPath)"

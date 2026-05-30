@@ -23,6 +23,9 @@ class DatabaseSeeder extends Seeder
             // Module registry — must run before the modules' own seeders so the
             // enabled-flag and stats can resolve.
             ModuleSeeder::class,
+            // Demo categories first, then equipment files itself under them
+            // (EquipmentSeeder assigns each row an equipment_category_id).
+            EquipmentCategorySeeder::class,
             // Demo file-owning module. Remove with the rest of the Equipment module.
             EquipmentSeeder::class,
         ]);

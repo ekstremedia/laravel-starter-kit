@@ -19,10 +19,17 @@ return new class extends Migration
             $table->string('key')->unique();
             $table->string('name');
             $table->boolean('enabled')->default(true);
-            // The Eloquent morph alias of this module's file-owning entity
-            // (e.g. 'equipment'), used to total record/storage stats. Null for
-            // modules that own no files.
+            // The Eloquent morph alias of this module's entity (e.g. 'equipment'),
+            // used to total record/storage stats. Null for modules with no entity.
             $table->string('morph_alias')->nullable();
+            // What the module's CODE ships, seeded from the module and NOT
+            // user-editable: e.g. {"files": true, "log": true}. The ceiling for
+            // `features` — a capability the code lacks can never be toggled on.
+            $table->json('capabilities')->nullable();
+            // Runtime feature toggles, super-admin editable in /admin/modules,
+            // defaulting to `capabilities`: e.g. {"files": true, "log": false}.
+            // Per-workspace overrides live in `workspace_module_features`.
+            $table->json('features')->nullable();
             $table->timestamps();
         });
     }

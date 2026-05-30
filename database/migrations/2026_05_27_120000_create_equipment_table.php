@@ -18,7 +18,11 @@ return new class extends Migration
             $table->id();
             $table->foreignId('workspace_id')->constrained('workspaces')->cascadeOnDelete();
             $table->string('name');
-            $table->string('category')->nullable();
+            // A real relation rather than a free-text string: each item is filed
+            // under one EquipmentCategory (the demo belongsTo). Nulled (not
+            // cascaded) when the category is deleted, so the item survives as
+            // "uncategorised". The categories table is created just before this one.
+            $table->foreignId('equipment_category_id')->nullable()->constrained('equipment_categories')->nullOnDelete();
             $table->string('serial')->nullable();
             $table->text('notes')->nullable();
             // The "main" document used as the row thumbnail / cover image. Null

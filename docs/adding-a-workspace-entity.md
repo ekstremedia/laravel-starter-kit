@@ -14,7 +14,25 @@ activity timeline, and per-workspace statistics. Copy its shape. Below is the re
 `Car` example.
 
 > If the module does **not** own files, skip the `FileOwner` / `HasFiles` / morph-map / files
-> steps — you only need steps 1, 2 (trait), 6, 8, 9.
+> steps — you only need steps 1, 2 (trait), 6, 8, 9. **`app/Domains/EquipmentCategory`** is the
+> reference *lean* module: no files, only a Log — and it owns the demo **relation** (Equipment
+> `belongsTo` EquipmentCategory; see step 10).
+
+## 0. Fast path — `php artisan make:module`
+
+Scaffold the whole module (migration, model, controller, factory, seeder, config, dashboard
+widget, Vue Index/Show/Trash) from these same bare bones, then follow the printed wiring
+checklist:
+
+```
+php artisan make:module Car              # full: files + log (like Equipment)
+php artisan make:module Tag --no-files   # lean: a Log but no file area (like EquipmentCategory)
+php artisan make:module Note --no-log    # no activity log
+```
+
+The flags keep/strip the optional `files` and `log` regions in the stubs, and the printed
+`ModuleSeeder` row carries the matching `capabilities` (step 7). The generated PHP is auto-Pinted.
+The steps below explain what the generator produces so you can extend it (or build by hand).
 
 ## 1. Migration — a `workspace_id` FK
 
@@ -129,9 +147,20 @@ visibility**, the **enabled-modules Inertia share**, and the `/admin/modules` ad
 
 - `config/car.php` → `'enabled' => env('CAR_ENABLED', true)` (the seed default).
 - `database/seeders/ModuleSeeder.php` → add a row `['key' => 'car', 'name' => 'Car', 'morph_alias'
-  => 'car', 'enabled' => config('car.enabled', true)]`.
+  => 'car', 'enabled' => config('car.enabled', true), 'capabilities' => ['files' => true, 'log' =>
+  true]]`. `capabilities` declares which optional features the **code** ships (`false` for a
+  feature you didn't scaffold). For a lean module set `morph_alias` to its own alias for record
+  counts even with `'files' => false`.
 - `ModuleRegistry::configDefaults()` → add `'car' => (bool) config('car.enabled', true)` so the
   pre-migration fallback knows about it.
+
+**Composable features (files / log).** `capabilities` is the ceiling; the effective state per
+workspace is resolved by `ModuleRegistry::featuresFor($workspace)` as *workspace override →
+platform toggle → capability* and shared to the front end as the `modules` prop
+(`{ car: { enabled, files, log } }`). A **super admin** toggles the platform default in
+`/admin/modules`; a **workspace admin** overrides it for their workspace under
+`/settings/modules`. Pages read the resolved flags with `useModuleFeatures('car')` to show/hide
+their Files / Log surfaces, and controllers skip the matching work (e.g. don't load the Log).
 
 ## 8. Routes — in `routes/workspace.php`
 
@@ -156,8 +185,11 @@ These mount under `/w/{workspace}/cars` when tenancy is on, or at `/cars` when o
 Add `resources/js/Pages/Cars/{Index,Show,Trash}.vue` (copy the Equipment pages) and an admin page
 if needed. For workspace links use the `useWorkspace()` → `workspaceUrl('/cars')` helper. Add a
 sidebar entry in `composables/useSidebarItems.ts` gated on
-`page.props.modules?.car`. The datatable, file-preview lightbox (`useFileMedia`), column-toggle,
-and mass-action bar are all reusable from the Equipment pages.
+`page.props.modules?.car?.enabled` (the `modules` prop is `{ key: { enabled, files, log } }`). To
+nest a sub-item under a parent (as Categories sit under Equipment), set `indent: true` on the entry
+and anchor the parent's `match` so it doesn't also light up the child route. The datatable,
+file-preview lightbox (`useFileMedia`), column-toggle, and mass-action bar are all reusable from the
+Equipment pages.
 
 ## 10. Child relations (e.g. Car → Wheels)
 
@@ -166,6 +198,15 @@ A child entity (a Wheel belonging to a Car) is just another `BelongsToWorkspace`
 the parent (`/cars/{car}/wheels`), authorize through the parent's `canManageFiles`, and reuse the
 same datatable/`<EntityFiles>` building blocks. It does not need its own `modules` row unless you
 want to toggle/stat it independently.
+
+The live example of a relation is **Equipment `belongsTo` EquipmentCategory** (each item is filed
+under one category; a category `hasMany` equipment). Note the FK direction is the inverse of
+Car → Wheels: there the child (Wheel) holds `car_id`, whereas Equipment holds the
+`equipment_category_id` of its *parent* category. The category's Show page demonstrates the reverse
+side — a count + a short list + a link to the filtered Equipment index — and the picker is the
+reusable `Components/Command/MenuDropdown.vue` (the custom-menu select used for the category
+filter). EquipmentCategory is registered as its own `modules` row so it can be toggled and nested
+("Categories") under Equipment in the rail.
 
 ---
 

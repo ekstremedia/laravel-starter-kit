@@ -15,12 +15,14 @@ defineOptions({ layout: CommandLayout });
 const { t } = useI18n();
 const confirm = useConfirm();
 
+interface FeatureState { supported: boolean; enabled: boolean }
 interface ModuleRow {
     id: number;
     key: string;
     name: string;
     enabled: boolean;
     morph_alias: string | null;
+    features: Record<string, FeatureState>;
     record_count: number;
     trashed_count: number;
     storage_used_bytes: number;
@@ -31,18 +33,36 @@ defineProps<{ modules: ModuleRow[] }>();
 
 const search = ref('');
 
+// The toggleable features, in display order. Only rendered where the module's
+// code supports them (feature.supported).
+const FEATURES: { key: string; label: string }[] = [
+    { key: 'files', label: t('admin.modules.feature_files') },
+    { key: 'log', label: t('admin.modules.feature_log') },
+];
+
 const columns: Column<ModuleRow>[] = [
     { key: 'name', label: t('admin.modules.module'), width: 'minmax(120px, 1.5fr)' },
-    { key: 'enabled', label: t('admin.modules.status'), width: '150px' },
-    { key: 'record_count', label: t('admin.modules.records'), align: 'right', mono: true, width: '100px' },
-    { key: 'storage_used_bytes', label: t('admin.modules.storage'), align: 'right', mono: true, width: '110px' },
-    { key: 'trashed_count', label: t('admin.modules.trashed'), align: 'right', mono: true, width: '90px' },
+    { key: 'enabled', label: t('admin.modules.status'), width: '140px' },
+    { key: 'features', label: t('admin.modules.features'), width: 'minmax(150px, 1fr)' },
+    { key: 'record_count', label: t('admin.modules.records'), align: 'right', mono: true, width: '90px' },
+    { key: 'storage_used_bytes', label: t('admin.modules.storage'), align: 'right', mono: true, width: '100px' },
+    { key: 'trashed_count', label: t('admin.modules.trashed'), align: 'right', mono: true, width: '80px' },
 ];
 
 function toggle(row: ModuleRow, value: boolean) {
     // preserveState + only:['modules'] refreshes just the modules prop (fresh
     // stats) without re-mounting the whole page.
     router.patch(`/admin/modules/${row.id}`, { enabled: value }, { preserveScroll: true, preserveState: true, only: ['modules'] });
+}
+
+function toggleFeature(row: ModuleRow, feature: string, value: boolean) {
+    // `enabled` is required by the endpoint; send the current value so toggling a
+    // feature never flips the module on/off.
+    router.patch(
+        `/admin/modules/${row.id}`,
+        { enabled: row.enabled, features: { [feature]: value } },
+        { preserveScroll: true, preserveState: true, only: ['modules'] },
+    );
 }
 
 function confirmPurge(row: ModuleRow) {
@@ -73,6 +93,22 @@ function confirmPurge(row: ModuleRow) {
                     <span :style="{ fontSize: '11px', color: row.enabled ? 'var(--accent)' : 'var(--fg-mute)' }">
                         {{ row.enabled ? t('admin.modules.enabled') : t('admin.modules.disabled') }}
                     </span>
+                </div>
+            </template>
+            <template #cell:features="{ row }">
+                <div :style="{ display: 'flex', flexWrap: 'wrap', gap: '12px' }">
+                    <label
+                        v-for="f in FEATURES.filter((x) => row.features[x.key]?.supported)"
+                        :key="f.key"
+                        :style="{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: 'var(--fg-dim)' }"
+                    >
+                        <Toggle :model-value="row.features[f.key].enabled" :label="f.label" @update:model-value="(v) => toggleFeature(row, f.key, v)" />
+                        {{ f.label }}
+                    </label>
+                    <span
+                        v-if="!FEATURES.some((x) => row.features[x.key]?.supported)"
+                        :style="{ fontSize: '11px', color: 'var(--fg-mute)' }"
+                    >{{ t('admin.modules.no_features') }}</span>
                 </div>
             </template>
             <template #cell:storage_used_bytes="{ row }">

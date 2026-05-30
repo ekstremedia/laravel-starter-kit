@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace App\Domains\{{ class }}\Http\Controllers;
 
 use App\Domains\{{ class }}\Models\{{ class }};
+// @files
 use App\Domains\Files\Http\Resources\FileItemResource;
 use App\Domains\Files\Models\FileItem;
 use App\Domains\Files\Support\FileTreeZipper;
+// @endfiles
+// @log
 use App\Domains\Operations\Models\Activity;
+// @endlog
 use App\Domains\Workspaces\Models\Workspace;
 use App\Http\Controllers\Controller;
 use Illuminate\Database\Eloquent\Builder;
@@ -23,30 +27,41 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 /**
  * CRUD for the {{ label }} module. Scaffolded with one `name` field — add your
  * own columns, validation, and table columns. Mirrors the Equipment reference
- * module (datatable, file-preview, cover, mass actions, trash, export).
+ * module (datatable, mass actions, trash, export).
  */
 class {{ class }}Controller extends Controller
 {
     private const PER_PAGE = 20;
 
+// @files
     private const PREVIEW_FILES = 4;
 
+// @endfiles
     public function index(Request $request): Response
     {
         $workspace = $this->currentTenant($request);
         abort_unless($workspace->canViewFiles($request->user(), $workspace), 403);
 
+// @files
         $allowed = ['name', 'files_count', 'created_at'];
+// @nofiles
+        $allowed = ['name', 'created_at'];
+// @endfiles
         $sort = in_array($request->string('sort')->toString(), $allowed, true) ? $request->string('sort')->toString() : 'name';
         $dir = $request->string('direction')->toString() === 'desc' ? 'desc' : 'asc';
 
+// @files
         $query = $this->baseQuery($request, $workspace)->withCount('files')->orderBy($sort, $dir);
+// @nofiles
+        $query = $this->baseQuery($request, $workspace)->orderBy($sort, $dir);
+// @endfiles
         if ($sort !== 'name') {
             $query->orderBy('name');
         }
 
         $items = $query->paginate(self::PER_PAGE)->withQueryString();
 
+// @files
         $ids = collect($items->items())->pluck('id')->all();
         $previews = $this->previewsFor($ids, $workspace);
         $covers = $this->coversFor($items->items(), $previews);
@@ -58,13 +73,16 @@ class {{ class }}Controller extends Controller
             return $model;
         });
 
+// @endfiles
         return Inertia::render('{{ pluralStudly }}/Index', [
             'rows' => $items,
             'can_manage' => $workspace->canManageFiles($request->user(), $workspace),
             'search' => $request->string('q')->toString() ?: null,
             'stats' => [
                 'total' => $this->baseQuery($request, $workspace)->count(),
+// @files
                 'with_files' => (clone $this->baseQuery($request, $workspace))->whereHas('files')->count(),
+// @endfiles
             ],
         ]);
     }
@@ -81,6 +99,7 @@ class {{ class }}Controller extends Controller
             ->with('success', __('{{ key }}.created', ['name' => $model->name]));
     }
 
+// @files
     public function show(Request $request, {{ class }} $model, ?FileItem $folder = null): Response
     {
         $workspace = $this->currentTenant($request);
@@ -110,10 +129,31 @@ class {{ class }}Controller extends Controller
             'files' => FileItemResource::collection($items),
             'breadcrumbs' => $this->breadcrumbs($folder),
             'current_folder' => $folder?->only(['id', 'name']),
+// @log
             'activities' => $this->activities($model),
+// @endlog
             'can_manage' => $workspace->canManageFiles($request->user(), $workspace),
         ]);
     }
+// @nofiles
+    public function show(Request $request, {{ class }} $model): Response
+    {
+        $workspace = $this->currentTenant($request);
+        $this->assertBelongs($model, $workspace);
+        abort_unless($workspace->canViewFiles($request->user(), $workspace), 403);
+
+        return Inertia::render('{{ pluralStudly }}/Show', [
+            'model' => [
+                'id' => $model->id,
+                'name' => $model->name,
+            ],
+// @log
+            'activities' => $this->activities($model),
+// @endlog
+            'can_manage' => $workspace->canManageFiles($request->user(), $workspace),
+        ]);
+    }
+// @endfiles
 
     public function update(Request $request, {{ class }} $model): RedirectResponse
     {
@@ -153,6 +193,7 @@ class {{ class }}Controller extends Controller
         return back()->with('success', trans_choice('{{ key }}.bulk_deleted', $count, ['count' => $count]));
     }
 
+// @files
     public function bulkZip(Request $request, FileTreeZipper $zipper): BinaryFileResponse
     {
         $workspace = $this->currentTenant($request);
@@ -219,6 +260,7 @@ class {{ class }}Controller extends Controller
         return back()->with('success', __('{{ key }}.cover_set'));
     }
 
+// @endfiles
     public function export(Request $request): BinaryFileResponse
     {
         $workspace = $this->currentTenant($request);
@@ -228,6 +270,7 @@ class {{ class }}Controller extends Controller
         $path = sys_get_temp_dir().'/{{ route }}-'.uniqid('', true).'.'.$format;
         $writer = SimpleExcelWriter::create($path);
 
+// @files
         $this->baseQuery($request, $workspace)->withCount('files')->orderBy('name')->cursor()
             ->each(function ({{ class }} $model) use ($writer): void {
                 $writer->addRow([
@@ -236,6 +279,15 @@ class {{ class }}Controller extends Controller
                     'Created' => $model->created_at?->toDateTimeString(),
                 ]);
             });
+// @nofiles
+        $this->baseQuery($request, $workspace)->orderBy('name')->cursor()
+            ->each(function ({{ class }} $model) use ($writer): void {
+                $writer->addRow([
+                    'Name' => $model->name,
+                    'Created' => $model->created_at?->toDateTimeString(),
+                ]);
+            });
+// @endfiles
         $writer->close();
 
         return response()->download($path, '{{ route }}.'.$format)->deleteFileAfterSend(true);
@@ -304,6 +356,7 @@ class {{ class }}Controller extends Controller
             });
     }
 
+// @files
     /**
      * @param  array<int, int>  $ids
      * @return array<int, array<int, array<string, mixed>>>
@@ -350,6 +403,8 @@ class {{ class }}Controller extends Controller
         return $covers;
     }
 
+// @endfiles
+// @log
     /**
      * @return array<int, array<string, mixed>>
      */
@@ -375,6 +430,7 @@ class {{ class }}Controller extends Controller
             ->all();
     }
 
+// @endlog
     /**
      * @return array<int, int>
      */
@@ -424,6 +480,7 @@ class {{ class }}Controller extends Controller
 
         return $fallback;
     }
+// @files
 
     /**
      * @return array<int, array{id: int, name: string}>
@@ -450,4 +507,5 @@ class {{ class }}Controller extends Controller
 
         return $crumbs;
     }
+// @endfiles
 }

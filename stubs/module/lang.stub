@@ -18,6 +18,7 @@ return [
     'deleted' => '{{ label }} deleted.',
     'restored' => '{{ label }} restored.',
     'bulk_deleted' => ':count item deleted.|:count items deleted.',
+// @files
     'cover_set' => 'Cover image updated.',
-    'no_category' => 'Uncategorized',
+// @endfiles
 ];

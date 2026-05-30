@@ -10,21 +10,33 @@ import CmdButton from '@/Components/Command/Button.vue';
 import Field from '@/Components/Command/Field.vue';
 import Icon, { type IconName } from '@/Components/Command/Icon.vue';
 import Tabs from '@/Components/Command/Tabs.vue';
+// @files
 import EntityFiles, { type FileRow } from '@/Components/Files/EntityFiles.vue';
+// @endfiles
 import { useWorkspace } from '@/composables/useWorkspace';
 
 defineOptions({ layout: CommandLayout });
 
+// @files
 interface Model { id: number; name: string; cover_file_item_id: number | null }
+// @nofiles
+interface Model { id: number; name: string }
+// @endfiles
+// @log
 interface ActivityRow { id: number; event: string | null; created_at: string | null; causer: { id: number; name: string | null } | null }
+// @endlog
 
 const props = defineProps<{
     model: Model;
+// @files
     owner: { type: string; id: number };
     files: { data: FileRow[] };
     breadcrumbs: { id: number; name: string }[];
     current_folder: { id: number; name: string } | null;
+// @endfiles
+// @log
     activities: ActivityRow[];
+// @endlog
     can_manage: boolean;
 }>();
 
@@ -34,14 +46,24 @@ const confirm = useConfirm();
 
 const tabs = computed<{ key: string; label: string; icon?: IconName }[]>(() => [
     { key: 'details', label: t('{{ key }}.tab_details'), icon: 'box' },
+// @files
     { key: 'files', label: t('{{ key }}.tab_files'), icon: 'disk' },
+// @endfiles
 ]);
 function initialTab(): string {
     if (typeof window !== 'undefined') {
         const tab = new URLSearchParams(window.location.search).get('tab');
+// @files
         if (tab === 'files' || tab === 'details') return tab;
+// @nofiles
+        if (tab === 'details') return tab;
+// @endfiles
     }
+// @files
     return props.current_folder ? 'files' : 'details';
+// @nofiles
+    return 'details';
+// @endfiles
 }
 const activeTab = ref<string>(initialTab());
 watch(activeTab, (v) => {
@@ -51,6 +73,7 @@ watch(activeTab, (v) => {
     window.history.replaceState({}, '', url.toString());
 });
 
+// @files
 function folderUrl(folderId: number | null): string {
     const base = folderId === null ? `/{{ route }}/${props.model.id}` : `/{{ route }}/${props.model.id}/folders/${folderId}`;
     return `${workspaceUrl(base)}?tab=files`;
@@ -58,6 +81,7 @@ function folderUrl(folderId: number | null): string {
 function setCover(fileId: number) {
     router.patch(workspaceUrl(`/{{ route }}/${props.model.id}/cover`), { file_item_id: fileId }, { preserveScroll: true });
 }
+// @endfiles
 
 const editOpen = ref(false);
 const form = useForm({ name: props.model.name });
@@ -75,12 +99,14 @@ function confirmDelete() {
         accept: () => router.delete(workspaceUrl(`/{{ route }}/${props.model.id}`)),
     });
 }
+// @log
 function activityLabel(a: ActivityRow): string {
     if (a.event === 'created') return t('{{ key }}.activity_created');
     if (a.event === 'deleted') return t('{{ key }}.activity_deleted');
     return t('{{ key }}.activity_updated');
 }
 function activityTime(iso: string | null): string { return iso ? new Date(iso).toLocaleString(locale.value) : ''; }
+// @endlog
 </script>
 
 <template>
@@ -103,6 +129,7 @@ function activityTime(iso: string | null): string { return iso ? new Date(iso).t
         <Tabs v-model="activeTab" :tabs="tabs" />
 
         <div v-show="activeTab === 'details'">
+<!-- @log -->
             <h2 :style="{ margin: '0 0 12px', fontSize: '14px', fontWeight: 600, color: 'var(--fg)', display: 'flex', alignItems: 'center', gap: '7px' }">
                 <i class="pi pi-history" :style="{ fontSize: '13px', color: 'var(--accent)' }" />{{ t('{{ key }}.activity') }}
             </h2>
@@ -118,8 +145,14 @@ function activityTime(iso: string | null): string { return iso ? new Date(iso).t
                     <span class="cmd-mono" :style="{ fontSize: '10.5px', color: 'var(--fg-mute)', flexShrink: 0 }">{{ activityTime(a.created_at) }}</span>
                 </div>
             </div>
+<!-- @nolog -->
+            <div class="cmd-card" :style="{ padding: '18px 20px' }">
+                <p :style="{ margin: 0, fontSize: '13px', color: 'var(--fg-mute)' }">{{ t('{{ key }}.details_placeholder') }}</p>
+            </div>
+<!-- @endlog -->
         </div>
 
+<!-- @files -->
         <div v-show="activeTab === 'files'">
             <EntityFiles
                 :owner-type="owner.type" :owner-id="owner.id" :files="files"
@@ -128,6 +161,7 @@ function activityTime(iso: string | null): string { return iso ? new Date(iso).t
                 :folder-url="folderUrl" @set-cover="setCover"
             />
         </div>
+<!-- @endfiles -->
 
         <CommandDialog v-model:visible="editOpen" :title="t('{{ key }}.edit_asset')" width="440px">
             <form @submit.prevent="submitEdit" :style="{ display: 'flex', flexDirection: 'column', gap: '12px' }">
