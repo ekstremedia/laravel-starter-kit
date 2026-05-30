@@ -192,6 +192,8 @@ class UserController extends Controller
             ->event('role_changed')
             ->log('User role changed');
 
+        $this->broadcastResourceChanged('users', 'updated', $user->id);
+
         return back()->with('success', __('flash.users.role_updated', ['role' => $data['role']]));
     }
 
@@ -239,6 +241,8 @@ class UserController extends Controller
             ->event('platform_permission_changed')
             ->log('User platform permission changed');
 
+        $this->broadcastResourceChanged('users', 'updated', $user->id);
+
         return back()->with('success', __('flash.users.platform_permission_updated'));
     }
 
@@ -282,6 +286,8 @@ class UserController extends Controller
         // reflect the new value on the next list render instead of lagging
         // up to the full TTL.
         User::bumpUsersListVersion();
+
+        $this->broadcastResourceChanged('users', 'updated', $user->id);
 
         return back()->with('success', __('admin.users.quota_updated'));
     }
@@ -465,6 +471,8 @@ class UserController extends Controller
                 ->log("Admin marked {$user->email} as verified");
         }
 
+        $this->broadcastResourceChanged('users', 'updated', $user->id);
+
         return back()->with('success', __('flash.users.verified'));
     }
 
@@ -476,6 +484,8 @@ class UserController extends Controller
             activity('user')->performedOn($user)->event('email_unverified')
                 ->log("Admin cleared verification for {$user->email}");
         }
+
+        $this->broadcastResourceChanged('users', 'updated', $user->id);
 
         return back()->with('success', __('flash.users.unverified'));
     }
@@ -502,6 +512,8 @@ class UserController extends Controller
             ->event('banned')
             ->log("Banned {$user->email}");
 
+        $this->broadcastResourceChanged('users', 'updated', $user->id);
+
         return back()->with('success', __('flash.users.banned'));
     }
 
@@ -511,6 +523,8 @@ class UserController extends Controller
 
         activity('user')->performedOn($user)->event('unbanned')
             ->log("Unbanned {$user->email}");
+
+        $this->broadcastResourceChanged('users', 'updated', $user->id);
 
         return back()->with('success', __('flash.users.unbanned'));
     }
@@ -704,6 +718,8 @@ class UserController extends Controller
 
         $names = implode(', ', $newNames);
 
+        $this->broadcastResourceChanged('users', 'updated', $user->id);
+
         if (count($newNames) === 1) {
             return back()->with('success', __('flash.users.workspace_attached', ['email' => $user->email, 'name' => $names]));
         }
@@ -738,6 +754,8 @@ class UserController extends Controller
 
         User::bumpUsersListVersion();
 
+        $this->broadcastResourceChanged('users', 'updated', $user->id);
+
         return back()->with('success', __('flash.users.workspace_role_updated', [
             'email' => $user->email,
             'name' => $workspace->name,
@@ -768,6 +786,8 @@ class UserController extends Controller
             ->withProperties(['workspace' => $workspaceName, 'notify' => $data['notify'] ?? false])
             ->event('workspace_detached')
             ->log("Removed {$user->email} from {$workspaceName}");
+
+        $this->broadcastResourceChanged('users', 'updated', $user->id);
 
         return back()->with('success', __('flash.users.workspace_detached', ['email' => $user->email, 'name' => $workspaceName]));
     }

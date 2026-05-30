@@ -161,6 +161,8 @@ class WorkspaceMembersController extends Controller
 
         WorkspaceMembership::syncRoles($user, $workspace, $newRoles);
 
+        $this->broadcastResourceChanged('members', 'updated', $user->id, $workspace->id);
+
         return back()->with('success', __('flash.workspaces.member_role_updated', [
             'email' => $user->email,
             'role' => empty($newRoles) ? __('admin.users.no_roles') : implode(', ', $newRoles),

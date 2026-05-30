@@ -253,12 +253,17 @@ class WorkspaceController extends Controller
 
         WorkspaceMembership::attach($user, $workspace, $data['roles']);
 
+        // The admin workspaces list shows users_count — keep it live.
+        $this->broadcastResourceChanged('workspaces', 'updated', $workspace->id);
+
         return back()->with('success', __('flash.workspaces.member_added', ['email' => $user->email, 'name' => $workspace->name]));
     }
 
     public function detachMember(Workspace $workspace, User $user): RedirectResponse
     {
         WorkspaceMembership::detach($user, $workspace);
+
+        $this->broadcastResourceChanged('workspaces', 'updated', $workspace->id);
 
         return back()->with('success', __('flash.workspaces.member_removed', ['email' => $user->email, 'name' => $workspace->name]));
     }

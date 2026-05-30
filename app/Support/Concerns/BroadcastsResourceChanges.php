@@ -24,6 +24,12 @@ trait BroadcastsResourceChanges
         int|string|null $id = null,
         ?int $workspaceId = null,
     ): void {
-        event(new ResourceChanged($resource, $action, $id, $workspaceId));
+        $event = new ResourceChanged($resource, $action, $id, $workspaceId);
+        // Don't echo back to the user who made the change — their own window
+        // already reflects it via the mutation response. Other users on the
+        // channel still get the live update. (No-op for non-Echo requests.)
+        $event->dontBroadcastToCurrentUser();
+
+        event($event);
     }
 }

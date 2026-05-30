@@ -9,6 +9,7 @@ use App\Domains\Modules\Models\WorkspaceModuleFeature;
 use App\Domains\Modules\Services\ModuleRegistry;
 use App\Domains\Workspaces\Models\Workspace;
 use App\Http\Controllers\Controller;
+use App\Support\Concerns\BroadcastsResourceChanges;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -24,6 +25,8 @@ use Inertia\Response;
  */
 class WorkspaceModuleController extends Controller
 {
+    use BroadcastsResourceChanges;
+
     public function __construct(private readonly ModuleRegistry $registry) {}
 
     public function edit(Request $request): Response
@@ -97,6 +100,8 @@ class WorkspaceModuleController extends Controller
         $row->features = $features;
         $row->save();
 
+        $this->broadcastResourceChanged('module_settings', 'updated', $module->id, $workspace->id);
+
         // The toggle + "Overridden" badge are the feedback — no success toast.
         return back();
     }
@@ -109,6 +114,8 @@ class WorkspaceModuleController extends Controller
             ->where('workspace_id', $workspace->id)
             ->where('module_id', $module->id)
             ->delete();
+
+        $this->broadcastResourceChanged('module_settings', 'updated', $module->id, $workspace->id);
 
         return back();
     }

@@ -17,6 +17,7 @@ import CmdButton from '@/Components/Command/Button.vue';
 import Toggle from '@/Components/Command/Toggle.vue';
 import EquipmentWidget from '@/Components/Dashboard/EquipmentWidget.vue';
 import { useWorkspace } from '@/composables/useWorkspace';
+import { useLiveReload } from '@/composables/useLiveReload';
 import type { PageProps } from '@/types';
 
 interface FilesStats { count: number; bytes: number }
@@ -44,6 +45,14 @@ const user = computed(() => page.props.auth.user!);
 const workspace = computed(() => page.props.workspace);
 const isAdmin = computed(() => user.value?.is_super_admin === true);
 const { workspaceUrl } = useWorkspace();
+
+// Live: refresh the dashboard widgets whenever anything in this workspace
+// changes (equipment, categories, members, …) — no resource filter, since the
+// dashboard aggregates across modules. Debounced; no-op when Echo is down.
+useLiveReload(
+    () => (workspace.value ? `workspace.${workspace.value.id}.resources` : null),
+    { only: ['widgets'] },
+);
 
 // Module dashboard widgets. The string `component` name maps to a real Vue
 // component here; add a module's widget by importing it + a map entry.

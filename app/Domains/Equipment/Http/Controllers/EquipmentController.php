@@ -326,6 +326,8 @@ class EquipmentController extends Controller
 
         $equipment->update(['cover_file_item_id' => $coverId]);
 
+        $this->broadcastResourceChanged('equipment', 'updated', $equipment->id, $workspace->id);
+
         return back()->with('success', __('equipment.cover_set'));
     }
 
