@@ -5,7 +5,7 @@ A Laravel 13 + Inertia/Vue starter with the usual production pieces already wire
 ## Stack
 
 - **Laravel 13 · PHP 8.4** · PostgreSQL 17 · Redis 7 · Mailpit
-- **Inertia.js v3 + Vue 3 + TypeScript** · Tailwind v4 · PrimeVue v4
+- **Inertia.js v3 + Vue 3 + TypeScript** (code-split, SSR-ready) · Pinia · Tailwind v4 · PrimeVue v4 · optional PWA
 - **Docker** — php-fpm, nginx, Vite, Reverb, Horizon, Pulse, and the scheduler under supervisor
 - **Fortify** (login, register, email verification, password reset, TOTP 2FA + recovery codes) · **Sanctum** · **Spatie Permission** (`Admin` / `Editor` / `User` seeded)
 - **Spatie** Medialibrary · Activitylog · Backup · Pulse · Horizon · Sentry · opcodesio log-viewer · lab404 impersonate
@@ -70,6 +70,16 @@ Users self-manage profile, password, and 2FA at `/profile`.
   - `WORKSPACES_REGISTRATION_MODE=create_own` makes each sign-up create its own workspace (becoming admin) and invite others; `join_default` (default) auto-joins the shared default workspace.
   - Admins invite by email (`/members` → *Invite by email*); invitees accept via a tokenised link (`/invitations/{token}`), registering or logging in along the way. See **[docs/adding-a-workspace-entity.md](docs/adding-a-workspace-entity.md)** to add your own workspace-scoped entity (Car, Medicine, …). Model: `App\Domains\Workspaces\Models\Workspace`.
 - **Table prefix** — set `DB_TABLE_PREFIX=acme_` and re-migrate to namespace every core table. Only Eloquent / Query Builder / Schema queries inherit it; raw SQL must call `DB::getTablePrefix()`.
+
+## Frontend, real-time & rendering
+
+A fast, optimized SPA that supplements itself with live updates. Details in **[docs/frontend-architecture.md](docs/frontend-architecture.md)** and **[docs/realtime-and-broadcasting.md](docs/realtime-and-broadcasting.md)**.
+
+- **Fast by default** — pages are per-page code-split; heavy libraries (ApexCharts, Leaflet, markdown-it) load lazily, never in the entry bundle; vendor chunks are cache-stable. The app uses Inertia v3 features (link prefetch, deferred props, history encryption).
+- **Live updates** — when one user changes a list, others viewing it refresh automatically over WebSockets (Reverb + Echo), via a reusable `ResourceChanged` broadcast + the `useLiveReload` composable. It **degrades gracefully**: if Reverb is down, pages still work, just without live refresh. New interactive pages should opt in — see the real-time doc.
+- **State** — Pinia stores in `resources/js/stores/` for shared/new state (live-connection status, recent notifications).
+- **SSR (opt-in, off by default)** — full Inertia SSR is wired. Enable with `INERTIA_SSR_ENABLED=true`, then `npm run build:ssr` and `supervisorctl start inertia-ssr` (the renderer ships `autostart=false`).
+- **PWA (opt-in, off by default)** — set `VITE_PWA_ENABLED=true` and rebuild to emit an installable manifest + a conservative, auth-safe service worker (precaches assets + an offline shell; never caches authenticated content). Re-brand the icons by replacing `resources/icons/source.svg` and running `npm run pwa:icons`.
 
 ## Testing
 
