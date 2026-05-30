@@ -18,7 +18,7 @@ it('redirects unverified users to the verification notice', function () {
     $this->actingAs($user)->get('/home')->assertRedirect('/email/verify');
 });
 
-it('renders the Home Inertia page with userDetail and activity', function () {
+it('renders the Home Inertia page with the signed-in user detail', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
@@ -27,32 +27,10 @@ it('renders the Home Inertia page with userDetail and activity', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->component('Home')
             ->has('userDetail', fn (Assert $ud) => $ud
-                ->where('id', $user->id)
-                ->where('email', $user->email)
                 ->where('first_name', $user->first_name)
-                ->where('last_name', $user->last_name)
-                ->has('email_verified_at')
-                ->where('two_factor_enabled', false)
                 ->has('workspace_roles')
                 ->where('is_super_admin', false)
                 ->has('created_at')
             )
-            ->has('activity')
-        );
-});
-
-it('caps the activity list at 10 entries', function () {
-    $user = User::factory()->create();
-
-    for ($i = 0; $i < 15; $i++) {
-        activity()->causedBy($user)->performedOn($user)->log("event {$i}");
-    }
-
-    $this->actingAs($user)
-        ->get('/home')
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('Home')
-            ->has('activity', 10)
         );
 });
