@@ -9,7 +9,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
-use Spatie\Activitylog\Models\Activity;
 
 class HomeController extends Controller
 {
@@ -17,30 +16,9 @@ class HomeController extends Controller
     {
         $user = $request->user();
 
-        $activity = Activity::query()
-            ->where('causer_id', $user->getKey())
-            ->where('causer_type', $user->getMorphClass())
-            ->latest()
-            ->limit(10)
-            ->get()
-            ->map(fn (Activity $a) => [
-                'id' => $a->id,
-                'created_at' => $a->created_at?->toIso8601String(),
-                'description' => $a->description,
-                'event' => $a->event,
-                'log_name' => $a->log_name,
-            ])
-            ->values()
-            ->all();
-
         return Inertia::render('Home', [
             'userDetail' => [
-                'id' => $user->getKey(),
                 'first_name' => $user->first_name,
-                'last_name' => $user->last_name,
-                'email' => $user->email,
-                'email_verified_at' => $user->email_verified_at?->toIso8601String(),
-                'two_factor_enabled' => (bool) $user->two_factor_confirmed_at,
                 'is_super_admin' => $user->isSuperAdmin(),
                 // `/home` is a central route (no active workspace), so a plain
                 // `getRoleNames()` call would resolve against a null team id
@@ -49,7 +27,6 @@ class HomeController extends Controller
                 'workspace_roles' => $this->workspaceRolesFor($user),
                 'created_at' => $user->created_at?->toIso8601String(),
             ],
-            'activity' => $activity,
         ]);
     }
 
