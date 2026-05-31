@@ -60,6 +60,23 @@ class ModuleRegistry
     }
 
     /**
+     * Whether a module is effectively enabled FOR A WORKSPACE — the platform
+     * flag, the workspace's own override, and the parent cascade all folded in
+     * (the same `enabled` the front end sees). This is what gates a module's
+     * routes per workspace; `isEnabled()` stays the platform-only meaning.
+     */
+    public function moduleEnabled(string $key, ?Workspace $workspace = null): bool
+    {
+        $map = $this->featuresFor($workspace);
+
+        // Same config fallback as isEnabled(): a module with no DB row yet (fresh
+        // install / unseeded) defaults to its config flag rather than "off".
+        return array_key_exists($key, $map)
+            ? (bool) $map[$key]['enabled']
+            : ($this->configDefaults()[$key] ?? false);
+    }
+
+    /**
      * Whether a module's feature (e.g. 'files', 'log') is effectively on for the
      * given workspace — the same resolution the front end sees. Lets controllers
      * skip work for a disabled feature (e.g. not loading the activity Log).
@@ -101,11 +118,16 @@ class ModuleRegistry
     }
 
     /**
-     * Resolve every module's effective {enabled, <feature>...} for a workspace:
-     * a per-workspace override (workspace_module_features) wins over the platform
-     * toggle, which wins over the capability default. `enabled` is platform-global
-     * (no per-workspace override). This is the shape shared to the front end as
-     * the `modules` prop and read by the sidebar + page conditional rendering.
+     * Resolve every module's effective {enabled, <feature>...} for a workspace.
+     * For each axis a per-workspace override (workspace_module_features) wins
+     * over the platform default, which wins over the capability default:
+     *   - enabled: platform `modules.enabled` is the ceiling; the workspace can
+     *     turn an enabled module off (or back on), and a module is forced off
+     *     whenever its parent (parent_key) is off — the cascade.
+     *   - features: the per-workspace toggle wins over the platform feature,
+     *     clamped to what the code ships (capabilities).
+     * This is the shape shared to the front end as the `modules` prop and read
+     * by the sidebar + page conditional rendering + per-workspace route gating.
      *
      * Null-safe: before the tables exist (fresh install) falls back to a
      * conservative config-derived map.
@@ -117,27 +139,47 @@ class ModuleRegistry
         try {
             $modules = Module::query()->get();
 
-            /** @var array<int, array<string, bool>|null> $overrideMap */
-            $overrideMap = $workspace
+            $overrides = $workspace
                 ? WorkspaceModuleFeature::query()
                     ->where('workspace_id', $workspace->getKey())
-                    ->pluck('features', 'module_id')
-                    ->all()
-                : [];
+                    ->get()
+                    : collect();
+            // Keyed by module id. `enabled` is bool|null (null = inherit);
+            // `features` defaults to [] per lookup (absent = no override).
+            /** @var array<int, bool|null> $enabledOverrides */
+            $enabledOverrides = $overrides->pluck('enabled', 'module_id')->all();
+            /** @var array<int, array<string, bool>|null> $featureOverrides */
+            $featureOverrides = $overrides->pluck('features', 'module_id')->all();
 
+            // Pass 1: each module's OWN effective enabled — the platform flag
+            // (ceiling) AND the per-workspace override (null = inherit). Keyed by
+            // module key so pass 2 can fold in a parent's state.
+            $ownEnabled = [];
+            foreach ($modules as $module) {
+                $wsEnabled = $enabledOverrides[$module->getKey()] ?? null;
+                $ownEnabled[$module->key] = (bool) $module->enabled && ($wsEnabled ?? true);
+            }
+
+            // Pass 2: build the map, cascading a parent's own-effective onto its
+            // children and resolving the feature toggles.
             $map = [];
             foreach ($modules as $module) {
-                $override = $overrideMap[$module->getKey()] ?? [];
+                $featureOverride = $featureOverrides[$module->getKey()] ?? [];
 
-                $entry = ['enabled' => (bool) $module->enabled];
+                $enabled = $ownEnabled[$module->key];
+                if ($module->parent_key !== null && array_key_exists($module->parent_key, $ownEnabled)) {
+                    $enabled = $enabled && $ownEnabled[$module->parent_key];
+                }
+
+                $entry = ['enabled' => $enabled];
                 foreach (self::FEATURE_KEYS as $feature) {
                     if (! $this->supports($module, $feature)) {
                         $entry[$feature] = false;
 
                         continue;
                     }
-                    $entry[$feature] = array_key_exists($feature, $override)
-                        ? (bool) $override[$feature]
+                    $entry[$feature] = array_key_exists($feature, $featureOverride)
+                        ? (bool) $featureOverride[$feature]
                         : $this->platformFeature($module, $feature);
                 }
                 $map[$module->key] = $entry;

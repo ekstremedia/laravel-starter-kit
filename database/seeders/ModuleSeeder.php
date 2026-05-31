@@ -34,6 +34,9 @@ class ModuleSeeder extends Seeder
                 'enabled' => (bool) config('equipment_category.enabled', true),
                 // The reference lean module: a Log, but no file area.
                 'capabilities' => ['files' => false, 'log' => true],
+                // Grouped under Equipment: shown nested on the workspace settings
+                // page and disabled along with its parent (cascade).
+                'parent_key' => 'equipment',
             ],
         ];
 
@@ -41,6 +44,9 @@ class ModuleSeeder extends Seeder
             $row = Module::query()->firstOrNew(['key' => $module['key']]);
             $row->name = $module['name'];
             $row->morph_alias = $module['morph_alias'];
+            // Grouping is a code-defined relationship, so keep it in sync on
+            // every re-seed (like morph_alias / capabilities).
+            $row->parent_key = $module['parent_key'] ?? null;
             // Keep declared capabilities in sync with the code on every re-seed.
             $row->capabilities = $module['capabilities'];
             // Only seed `enabled` + `features` on first create (respecting the

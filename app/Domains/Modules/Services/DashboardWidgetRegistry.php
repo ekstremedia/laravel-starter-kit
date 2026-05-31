@@ -19,15 +19,17 @@ class DashboardWidgetRegistry
     public function __construct(private readonly ModuleRegistry $modules) {}
 
     /**
-     * Widgets available to this workspace (their module is enabled).
+     * Widgets available to a workspace (their owning module is enabled there).
+     * Workspace-aware so a module turned off for the workspace also drops its
+     * dashboard widget; null workspace falls back to the platform enabled state.
      *
      * @return array<int, DashboardWidget>
      */
-    public function available(): array
+    public function available(?Workspace $workspace = null): array
     {
         return collect(config('dashboard.widgets', []))
             ->map(fn (string $class): DashboardWidget => app($class))
-            ->filter(fn (DashboardWidget $w): bool => $w->moduleKey() === null || $this->modules->isEnabled($w->moduleKey()))
+            ->filter(fn (DashboardWidget $w): bool => $w->moduleKey() === null || $this->modules->moduleEnabled($w->moduleKey(), $workspace))
             ->values()
             ->all();
     }
@@ -41,7 +43,7 @@ class DashboardWidgetRegistry
      */
     public function forUser(Workspace $workspace, User $user, array $hidden): array
     {
-        return collect($this->available())
+        return collect($this->available($workspace))
             ->map(function (DashboardWidget $widget) use ($workspace, $user, $hidden): array {
                 $enabled = ! in_array($widget->key(), $hidden, true);
 
