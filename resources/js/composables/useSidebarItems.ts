@@ -79,9 +79,10 @@ export function useSidebarItems() {
             );
 
             if (isWorkspaceAdmin.value) {
+                // Workspace config (module features, …) lives in the topbar avatar
+                // dropdown — see Topbar.vue — so the rail stays navigation-only.
                 entries.push(
                     { id: 'members', href: wsHref('/members'), label: t('rail.members'), icon: 'users', match: railMatch((s) => s.startsWith('/members')) },
-                    { id: 'ws-modules', href: wsHref('/settings/modules'), label: t('rail.module_settings'), icon: 'cog', match: railMatch((s) => s.startsWith('/settings/modules')) },
                 );
             }
         }

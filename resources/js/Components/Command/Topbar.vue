@@ -28,6 +28,20 @@ const isAdminMode = computed(() => {
     return p === '/admin' || p.startsWith('/admin/');
 });
 
+// Workspace settings link (module features, …). Mirrors the rail's resolution
+// so it behaves the same everywhere, including /home: scope to `current_workspace`
+// (resolved on every route), shown only to that workspace's admins.
+const tenancyEnabled = computed(() => page.props.workspaces?.enabled ?? false);
+const dropdownWorkspace = computed(() => page.props.current_workspace ?? page.props.workspace ?? null);
+const isWorkspaceAdmin = computed(() => isSuperAdmin.value || (dropdownWorkspace.value as { is_admin?: boolean } | null)?.is_admin === true);
+// Gate on the workspace itself, not its slug — workspaceSettingsHref already
+// resolves the bare `/settings/modules` path in single-tenant mode.
+const showWorkspaceSettings = computed(() => !!dropdownWorkspace.value && isWorkspaceAdmin.value);
+const workspaceSettingsHref = computed(() => {
+    const slug = dropdownWorkspace.value?.slug;
+    return (tenancyEnabled.value && slug ? `/w/${slug}` : '') + '/settings/modules';
+});
+
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent || '');
 const shortcutKey = computed(() => (isMac ? '⌘K' : 'Ctrl K'));
 
@@ -268,6 +282,27 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
                         >
                             <Icon name="key" :size="12" />
                             <span>{{ t('topbar.menu.api_tokens') }}</span>
+                        </Link>
+                    </div>
+                    <!-- Workspace-scoped settings: its own group, headed by the
+                         workspace name so it reads as distinct from the
+                         platform-wide Administration below. -->
+                    <div
+                        v-if="showWorkspaceSettings"
+                        :style="{ padding: '4px', borderTop: '1px solid var(--border)' }"
+                    >
+                        <div
+                            :style="{ padding: '6px 10px 3px', fontSize: '9.5px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--fg-mute)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }"
+                        >
+                            {{ dropdownWorkspace?.name }}
+                        </div>
+                        <Link
+                            :href="workspaceSettingsHref"
+                            @click="menuOpen = false"
+                            class="cmd-menu-item"
+                        >
+                            <Icon name="cog" :size="12" />
+                            <span>{{ t('topbar.menu.workspace_settings') }}</span>
                         </Link>
                     </div>
                     <div

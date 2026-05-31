@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Domains\Equipment\Models\Equipment;
 use App\Domains\Modules\Models\Module;
+use App\Domains\Modules\Models\WorkspaceModuleFeature;
 use App\Domains\Modules\Services\ModuleRegistry;
 use App\Domains\Users\Models\User;
 use Database\Seeders\ModuleSeeder;
@@ -94,6 +95,80 @@ it('shows the workspace module-settings page to admins and forbids others', func
     $this->actingAs($stranger)
         ->get(workspaceUrl($this->workspace, '/settings/modules'))
         ->assertForbidden();
+});
+
+it('lets a workspace admin disable a whole module for their workspace only', function () {
+    $other = createWorkspace('beta');
+    $module = Module::where('key', 'equipment')->firstOrFail();
+
+    $this->actingAs($this->admin)
+        ->patch(workspaceUrl($this->workspace, "/settings/modules/{$module->id}"), ['feature' => 'enabled', 'enabled' => false])
+        ->assertRedirect();
+
+    expect($this->registry->featuresFor($this->workspace)['equipment']['enabled'])->toBeFalse()
+        ->and($this->registry->featuresFor($other)['equipment']['enabled'])->toBeTrue();
+
+    // The module's routes 404 for the workspace that turned it off, not the other.
+    $this->actingAs($this->admin)
+        ->get(workspaceUrl($this->workspace, '/equipment'))
+        ->assertNotFound();
+    $this->actingAs($this->admin)
+        ->get(workspaceUrl($other, '/equipment'))
+        ->assertOk();
+});
+
+it('cascades a disabled parent module to its grouped children', function () {
+    $equipment = Module::where('key', 'equipment')->firstOrFail();
+    $category = Module::where('key', 'equipment_category')->firstOrFail();
+
+    $this->actingAs($this->admin)
+        ->patch(workspaceUrl($this->workspace, "/settings/modules/{$equipment->id}"), ['feature' => 'enabled', 'enabled' => false])
+        ->assertRedirect();
+
+    // The child is forced off purely by resolution — it keeps no override of its own.
+    expect($this->registry->featuresFor($this->workspace)['equipment_category']['enabled'])->toBeFalse()
+        ->and(WorkspaceModuleFeature::query()
+            ->where('workspace_id', $this->workspace->id)
+            ->where('module_id', $category->id)
+            ->exists())->toBeFalse();
+
+    $this->actingAs($this->admin)
+        ->get(workspaceUrl($this->workspace, '/equipment-categories'))
+        ->assertNotFound();
+});
+
+it('resets a module enable override back to the platform default', function () {
+    $module = Module::where('key', 'equipment')->firstOrFail();
+
+    $this->actingAs($this->admin)
+        ->patch(workspaceUrl($this->workspace, "/settings/modules/{$module->id}"), ['feature' => 'enabled', 'enabled' => false])
+        ->assertRedirect();
+    expect($this->registry->featuresFor($this->workspace)['equipment']['enabled'])->toBeFalse();
+
+    $this->actingAs($this->admin)
+        ->delete(workspaceUrl($this->workspace, "/settings/modules/{$module->id}"))
+        ->assertRedirect();
+    expect($this->registry->featuresFor($this->workspace)['equipment']['enabled'])->toBeTrue();
+
+    $this->actingAs($this->admin)
+        ->get(workspaceUrl($this->workspace, '/equipment'))
+        ->assertOk();
+});
+
+it('will not let a workspace enable a module the platform disabled', function () {
+    $module = Module::where('key', 'equipment')->firstOrFail();
+
+    // Super admin turns Equipment off platform-wide.
+    $this->actingAs($this->admin)
+        ->patch("/admin/modules/{$module->id}", ['enabled' => false, 'features' => []])
+        ->assertRedirect();
+
+    // A workspace admin can't resurrect it for their workspace.
+    $this->actingAs($this->admin)
+        ->patchJson(workspaceUrl($this->workspace, "/settings/modules/{$module->id}"), ['feature' => 'enabled', 'enabled' => true])
+        ->assertStatus(422);
+
+    expect($this->registry->featuresFor($this->workspace)['equipment']['enabled'])->toBeFalse();
 });
 
 it('skips the equipment Log payload when the log feature is off', function () {

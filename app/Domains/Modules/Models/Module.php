@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $name
  * @property bool $enabled
  * @property string|null $morph_alias
+ * @property string|null $parent_key key of the parent module this one groups under (null = top-level)
  * @property array<string, bool>|null $capabilities the features the code ships
  * @property array<string, bool>|null $features the runtime-toggled features (platform default)
  */
@@ -26,6 +27,7 @@ class Module extends Model
         'name',
         'enabled',
         'morph_alias',
+        'parent_key',
         'capabilities',
         'features',
     ];
