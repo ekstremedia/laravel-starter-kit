@@ -19,7 +19,7 @@ else
 DISPLAY_URL := $(APP_URL):$(APP_HOST_PORT)
 endif
 
-.PHONY: help init build up down restart destroy shell test test-parallel test-js test-all migrate seed fresh rebuild logs tinker pint queue vite npm-install composer-install cache-clear reverb-restart _require-local
+.PHONY: help init build up down restart destroy shell test test-parallel test-js test-all migrate seed fresh rebuild logs tinker pint queue vite npm-install composer-install cache-clear reverb-restart super-admin _require-local
 
 # Default target
 help: ## Show this help
@@ -76,6 +76,10 @@ destroy: _require-local ## Stop containers and remove volumes (local only)
 # App commands
 shell: ## Open a shell in the app container
 	docker compose exec $(APP_SERVICE) bash
+
+super-admin: ## Grant platform super admin to a user (usage: make super-admin id=5; add revoke=1 to remove)
+	@[ -n "$(id)" ] || { echo "  ✗ Usage: make super-admin id=<user id>"; exit 1; }
+	docker compose exec $(APP_SERVICE) php artisan user:super-admin $(id) $(if $(revoke),--revoke,)
 
 test: ## Run Pest tests
 	docker compose exec $(APP_SERVICE) php artisan test
