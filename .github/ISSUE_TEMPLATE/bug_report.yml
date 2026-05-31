@@ -1,0 +1,46 @@
+name: Bug report
+description: Report a problem with the starter kit
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report! Please confirm this is about the starter kit itself,
+        not an app you generated from it. For security issues, see SECURITY.md instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: A clear description of the bug and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. make build
+        2. Go to '…'
+        3. See '…'
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      value: |
+        - Setup: Docker (`make build`) / other
+        - Host OS:
+        - Browser (if a UI issue):
+        - Commit or release:
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots
+      description: Relevant output from `make logs`, the browser console, or screenshots.
+      render: shell
+    validations:
+      required: false

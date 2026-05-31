@@ -1,6 +1,19 @@
 # Laravel Starter Kit
- 
+
+[![Tests](https://github.com/ekstremedia/laravel-starter-kit/actions/workflows/tests.yml/badge.svg)](https://github.com/ekstremedia/laravel-starter-kit/actions/workflows/tests.yml)
+[![Latest release](https://img.shields.io/github/v/release/ekstremedia/laravel-starter-kit?sort=semver)](https://github.com/ekstremedia/laravel-starter-kit/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![PHP 8.5](https://img.shields.io/badge/PHP-8.5-777BB4?logo=php&logoColor=white)
+![Laravel 13](https://img.shields.io/badge/Laravel-13-FF2D20?logo=laravel&logoColor=white)
+
 A Laravel 13 + Inertia/Vue starter with the usual production pieces already wired up — auth with 2FA, an admin dashboard, roles & permissions, queues, broadcasting, media uploads, activity log, backups, observability, and tests — all running in Docker.
+
+## Screenshots
+
+|  |  |
+| :---: | :---: |
+| [![Welcome](docs/screenshots/welcome.png)](docs/screenshots/welcome.png)<br>**Welcome** | [![Dashboard](docs/screenshots/dashboard.png)](docs/screenshots/dashboard.png)<br>**Dashboard** |
+| [![Admin dashboard](docs/screenshots/admin.png)](docs/screenshots/admin.png)<br>**Admin dashboard** | [![System &amp; health](docs/screenshots/system.png)](docs/screenshots/system.png)<br>**System &amp; health** |
 
 ## Stack
 
@@ -12,6 +25,16 @@ A Laravel 13 + Inertia/Vue starter with the usual production pieces already wire
 - **Pest 4** + **Vitest 4** tests · Pint · Larastan · Husky pre-commit · GitHub Actions CI
 
 Backend code is organised into domain modules under `app/Domains/*` (Auth, Users, Access, Files, Chat, Workspaces, Notifications, Settings, Operations). Conventions live in `AGENTS.md`.
+
+## Use this template
+
+This repo is a GitHub template — start your own project from it:
+
+1. Click **[Use this template](https://github.com/ekstremedia/laravel-starter-kit/generate) → Create a new repository**.
+2. Clone your new repo and run the [Quick start](#quick-start) below.
+3. Make it yours: `make init` sets the app name, host port, URL, DB credentials, and seeded admin in one pass — then rebrand the welcome copy and icons (see [Customize first](#customize-first)).
+
+Dependabot is preconfigured to keep Composer, npm, and GitHub Actions dependencies fresh with weekly PRs.
 
 ## Quick start
 
