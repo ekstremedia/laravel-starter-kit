@@ -165,7 +165,7 @@ it('will not let a workspace enable a module the platform disabled', function ()
 
     // A workspace admin can't resurrect it for their workspace.
     $this->actingAs($this->admin)
-        ->patch(workspaceUrl($this->workspace, "/settings/modules/{$module->id}"), ['feature' => 'enabled', 'enabled' => true])
+        ->patchJson(workspaceUrl($this->workspace, "/settings/modules/{$module->id}"), ['feature' => 'enabled', 'enabled' => true])
         ->assertStatus(422);
 
     expect($this->registry->featuresFor($this->workspace)['equipment']['enabled'])->toBeFalse();

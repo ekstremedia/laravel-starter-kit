@@ -34,7 +34,9 @@ const isAdminMode = computed(() => {
 const tenancyEnabled = computed(() => page.props.workspaces?.enabled ?? false);
 const dropdownWorkspace = computed(() => page.props.current_workspace ?? page.props.workspace ?? null);
 const isWorkspaceAdmin = computed(() => isSuperAdmin.value || (dropdownWorkspace.value as { is_admin?: boolean } | null)?.is_admin === true);
-const showWorkspaceSettings = computed(() => !!dropdownWorkspace.value?.slug && isWorkspaceAdmin.value);
+// Gate on the workspace itself, not its slug — workspaceSettingsHref already
+// resolves the bare `/settings/modules` path in single-tenant mode.
+const showWorkspaceSettings = computed(() => !!dropdownWorkspace.value && isWorkspaceAdmin.value);
 const workspaceSettingsHref = computed(() => {
     const slug = dropdownWorkspace.value?.slug;
     return (tenancyEnabled.value && slug ? `/w/${slug}` : '') + '/settings/modules';
