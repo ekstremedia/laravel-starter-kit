@@ -126,6 +126,23 @@ function syncRoles(member: Member) {
     );
 }
 
+// Which member's role dropdown panel is currently open (only one at a time).
+const openPanelId = ref<number | null>(null);
+
+function onPanelHide(member: Member) {
+    openPanelId.value = null;
+    syncRoles(member);
+}
+
+// While the panel is open we batch edits and sync once on @hide (avoids a PATCH
+// per option toggle). Removing a chip happens with the panel closed, so that
+// change wouldn't otherwise be persisted — sync it right away.
+function onRolesChange(member: Member) {
+    if (openPanelId.value !== member.id) {
+        syncRoles(member);
+    }
+}
+
 function remove(member: Member) {
     confirmer.require({
         group: 'command',
@@ -213,7 +230,9 @@ function remove(member: Member) {
                         display="chip"
                         :disabled="pendingId === m.id"
                         class="w-full"
-                        @hide="syncRoles(m)"
+                        @show="openPanelId = m.id"
+                        @hide="onPanelHide(m)"
+                        @change="onRolesChange(m)"
                     />
                 </span>
                 <span class="table__actions">
