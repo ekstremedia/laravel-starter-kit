@@ -774,7 +774,7 @@ export default {
             send_password_reset: 'Send passordtilbakestilling',
             reset_2fa: 'Tilbakestill 2FA',
             send_test: 'Send testvarsel',
-            impersonate: 'Etterlign',
+            impersonate: 'Logg inn som',
             confirm_delete: 'Slett {name} permanent?',
             confirm_ban: 'Utesteng {name}? De blir logget ut og hindret i å logge inn.',
             confirm_remove_member: 'Fjerne {email} fra denne arbeidsområdet?',
